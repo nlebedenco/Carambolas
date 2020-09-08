@@ -1,0 +1,12 @@
+<Project>
+    <PropertyGroup>
+        <VersionPrefix>0.1.0</VersionPrefix>
+        <Authors>Nicolas Carneiro Lebedenco</Authors>
+        <Copyright>2020 © Nicolas Carneiro Lebedenco (nicolas@lebedenco.net). All rights reserved.</Copyright>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/nlebedenco/Carambolas</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/nlebedenco/Carambolas</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <NeutralLanguage>English</NeutralLanguage>
+    </PropertyGroup>
+</Project>

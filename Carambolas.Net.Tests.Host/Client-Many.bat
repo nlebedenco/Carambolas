@@ -1,0 +1,1 @@
+for /l %%N in (1 1 4) do <nul START CMD /K CALL %~dp0\Client.bat

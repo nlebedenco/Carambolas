@@ -1,0 +1,1 @@
+call %~dp0\host.bat -client

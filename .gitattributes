@@ -1,0 +1,145 @@
+#
+# This file contains rules that control how Git handles binary and text files, 
+# including line endings
+#
+
+* text=auto 
+
+# Make sure Windows batch files preserve CR/LF line endings, otherwise they may not be able to execute.  Windows
+# batch files require a CR/LF for labels to work properly, otherwise they may fail when labels straddle 512-byte
+# block boundaries.  This is important when files are downloaded through a zip archive that was authored on a
+# Linux machine (the default behavior on GitHub)
+
+*.bat eol=crlf
+*.sh  eol=lf
+
+###
+# Source Code
+#
+*.cs                        diff=csharp
+*.c                         diff=cpp
+*.cpp                       diff=cpp
+*.objc                      diff=objc
+*.java                      diff=java
+*.py                        diff=python
+*.html                      diff=html
+*.htm                       diff=htm
+*.xhtml                     diff=html
+*.xhtm                      diff=html
+*.xml                       diff=patience
+*.js                        diff=json
+*.json                      diff=json
+
+###
+# Graphics
+#
+*.bmp       filter=lfs      diff=lfs            merge=lfs   -text
+*.exr       filter=lfs      diff=lfs            merge=lfs   -text
+*.gif       filter=lfs      diff=lfs            merge=lfs   -text
+*.hdr       filter=lfs      diff=lfs            merge=lfs   -text
+*.iff       filter=lfs      diff=lfs            merge=lfs   -text
+*.jpeg      filter=lfs      diff=lfs            merge=lfs   -text
+*.jpg       filter=lfs      diff=lfs            merge=lfs   -text
+*.pict      filter=lfs      diff=lfs            merge=lfs   -text
+*.png       filter=lfs      diff=lfs            merge=lfs   -text
+*.psd       filter=lfs      diff=lfs            merge=lfs   -text
+*.tga       filter=lfs      diff=lfs            merge=lfs   -text
+*.tif       filter=lfs      diff=lfs            merge=lfs   -text
+*.tiff      filter=lfs      diff=lfs            merge=lfs   -text
+
+###
+# Fonts
+#
+*.ttf       filter=lfs      diff=lfs            merge=lfs   -text
+*.otf       filter=lfs      diff=lfs            merge=lfs   -text
+
+###
+# Audio
+#
+*.aif       filter=lfs      diff=lfs            merge=lfs   -text
+*.aiff      filter=lfs      diff=lfs            merge=lfs   -text
+*.it        filter=lfs      diff=lfs            merge=lfs   -text
+*.mod       filter=lfs      diff=lfs            merge=lfs   -text
+*.mp3       filter=lfs      diff=lfs            merge=lfs   -text
+*.ogg       filter=lfs      diff=lfs            merge=lfs   -text
+*.s3m       filter=lfs      diff=lfs            merge=lfs   -text
+*.wav       filter=lfs      diff=lfs            merge=lfs   -text
+*.xm        filter=lfs      diff=lfs            merge=lfs   -text
+
+###
+# Video
+#
+*.mp4       filter=lfs      diff=lfs            merge=lfs   -text
+*.mpg       filter=lfs      diff=lfs            merge=lfs   -text
+*.mpeg      filter=lfs      diff=lfs            merge=lfs   -text
+*.mov       filter=lfs      diff=lfs            merge=lfs   -text
+
+###
+# 3D Object
+#
+*.3dm       filter=lfs      diff=lfs            merge=lfs -text
+*.3ds       filter=lfs      diff=lfs            merge=lfs -text
+*.blend     filter=lfs      diff=lfs            merge=lfs -text
+*.blend     filter=lfs      diff=lfs            merge=lfs -text
+*.c4d       filter=lfs      diff=lfs            merge=lfs -text
+*.collada   filter=lfs      diff=lfs            merge=lfs -text
+*.dae       filter=lfs      diff=lfs            merge=lfs -text
+*.dxf       filter=lfs      diff=lfs            merge=lfs -text
+*.FBX       filter=lfs      diff=lfs            merge=lfs -text
+*.fbx       filter=lfs      diff=lfs            merge=lfs -text
+*.jas       filter=lfs      diff=lfs            merge=lfs -text
+*.lws       filter=lfs      diff=lfs            merge=lfs -text
+*.lxo       filter=lfs      diff=lfs            merge=lfs -text
+*.ma        filter=lfs      diff=lfs            merge=lfs -text
+*.max       filter=lfs      diff=lfs            merge=lfs -text
+*.mb        filter=lfs      diff=lfs            merge=lfs -text
+*.obj       filter=lfs      diff=lfs            merge=lfs -text
+*.ply       filter=lfs      diff=lfs            merge=lfs -text
+*.skp       filter=lfs      diff=lfs            merge=lfs -text
+*.stl       filter=lfs      diff=lfs            merge=lfs -text
+*.ztl       filter=lfs      diff=lfs            merge=lfs -text
+
+###
+# Archives
+#
+*.7z        filter=lfs      diff=lfs            merge=lfs   -text
+*.zip       filter=lfs      diff=lfs            merge=lfs   -text
+*.ZIP       filter=lfs      diff=lfs            merge=lfs   -text
+*.gz        filter=lfs      diff=lfs            merge=lfs   -text
+*.bz2       filter=lfs      diff=lfs            merge=lfs   -text
+
+###
+# Documents
+#
+*.doc       filter=lfs      diff=astextplain    merge=lfs   -text
+*.DOC       filter=lfs      diff=astextplain    merge=lfs   -text
+*.docx      filter=lfs      diff=astextplain    merge=lfs   -text
+*.DOCX      filter=lfs      diff=astextplain    merge=lfs   -text
+*.dot       filter=lfs      diff=astextplain    merge=lfs   -text
+*.DOT       filter=lfs      diff=astextplain    merge=lfs   -text
+*.pdf       filter=lfs      diff=astextplain    merge=lfs   -text
+*.PDF       filter=lfs      diff=astextplain    merge=lfs   -text
+*.rtf       filter=lfs      diff=astextplain    merge=lfs   -text
+*.RTF       filter=lfs      diff=astextplain    merge=lfs   -text
+*.ps        filter=lfs      diff=lfs            merge=lfs   -text
+*.PS        filter=lfs      diff=lfs            merge=lfs   -text
+
+###
+# Misc Binaries
+#
+*.dll       filter=lfs      diff=lfs            merge=lfs   -text
+
+###
+# Unity Files
+#
+*.meta                                          merge=unityyamlmerge    eol=lf  linguist-generated
+*.asset                                         merge=unityyamlmerge    eol=lf  linguist-generated
+*.unity                                         merge=unityyamlmerge    eol=lf  linguist-generated
+*.prefab                                        merge=unityyamlmerge    eol=lf  linguist-generated
+*.anim                                          merge=unityyamlmerge    eol=lf  linguist-generated
+*.controller                                    merge=unityyamlmerge    eol=lf  linguist-generated
+*.mask                                          merge=unityyamlmerge    eol=lf  linguist-generated
+*.mat                                           merge=unityyamlmerge    eol=lf  linguist-generated
+*.physicsMaterial2D                             merge=unityyamlmerge    eol=lf  linguist-generated
+*.physicsMaterial                               merge=unityyamlmerge    eol=lf  linguist-generated
+*.guiskin                                       merge=unityyamlmerge    eol=lf  linguist-generated

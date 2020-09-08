@@ -1,0 +1,43 @@
+<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\..\..\Build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)\..\..\Build\$(MSBuildProjectName)\bin\</BaseOutputPath>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <Import Project="../../Version.props" />
+  
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>        
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>    
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    <NoWarn>CS8021</NoWarn>
+    <NoBuild>true</NoBuild>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    
+    <RuntimeIdentifiers>osx-x64</RuntimeIdentifiers>        
+    
+    <PackageId>Carambolas.Net.Native.macOS</PackageId>
+    <Product>Carambolas.Net.Native</Product>
+    <Description>Carambolas is a modular framework for network applications based on a custom reliable UDP protocol intended for short thin network links. This package contains native libraries for Carambolas on macOS.</Description>
+    <PackageTags>udp reliable-udp native</PackageTags>    
+  </PropertyGroup>
+  
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+  
+  <ItemGroup>
+    <ProjectReference Include="../../Carambolas.Net/Carambolas.Net.csproj" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Content Include="$(MSBuildProjectDirectory)/../../Build/NuGet/runtimes/osx*/**/*">
+      <PackagePath>runtimes</PackagePath>
+      <Pack>true</Pack>
+    </Content>
+  </ItemGroup>
+</Project>

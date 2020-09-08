@@ -1,0 +1,117 @@
+<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\bin\</BaseOutputPath>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+  
+  <Import Project="../Version.props" />
+  
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <RootNamespace>Carambolas.Net</RootNamespace>
+    <PackageId>Carambolas.Net</PackageId>
+    <Product>Carambolas.Net</Product>
+    <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <Description>Carambolas is a modular framework for network applications based on a custom reliable UDP protocol intended for short thin networks (as opposed to long fat networks).</Description>
+    <PackageTags>udp reliable-udp modular library</PackageTags>
+    <Platforms>AnyCPU;x64;x86</Platforms>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants>TRACE;DEBUG;USE_NATIVE_SOCKET</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">    
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants>TRACE;DEBUG;USE_NATIVE_SOCKET</DefineConstants>    
+    <PlatformTarget>AnyCPU</PlatformTarget>    
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">    
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants>TRACE;DEBUG;USE_NATIVE_SOCKET</DefineConstants>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
+    <DefineConstants>TRACE;USE_NATIVE_SOCKET</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
+    <DefineConstants>TRACE;USE_NATIVE_SOCKET</DefineConstants>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
+    <DefineConstants>TRACE;USE_NATIVE_SOCKET</DefineConstants>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Update="Channel.Inbound.cs">
+        <DependentUpon>Channel.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Channel.Inbound.Node.cs">
+        <DependentUpon>Channel.Inbound.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Channel.Inbound.Message.cs">
+        <DependentUpon>Channel.Inbound.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Channel.Inbound.Reassembly.cs">
+        <DependentUpon>Channel.Inbound.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Channel.Inbound.Node.Tree.cs">
+        <DependentUpon>Channel.Inbound.Node.cs</DependentUpon>
+    </Compile>    
+    <Compile Update="Channel.Inbound.Message.Pool.cs">
+        <DependentUpon>Channel.Inbound.Message.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Channel.Inbound.Reassembly.Pool.cs">
+        <DependentUpon>Channel.Inbound.Reassembly.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Channel.Outbound.cs">
+        <DependentUpon>Channel.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Channel.Outbound.Message.cs">
+        <DependentUpon>Channel.Outbound.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Channel.Outbound.Message.List.cs">
+        <DependentUpon>Channel.Outbound.Message.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Channel.Outbound.Message.Pool.cs">
+        <DependentUpon>Channel.Outbound.Message.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Host.Settings.cs">
+        <DependentUpon>Host.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Host.Stream.cs">
+        <DependentUpon>Host.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Socket.Settings.cs">
+        <DependentUpon>Socket.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Carambolas\Carambolas.csproj" />
+  </ItemGroup>
+  
+</Project>
