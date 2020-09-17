@@ -4,17 +4,17 @@
 ## Disclaimer
 
 This library and its associated protocol definitions are not meant to be ultra-fast, ultra-lightweight, better than *xyz* or any other superlative. 
-In a sense because there's no such thing as a definitve network solution. Behind any advertised set of features, there's always a list of pre-conditions, boundaries 
-and assumptions. Every solution is a model that tries to approximate an ideal reality as best as possible while seeking a balance between desirable and feasible. 
+In a sense because there's no such thing as a definitve network solution. Behind any advertised set of features, there's always a list of pre-conditions, 
+boundaries and assumptions. I tried my best to make them clear both in the source code and in the documentation. 
 
-Neither is this a formal research. I did try to back design choices with published research or at least a wikipedia article whenever possible but just for 
-clarity. Sometimes I may refer to an open standard that addresses a similar problem too. External references are provided in all cases. Nevertheless, no effort is 
-made to formally prove hypotheses beyond an intuitive argumentation.
+This is not a formal research project so although I seek to back design choices with sound arguments and I may sometimes cite open standards or someone else's 
+research, no effort is made to formally prove hypotheses beyond an intuitive explanation.
+
 
 ## Introduction
 
-Carambolas.Net is a reliable UDP networking library and associated protocol for user applications that prioritize latency minimization and only require a small 
-bandwidth-delay product (of one or two orders of mangnitude), i.e. rapid exchange of small payloads (64KB or less). Examples include simulators, multiplayer 
+Carambolas.Net is a reliable UDP networking protocol implemented in C# for user applications that prioritize latency minimization and only require a small 
+bandwidth-delay product (of one or two orders of mangnitude), i.e. rapid exchange of small payloads (64KB or less). Examples include simulations, multiplayer 
 video games and sensor networks. 
 
 
@@ -36,6 +36,7 @@ video games and sensor networks.
 - Optional encryption (out-of-the-box [ECIES](https://en.wikipedia.org/wiki/Integrated_Encryption_Scheme) with [Curve25519](https://en.wikipedia.org/wiki/Curve25519); 
 [AEAD](https://en.wikipedia.org/wiki/Authenticated_encryption) with [ChaCha20](https://en.wikipedia.org/wiki/Salsa20#ChaCha_variant)/[Poly1305](https://en.wikipedia.org/wiki/Poly1305));
 
+
 ## Related work
 
 Many features and certain design traits of Carambolas.Net are shared between other network solutions to date, most notably:
@@ -46,16 +47,15 @@ Many features and certain design traits of Carambolas.Net are shared between oth
 * [LiteNetLib](https://github.com/RevenantX/LiteNetLib)
 * [Lindgren-gen3](https://github.com/lidgren/lidgren-network-gen3)
 
-In fact, I would encourage you to consider using either [TCP](https://tools.ietf.org/html/rfc793) or [SCTP](https://tools.ietf.org/html/rfc4960) 
-before trying Carambolas.Net, if you have not done so yet. In part, because on the one hand you will be in a better position to identify your most relevant 
-requirements, and on the other, because the operating system will be handling a lot of the complications in a way that is arguably more efficient than any 
-user-space implementation could do.
+I would encourage the reader to consider using either [TCP](https://tools.ietf.org/html/rfc793) or [SCTP](https://tools.ietf.org/html/rfc4960) before trying 
+Carambolas.Net on a serious project. In part, because on the one hand you will be in a better position to identify your most relevant requirements, which may 
+end up not being this library's main focus; and on the other, because the operating system will be handling a lot of the complications in a way that is arguably
+more efficient than any user-space implementation could do.
 
 
+## Normal operating conditions
 
-## Normal use conditions
-
-What should be considered real-life normal use conditions for testing and assessment? According to 
+What should be considered real-life normal operation for assessing correctness and performance? According to 
 [a study conducted by Bungie for Halo 3 Beta](https://www.gamasutra.com/blogs/MarkMennell/20140929/226628/Making_FastPaced_Multiplayer_Networked_Games_is_Hard.php), 
 in 2007, 99% of Xbox users displayed the following metrics (or better):
 
@@ -63,12 +63,10 @@ in 2007, 99% of Xbox users displayed the following metrics (or better):
 * 8 KB/s bandwidth up and 8 KB/s down;
 * up to 5% packet loss;
 
-
-
 ## Basic Concepts
 
-In this section, you will find a few basic network concepts that the remainder of this document will repeatedly refer to presented in the form of short notes 
-and/or citations accompanied by a link to the source material. 
+In this section, the reader will find listed a few basic network concepts that the remainder of this document will repeatedly refer to. Citations are 
+accompanied by a link to the source material. 
 
 ### Datagram
   
@@ -104,7 +102,7 @@ The author cites [Kent and Mogul, 1987](https://www.hpl.hp.com/techreports/Compa
 > * Subsequent fragments lack the higher-layer header. TCP or UDP header is only present in the first fragment. This makes it impossible for firewalls 
 > to filter fragment datagrams based on criteria like source or destination ports.
 
-The largest IPv4 datagram that can be guaranteed to never be fragmented is very small - as per [RFC791](https://tools.ietf.org/html/rfc791):
+The largest IPv4 datagram that can be guaranteed to never be fragmented is very small - as per [RFC 791](https://tools.ietf.org/html/rfc791):
   
 > Every internet module must be able to forward a datagram of 68 octets without further fragmentation. This is because an internet header may be up to 
 > 60 octets, and the minimum fragment is 8 octets."
@@ -114,11 +112,11 @@ However, it is very unlikely for any path through the Internet to hit a link wit
 IPv6 is more demanding and requires every link to support an MTU of at least 1280 octets; routers are free to use links with physically smaller MTUs but
 must reassemble any fragments before forwarding a complete IPv6 frame again.
      
-Generally we can expect physical links in use in the public Internet to have MTUs of 1500 octets. This value is the default MTU for [802.3 Ethernet](https://www.ietf.org/rfc/rfc1042.txt), 
-although there are extensions to support much larger MTUs, such as 9,000 octets (so called jumbo frames). On the other hand, the way that IP is actually 
-carried over in such links often involves tunnels of various kinds, such as VLANs, MPLS, and VPNs; these all add small amounts of overhead to each packet, 
-and so the MTU is often anything from 4 to 12 or more octets smaller than 1500. In practice, there's no easy way to reliably determine the MTU for a path. 
-Path MTU Discovery (PMTUD) is the closet we can get but it's a complex subject with a lot of subtleties.
+Generally we can expect physical links in use in the public Internet to have MTUs of 1500 octets. This value is the default MTU for 802.3 Ethernet, 
+[RFC 1042](https://www.ietf.org/rfc/rfc1042.txt), although there are extensions to support much larger MTUs, such as 9,000 octets (so called jumbo frames). On 
+the other hand, the way that IP is actually carried over in such links often involves tunnels of various kinds, such as VLANs, MPLS, and VPNs; these all add 
+small amounts of overhead to each packet, and so the MTU is often anything from 4 to 12 or more octets smaller than 1500. In practice, there's no easy way to 
+reliably determine the MTU for a path. Path MTU Discovery (PMTUD) is the closet we can get but it's a complex subject with a lot of subtleties.
 
 A sender can set the DF (Don't Fragment) flag in the IPv4 header, asking intermediate routers to never fragment a packet. Instead a router faced with a smaller 
 MTU will send an ICMP packet back (ICMP Fragmentation needed, Type 3, Code 4) informing the sender to reduce the MTU for this connection. IPv6 does not support
@@ -128,11 +126,11 @@ packets as they pose a security risk, this includes the control messages that ar
 **What would be a "safe" UDP packet payload size to use then ?**
 
 In IPv4, hosts are required to be able to reassemble IP frames up to 576 octets in length; in IPv6, the minimum is the same as the minimum MTU of 1280 octets.
-In practice, most hosts can reassemble much larger IP frames. So the answer to the opening question would be a value that avoids any fragmentation. Unfortunately, 
-this is simply not practical over IPv4, as this leaves us with only 8 bytes!
+In practice, most hosts can reassemble much larger IP frames. So the answer to the opening question would be a value that avoids any fragmentation. 
+Unfortunately, this is simply not practical over IPv4, as this leaves us with only 8 bytes!
   
-PMTUD is the best way to minimize the likelihood of fragmentation. Even so, a packet may still end up being fragmented if routing updates change the 
-path to include a link with a smaller MTU after the packet has been dispatched by the source.
+PMTUD is the best way to minimize the likelihood of fragmentation. Even so, a packet may still end up being fragmented if routing updates change the path to 
+include a link with a smaller MTU after the packet has been dispatched by the source.
   
 With that in mind maybe "safe" should be replaced with "guaranteed to be able to be reassembled, if fragmented", to which the answer is:
   
@@ -142,7 +140,7 @@ With that in mind maybe "safe" should be replaced with "guaranteed to be able to
 
 ### Time-To-Live (TTL)
   
-The IPv4 RFC states that TTL is measured in seconds but acknowledges this is an imperfect measure. There is no way of knowing how long any particular host will
+The IPv4 RFC states that `TTL` is measured in seconds but acknowledges this is an imperfect measure. There is no way of knowing how long any particular host will
 take to process a packet and most will do so in far less than a second. Based on this assumption, in theory the maximum time a packet can exist in the network 
 is aproximately 4.25 min (255 seconds). 
 
@@ -223,638 +221,292 @@ Sliding Window Protocols encompass all forms of ARQ protocols. From [the wikiped
 
 ## Protocol Specification
 
-### Design Notes
+### Considerations
 
-This section highlights the major aspects of the Carambolas.Net protocol by progressively identifying user problems and demonstrating how the answers affect the 
-protocol to further become definitions. You may choose to skip it entirely and go to [Packet Structure](#packet-structure), instead, for an objective description of 
-the protocol structure.
+* In order to send data to a remote host one doesn't need a sophisticated protocol, just a UDP socket open on both ends will do. The sender must know the IP 
+address and port (also referred to as IP end point) of the destination. The receiver may identify a sender by IP address and port as well. The need for a more 
+elaborate protocol becomes aparent when this communication needs to be coordinated.
 
-**Problem #1: Send data to a remote host**
+* Network systems are inherently a form of coperative distributed system. Both sender and receiver are expected to cooperate for the communication to be 
+effective. In principle, a node cannot force data onto another as much as it cannot forcebly retrieve data from another. This cooperation may be abused, however, 
+leading to all sorts of degenerate states and ultimately disrupting the network. Moreover, a network peer must remain aware of other unrelated peers that might 
+be sharing the same network resources despite never actively communicating with it. This situation may be approached as a game where each node wants to maximize
+its own performance. [Shah et al](https://www.kau.edu.sa/Files/611/Researches/62804_33828.pdf) provides an overview of how game theory may be used to model 
+communication networks.
 
-In order to send data to a remote host you don't need a sophisticated protocol, just a UDP socket open on both ends. The sender must know the IP address
-and port (also referred to as IP end point) of the receiver. On the other side, the receiver may identify a sender by IP address and port as well.
-
-**Problem #2: How much data can be transmitted in a single operation?**
-
-As described in [a previous section](#datagram), the maximum amount of user data that can be transmitted in a single send operation under a UDP socket is 
-theoretically 65535 bytes minus the transport protocol overhead (UDP/IP). The chances of this data reaching the remote host however are directly affected by 
-the minimum MTU of the network path. 
+* As described in [a previous section](#datagram), the maximum amount of user data that can be transmitted in a single send operation using a UDP transport is 
+theoretically 65535 bytes minus the transport protocol overhead (UDP/IP). The chances of this data actually reaching the destination, however, are directly 
+affected by the minimum `MTU` of the network path. 
 
 ***Carambolas.Net works under the assumption that the network is relatively stable.*** 
 
-In other words, network nodes are assumed to remain online for relatively longer than the time a user program operates on both ends. Paths must appear mostly
+* Network nodes are assumed to remain online for relatively longer than the time a user program operates on both ends. Paths must appear mostly
 unchanged with both datagram loss and out of order delivery events being rare compared to the amount of datagrams transfered. In these terms, it's considerably 
 simpler to estimate a constant `MTU` with a safe margin of error than trying to implement PMTUD. Thus, the maximum payload unit (`MPU`), that is the maximum 
-amount of user data that can be effectively transmimtted, is given by `MTU` - [IP Header] - [UDP Header].
+amount of user data that can be effectively transmimtted, is given by `MTU` - `[IP Header]` - `[UDP Header]`.
 
-In practice, `MTU` estimation can be made safer if both hosts advertise their estimated `MTU`s during the connection handshake and the minimum of the advertised
-values is selected as the negotiated `MTU`. This way an end point that might possess addtional information about the link can adjust an overestimation from the 
-other end and vice-versa. See [Connection](#connection) for more details about the connection process.
-
-**Problem #3: Protocol overhead**
-
-Protocol overhead is the ratio between the amount of user data and the total number of bytes actually transmitted to carry this much data. It is minimum when 
+* Protocol overhead is the ratio between the amount of user data and the total number of bytes actually transmitted to carry this much data. It is minimum when 
 the sender transmits a full `MPU` and maximum when it transmits a single byte. Under UDP/IP, assuming 48 bytes of protocol headers (estimated IP header of 40 
 bytes + 8 bytes of UDP header) minimum overhead is `MPU`/48 and maximum overhead is 48 (i.e. 4800%);
 
-Since it's impossible to predict the average payload size of all the potential user applications we may try to batch multiple data segments together in a single
+* Since it's impossible to predict the average payload size of all the potential user applications we may try to batch multiple data segments together in a single
 datagram in order to maximize datagram occupation;. In TCP/IP this problem is address by the [Nagle Algorithm](https://en.wikipedia.org/wiki/Nagle%27s_algorithm) 
-which also employs a timer. Since TCP is trying to maximize throughput it's reasonable to wait a *certain* time for more data to fill up a packet. 
+which also employs a timer. Since TCP is trying to maximize throughput it's reasonable to wait a *certain* amount time for more data to fill up a packet. Just 
+enough until waiting anymmore would affect throughput more than the packet overhead.
 
 ***Carambolas.Net wants to minimize latency, not necessarily maximize throughput.*** 
 
-With that in mind, there's no point in waiting. Simply send whatever is available to send as soon as possible even when it might incur extra overhead. 
+* Traffic generated by user applications are expected to follow a bursty model, but also to remain way below the link capacity on average (i.e the maximum 
+throughput achievable for the link) so there's little to gain from waiting for data to accumulate. 
 
-In a sense, user data segments may be considered a type of [message](#messages) carried by a [packet](#packets) over the network link.
+* Even so, a user application may be capable of producing multiple data segments in succession on a short period of time before the link could absorb them (a 
+transmission peak). Each of these segments may be considered an independent [message](#messages). Multiple buffered messages could then be grouped together in 
+the same datagram, provided there's enough space, in order to reduce overhead. 
 
-**Problem #4: Datagram boundaries are not enough to produce data segmentation once there is more than one segment of user data per packet**
+* Datagram boundaries are not enough to promote data segmentation at the destination once there may be multiple user data segments per packet. This poses a 
+problem of determining where each segment begins and ends. Usage of a starter or terminator sequence is less than ideal because data is binary and it would 
+require either escaping or a very long terminator sequence introducing overhead and uncertainty. It's simpler to prefix every segment with its size and because
+we know that `MPU` < 65535, the segment size only requires two bytes. This incurs a certain overhead but it's still better than not batching messages all. Now 
+[the case for CRC](#the-case-for-crc) is even more compelling as we don't want to read half a message or beyond one into the next by accident. Minimum overhead 
+becomes `MPU`/54, and maximum overhad, 54x, but in the average datagram occupation must be improved without requiring the user application to amalgamate data 
+segments on its own.
 
-- This is a problem of determining where each segment of data begins and ends; 
-- Usage of a starter or terminator sequence is complicated because data is binary and would require either escaping or a very long terminator introducing even more overhead;
-- It's just simpler to prefix every segment with its size and because we know that `MPU` < 65535, the segment size only requires two bytes. 
-  Note that this incurs an extra overhead but it's still better than not batching all;
-- Now [the case for CRC](#the-case-for-crc) is even more compelling as we don't want to read half a message (or beyond one into the next) by accident;
-- Minimum overhead becomes `MPU`/54, and maximum overhad, 54x, but in the average datagram occupation must be improved without requiring the user application to amalgamate
-  data segments on its own;
-
-**Problem #5: Multiple hosts may appear to have the same end point**
-
-An IP address is used to identify a network node and a port number in the range 0-65535 is usually used to identify a process in that node (i.e. a user application)
+* An IP address is used to identify a network node and a port number in the range 0-65535 is used to identify a process within that node (i.e. a user application)
 however: 
 
-- Multiple hosts behind the same gateway may appear to have the same end point (the gateway's) to a remote host outside of that subnet;
-- Multiple processes in the same node may have been explicitly bound to the same local port (this is rare but possible, in which case a port is not enough to identify 
-  a process anymore and whatever bound process reads first is the one that is going to receive the datagram);
-- Because there's only 65536 ports (and some are reserved) a process may reuse the same port a previously terminated process was using and eventually receive a datagram
-  intended for someone else;
-- The concept of an end-to-end [connection](#connection) must be used to match hosts that can talk to each other and ignore datagrams from unknown hosts;
-- This implies at least two types of packets: one type of packet used to exchange control information and establish a connection and a second type used to batch messages 
-  and transmmit user data. This means an overhead of at least 1 bit per packet. In practice, there's more than only two types of packets so a whole byte must be used to 
-  carry the packet type;
+  - Multiple hosts behind the same gateway may appear to have the same end point (the gateway's) to a remote host outside of that subnet;
+  - Multiple processes in the same node may have been explicitly bound to the same local port (this is rare but possible, in which case a port is not enough to 
+    identify a process anymore and whatever bound process reads first is the one that is going to receive the datagram);
+  - Because there's only 65536 ports (and some are reserved) a process may reuse the same port a previously terminated process was using and eventually receive 
+    a datagram intended for some other (possibly defunct) process;
+  - The concept of an end-to-end [connection](#connection) must be used to match hosts that can talk to each other and ignore datagrams from unknown hosts;
+  - This implies the need for at least two types of packets: one used to exchange control information and establish a connection and a second type used to
+    batch messages and transmmit user data. This means an overhead of at least 1 bit per packet. In practice, there's more than only two types of packets so a
+    whole byte must be used to carry the packet type.
 
-**Problem #6: Packets may be lost in transit or arrive in a different order than they were sent**
+***Carambolas.Net assumes that every host is exclusively bound to its end point (address and port).***
 
-- A packet may be dropped if the buffer is full in any intermediary node along the path including sender and receiver, or in the presence of physical errors such 
-  as interference and broken links;
-- It's also possible that a packet may arrive much later than expected if it becomes retained by an intermediary node or due to changes in the routing path;
-- It may or may not be relevant for the user application if a packet ever arrives at the destination (see [QoS](#qos));
-- There must be a way to determine that a packet was intended for another process (a previous incarnation using the same endpoint) and ignore it ([Session identifiers](#session-identifiers));
-- There must be a way to determine the relative position in which the packet (or each individual message) was transmitted by the sender ([Sequence Numbers](#sequence-numbers));
+* Packets may be lost in transit or arrive in a different order than they were sent
+
+  - A packet may be dropped if the buffer is full in any intermediary node along the path including sender and receiver, or in the presence of physical errors 
+    that corrupt the data such as interference and broken links;
+  - It's also possible that a packet may arrive much later than expected if it becomes retained by an intermediary node or due to changes in the routing path;
+  - It may or may not be relevant for the user application if a packet ever arrives at the destination (see [QoS](#qos));
+  - There must be a way to determine that a packet was intended for another process (a previous incarnation using the same endpoint) and ignore it 
+    ([Session identifiers](#session-identifiers));
+  - There must be a way to determine the relative position in which the packet (or each individual message) was transmitted by the sender 
+    ([Sequence Numbers](#sequence-numbers)) so the receiver may deliver messages in the same order of transmission if required by the user application;
 
 ***Carambolas.Net uses [sequence numbers](#sequence-numbers) at the message level so that messages with different [QoS levels](#qos) (and even from different
 [channels](#channels)) may be mixed and transmitted in the same packet.***
 
-#### Sequence Numbers
-
-**Problem #7: Characterize arriving messages in relation to other messages from the sender**
-
-When a message arrives, a receiver may find it relevant to determine how this message relates to other messages already received or yet to be 
-received from the sender. This forms the basis for the definition of different [levels of service](#qos) (delivery services, for that matter).
-
-More specifically a receiver would like to answer the following questions:
-
-- Has the message arrived behind, in order or ahead of other messages?
-- If behind, is it still  relevant? How late is it (how many messages behind)?
-- If ahead, can it be delivered to the user application right now or should we wait for the late ones? How much ahead is this message (how many messages ahead)?
-- Has this message been received yet (is it a duplicate/retransmission)? 
-
-We can start answering these questions by noting that regardless of whether or not they arrive at the receiver, every message must have been transmitted by the
-sender exactly once in a certain sequence (or *at least once*, after we begin to take retransmissions into account). If we assign to every message a discrete
-number corresponding to its position in this sequence, a receiver can reconstruct the original transmission order regardless of the order that the messages may 
-arrive as long as: 
-
-  1) The initial sequence number is known by both ends; 
-  2) Sequence numbers are strictly increasing;
-  3) The difference between any two consecutive sequence numbers is 1;
-
-In practice only item number 2 requires special consideration:
-
-  - There are ways to represent arbitrarily large integer numbers (i.e. bigint) but they are computationally expensive when compared to simple fixed size integers;
-  - An unsigned 64-bit integer starting from zero could be used to tag 1.8446744 * 10^19^ messages before wraping around. This is roughly equivalent to a sender
-    transmitting 1 billion messages per second for 584 years. Definitely more than enough. Unfortunately this means 8 extra bytes of overhead per message from which
-    the 4 most significant will always be 0 for the first 4 billion messages or so which is starting to look like a waste;
-  - There are relatively simple methods to compress low 64-bit integer values and mitigate the wasted space (i.e. varint) but eventhough they're not as expensive 
-    as arbitrarily large integers they're still considerably more expensive than using regular small integers;
-
-**Problem #8: What's the minimum number of bytes required for a sequence number?**
-
-Surprisingly the answer to this question can be as low as 1 bit as long as we are willing to accept a few constraints. This problem is a major aspect of 
-[Sliding Window Protocols](#sliding-window-protocols).
-
-Consider a strictly increasing finite sequence S of 1-byte numbers starting from 0 with a constant difference of 1.
-
-    S = ( 0, 1, ... 254, 255 )
-
-Note that *s~a~* comes before *s~b~* if and only if *s~a~* < *s~b~*. This may seem obvious at first but now consider an infinite sequence Z so that for every 
-element *z~i~* there is an element *s~j~* so that *j = i mod 256*. This is equivalent to having: 
-
-    Z x S => ( (z0, s0); (z1, s1); ... (z254, s254); (z255, s255); (z256, s0); (z257, s1); ... (z510, s254); z(511, s255); ... )
-
-In this sequence it's not possible anymore to determine the relative order between any two arbitrary elements just by looking at *s* but it's possible to say 
-that *(z~p~, s~a~)* comes before *(z~q~, s~b~)* if q - p < 128 and 0 < (b - a)~mod 256~ < 128. That is, although it's not possible anymore to order random 
-elements it's still possible to order ZxS as long as we only have to compare elements that are at most 128 positions apart. Therefore we may redefine 
-*s~a~* < *s~b~* to:
-
-*s~a~* < *s~b~* <=> 0 < (b - a)~mod 256~ < 128
+### Packet Structure
  
-This delta of 128 positions is called a *window* and can be generalized to any positive range so that for R = [0, r-1], r > 1 there is a maximum window W~R~ = floor(r / 2)
+A packet is any datagram with a valid size (<= `MTU`) formatted according to the following rules.
 
-{#16-bit-sequence-numbers}
-By employing an unsigned 16-bit sequence number, for instance, a receiver must be able to order up to 32768 messages with an extra overhead of only 2 bytes per
-message. A design decision that not only affects the packet structure but also the amount of memory a receiver may have to allocate (consider a worst case 
-scenario in which all messages arrive in the reverse order!)
- 
-A hypothetical packet containing a single segment message would then look like this:
+    STM(4) PFLAGS(1) <CON | SECCON | ACC | SECACC | DAT | SECDAT | RST | SECRST>
 
-    IPHEADER(40) UDPHEADER(8) PFLAGS(1) SEQ(2) SEGLEN(2) PAYLOAD(N) CRC(4) 
-
-^*This is not a valid Carambolas.Net packet. It's just an illustration of what a packet would possibly look like after all the design considerations so far.*^
-
-- `PFLAGS`: indicates the type of packet
-- `SEQ`: message sequence number
-
-Maximum N is the Maximum Segment Size (`MSS`) and it depends directly on the negotiated `MTU` for the connection.
-
-max(`MTU`, N) = `MTU` - 48 - 1 - 2 - 2 - 4  = `MTU` - 57
-
-max(1280, N) = 1280 - 57 = 1223
-      
-That means that a sender may transmit up to 32768 messages worth of 1223 bytes (aprox. 37MB) user data until it needs to hear from the receiver again (about 
-missing messages or with an ok to proceed to the next 32768). Assuming for simplicity that the receiver is infinitely fast, this wait time would be a minimum 
-of 1 [round-trip time (RTT)](#round-trip-time), or in other words, the amount of time that all the packets would take to arrive at the receiver plus the time
-a reply takes to travel from the receiver back to the sender. It's generally safe to assume `RTT` > 0.001s although in real networks this value must be one or
-two orders of magnitude higher. This amounts to a purely hypothetical (and totally unrealistic) upper limit for the throughput of aprox 37GB/s (or about 296Gbit/s). 
-Nevertheless, even with an `RTT` of 0.15s, which is much more likely to occur, we would still reach aproximately 252MB/s (or about 2Gbit/s) - way more than any
-user applicaton is expected to push into the connection (see [Reasonable real-life conditions](#reasonable-real-life-conditions)).
-
-
-##### Comparing unsigned n-bit sequence numbers
-
-Given two unsigned n-bit sequence numbers (*s*, *t*) we say *s* < *t* if 0 < (*t* - *s*) < 2^n-1^, computed in unsigned n-bit arithmetic. This means that if *s* 
-is within a distance from *t* (in modulo 2^n^) that is greater than or equal to 2^n-1^ we must assume it's from a previous "window", thus lower than *t* in 
-respect to order.
-
-#### Fragmentation
-
-**Problem #9: If a user application has a constant data payload to send in every operation, it may always fail when the negotiated MTU/MPU cannot accomodate 
-those many bytes**
-
-So far, the maximum amount of data that can be transmitted is limited by the negotiated `MTU`. A problem may arise if the `MTU` advertised by the remote host 
-is lower than the one expected/required by the user application. 
-
-For instance, consider a user application that is required to transmit small files of 1024 bytes (1KB) exactly. This is fine if the application can assume 
-`MTU` = 1280 which by our calculations (so far) would leave us with `MSS` = 1223 bytes. However, if the remote host requires a lower `MTU`, because it has 
-additional information about the link from its end, and the resulting `MSS` < 1024 then the user application is left with 3 options:
-  
-  1) Disconnect;
-  2) Let every send operation fail because the amount of data does not fit in the calculated `MSS`;
-  3) Split each file in two or more pieces depending on the calculated `MSS` and require the remote host to be capable of re-assembling those pieces;
+       CON ::= SSN(4) MTU(2) MTC(1) MBW(4) CRC(4)
+    SECCON ::= SSN(4) MTU(2) MTC(1) MBW(4) PUBKEY(32) CRC(4)
+       ACC ::= SSN(4) MTU(2) MTC(1) MBW(4) ATM(4) RW(2) ASSN(4) CRC(4)
+    SECACC ::= SSN(4) MTU(2) MTC(1) MBW(4) ATM(4) {RW(2)} PUBKEY(32) NONCE(8) MAC(16)
+       DAT ::= SSN(4) RW(2) MSGS CRC(4)
+    SECDAT ::= {RW(2) MSGS} NONCE(8) MAC(16)
+       RST ::= SSN(4) CRC(4)
+    SECRST ::= PUBKEY(32) NONCE(8) MAC(16)
     
-The first two options are obviously undesirable. Option 3 deserves some consideration. It implies that every user application will be required to handle
-the possibility of user data being larger than the calculated `MSS` and implement a custom solution for fragmentation and reassembling. This is due to the
-exact negotiated `MTU` for the connection being unpredictable. It would be ideal if a host could take care of user data fragmentation by itself. The IP layer
-provides transparent datagram fragmentation for free but only at the cost of [a few additional problems](#ip-level-fragmentation) and it can only operate in the 
-whole packet not at the message level. A custom strategy, on the other hand, supported by the protocol, would have a few advantages such as:
+      MSGS ::= MSG [MSG...]
+       MSG ::= MSGFLAGS(1) <ACKACC | ACK | DUPACK | GAP | DUPGAP | SEG | FRAG>
+    ACKACC ::= ATM(4)
+       ACK ::= ANEXT(2) ATM(4)
+    DUPACK ::= ACNT(2) ANEXT(2) ATM(4)
+       GAP ::= ANEXT(2) ALAST(2) ATM(4)
+    DUPGAP ::= ACNT(2) ANEXT(2) ALAST(2) ATM(4)
+       SEG ::= SEQ(2) RSN(2) SEGLEN(2) PAYLOAD(N)
+      FRAG ::= SEQ(2) RSN(2) SEGLEN(2) FRAGINDEX(1) FRAGLEN(2) PAYLOAD(N)
 
-  1) Support for different QoS levels;
-  2) Fine-grained retransmissions (at the fragment level rather than the whole packet);
-  3) Better control over the memory allocated to hold fragments at the receiver;
-  4) Better average packet occupation when transmitting the last fragment (since it can be batched with other messages in the same packet);
+The number in parenthesis is the atom size in bytes. Angle brackets indicate multiple possibilities for an element. Square brackets denote an optional element.
+Curly brackets denote an encrypted group.
 
-**Problem #10: How should data be fragmented?**
+- `PFLAGS`: Packet type;
+- `STM`: Source Time in milliseconds mod 2<sup>32</sup> since 00:00:00.0000000 UTC, January 1, 0001, in the Gregorian calendar.
+- `SSN`: Session Number used to identify the source instance;
+- `MTU`: Maximum Transmission Unit in bytes supported by the source. A host may refuse a connection based on this value;
+- `MTC`: Maximum Tranmission Channel (0 to 15) supported by the source. A host may refuse a connection based on this value;
+- `MBW`: Maximum Bandwidth in bits per second supported by the source. Destination should not transmit data at a rate higher than this. 
+          A host may refuse a connection based on this value;
+- `ATM`: Acknowledged Time used to calculate `RTT`;
+- `RW`: Receive window at the source. Maximum number of user data bytes that can be in flight for this peer; 
+- `ASSN`: Acknowledged session number used to match the connection request and establish the session pair;
+- `DSN`: Destination session number to reset;
+- `CRC32C`: Computed CRC32-C (castangnoli);
+- `PUBKEY`: Source public key used in the secure session. See [Encryption](#encryption);
+- `NONCE`: Source nonce used to encrypt/sign. See [Encryption](#encryption);
+- `MAC`: Authentication code. See [Encryption](#encryption);
+- `MFLAGS`: Message type and options including channel (`CH`) when applicable. See [Message Flags](#message-flags);
+- `ANEXT`: Next sequence number expected by the source;
+- `ALAST`: Last sequence number of a series expected by the source (last of a gap);
+- `ACNT`: Number of accumulated acknowledgements from source. Indicates the number of times (>1) that an equivalent `ACK` would have been repeated with the 
+   same value of `ANEXT` (since the last `ACK` or `DupACK` was sent); 
+- `SEQ`: Sequence number. See [Sequence Numbers](#sequence-numbers);
+- `RSN`: Reliable sequence number. See [Sequence Numbers](#sequence-numbers);
+- `SEGLEN`: Complete Segment length;
+- `FRAGINDEX`: Fragment index;
+- `FRAGLEN`: Fragment length;
 
-This problem can be further decomposed in the following questions:
+#### Packets
 
-- Should fragments have a variable length or should a fragment's payload always be maximal? 
-- How can a receiver determine that all fragments have been received?
-- How can fragments be ordered?
-- What's the maximum number of fragments that can be produced?
+There are 4 types of packets in both secure and insecure forms. 
 
-And depending on the answers, not only will a fragment message look differently but also both sender and receiver will be faced with additional requirements. 
+Insecure packets are:
 
-* If fragments are allowed to have a variable length, let's say depending on the available space in the packet (which might have been partially filled with 
-  other messages) by the time of the transmission, then fragments cannot be constructed until a packet is about to be transmitted; 
-  * A sender will never be able determine the number of messages waiting to be transmitted (only the total amount of user data bytes);
-* If fragments are always maximal, they may all be pre-calculated. All will have the same Maximum Fragment Size (`MFS`) except for the last one that is 
-  going to be `SEGLEN` % `MFS` where `SEGLEN` is the complete user data segment length;
-* For a receiver to be able to determine when all fragments have been received it must know either the complete segment length or the total number of fragments
-  to expect; 
-  * Knowing the complete segment length has the advantage of allowing the receiver to pre-allocate all the memory needed to reconstruct the packet;
-* Fragments must be ordered to form a complete segment; 
-  * Each fragment message must have some kind of sequence number of its own such as a fragment index or rely on the message sequence number [as used by data segments](#16-bit-sequence-numbers); 
-  * Although the idea of relying on the message sequence number to order fragments may seem attractive (specially as it does not incur extra overhead) it's 
-    proved to be problematic when messages arrive out of order. Consider the case of a transmitted subsequence of messages *m~0~, m~1~, m~2~, m~3~, m~4~, ... m~9~*. 
-    At a given point in time, messages *m~4~* to *m~7~* arrive at the receiver ahead of *m~0~* to *m~3~* while *m~8~* to *m~9~* have not arrived yet. The receiver 
-    can determine that the messages received so far are fragments by their `MSGFLAGS`, it can even deduce their relative order from their sequence numbers and 
-    that there are still 3 more fragments to come (assumed every fragment contains either information about the complete segment length or the total number of 
-    fragments) but the receiver is incapable of deducing by the sequence numbers alone if the missing fragments must come before *m~4~* or after *m~7~* because a message
-    sequence number does not carry information about how a fragment must be positioned inside its complete segment, it only tells how a message must be position in 
-    the big picture, that is among other messages, regardless of type;
-* The maximum number of fragments that can be produced (or the correlated maximum complete segment size) will directly impact the receiver which must be able to buffer 
-  at least a complete segment minus 1 byte (with 1 byte being the minimum possible size of a last fragment) 
-  * Consider the worst case where all fragments arrive in the reverse order; 
-  * There is no point in establishing an inpractical maximum such as 2^64^ fragments. A maximum that cannot be honored is equivalent to letting the receiver impose any 
-    arbitrary and potentially unpredicatble limit according to its own available resources (i.e. memory);
+- [`CON`](#):
+- [`ACC`](#):
+- [`DAT`](#):
+- [`RST`](#):
 
-Consider a user application that is required to send files of exactly 65535 bytes. Coincidently this is also the (never-achievable) maximum UDP datagram size. 
-A minimum fragment message capable of carrying fragments of a complete segment whose length is at most 65535 needs only 3 extra pieces of information when compared to 
-a normal segment message:
+Secure packets are:
 
-  1) `MSGFLAGS` (1 byte) indicating if the parameters that follow are of a segment or a fragment;
-  2) `SEGLEN` (2 bytes) for the complete segment length;
-  3) `FRAGINDEX` (2 bytes) for the fragment index (as we may send up to 65535 fragments of 1 byte);
-  
-That last statement about `FRAGINDEX` sounds pretty unreasonable, though. An `MTU` that is so low as to cause `MFS` to be 1 byte should never happen in real-life.
-In fact, if we can ensure `MFS` >= 256 then `FRAGINDEX` can be reduced to 1 byte (65535 = 256 * 256 - 1) and a hypothetical packet containing a single 
-fragment message would then look like this:
+- [`SECCON`](#):
+- [`SECACC`](#):
+- [`SECDAT`](#):
+- [`SECRST`](#):
 
-    IPHEADER(40) UDPHEADER(8) PFLAGS(1) MSGFLAGS(1) SEQ(2) SEGLEN(2) FRAGINDEX(1) FRAGLEN(2) PAYLOAD(N) CRC(4) 
-   
-^*This is not a valid Carambolas.Net packet. It's just an illustration of what a packet would possibly look like after all the design considerations so far.*^
+##### CON (0x0C)
 
-Where N >= 256 <=> `MTU` >= 40 + 8 + 1 + 1 + 2 + 1 + 2 + N + 4; that is 315 <= `MTU` <= 65535
+|      Byte |   0..3  |    4   |   5..8  |  9 10 |  11 | 12..15 |  16..19 |
+|----------:|:-------:|:------:|:-------:|:-----:|:---:|:------:|:-------:|
+|      Bits |  31..0  |  7..0  |  31..0  | 15..0 |7..0 | 31..0  |  0..31  | 
+|     Field |   STM   |  0x0C  |   SSN   |  MTU  | MTC |  MBW   | CRC32C  |
 
-Note that the minimum `MTU` value for Carambolas.Net is actually higher (345 bytes) because encrypted fragment messages have a bit more overhead. 
+##### ACC (0x0A)
 
-***Carambolas.Net requires the negotiated `MTU` to be valid or the connection is refused.***
+|      Byte |   0..3  |    4   |   5..8  |  9 10 |  11 | 12..15 | 16..19 | 20 21 | 22..25 | 26..29 |
+|----------:|:-------:|:------:|:-------:|:-----:|:---:|:------:|:------:|:-----:|:------:|:------:|
+|      Bits |  31..0  |  7..0  |  31..0  | 15..0 |7..0 | 31..0  | 31..0  | 15..0 | 31..0  |  0..31 |
+|     Field |   STM   |  0x0A  |   SSN   |  MTU  | MTC |  MBW   |  ATM   |  RW   |  ASSN  | CRC32C |
 
-**Problem #11: What's an ideal maximum `SEGLEN`?**
+##### DAT (0x0D)
 
-A few points must be taken into account:
+|      Byte |   0..3  |    4   |   5..8  |  9 10 | 11..N | N+1..N+4 | 
+|----------:|:-------:|:------:|:-------:|:-----:|:-----:|:--------:|
+|      Bits |  31..0  |  7..0  |  31..0  | 15..0 |       |   0..31  |
+|     Field |   STM   |  0x0D  |   SSN   |   RW  |  MSGS |  CRC32C  |
 
-  1) By increasing the maximum `SEGLEN` beyond 65535 we will be required to increase the footprint of both `SEGLEN` and `FRAGINDEX` in the fragment message;
-  2) The bigger maximum `SEGLEN` becomes, the more memory a receiver will need to reserve to reassemble a complete segment;
-  3) The protocol is intended for low-latency links with a small bandwidth-delay product, i.e. a rapid exchange of small packets;
+##### RST (0x0F)
 
-It's been demonstrated that a maximum `SEGLEN` of 65535 can be achieved with a minimum overhead (only 3 bytes) over a normal single message segment as long as 
-a minimum `MTU` value is enforced. Increasing the maximum `SEGLEN` beyond 65535 would only put pressure in the receiver given that most of the traffic is 
-expected to be of small payloads (under 64KB in size). A maximum `SEGLEN` of 65535 does not preclude a user application from transfering large chunks of data
-(i.e. large files) of more than 64KB, but then a custom fragmentation and reassembling strategy will have to be implemented. In such cases, however the user 
-application is often in a position to do a better job than a generic library. For instance, an application that expects to transfer files of several megabytes 
-may opt to buffer fragments directly on disk and save memory since the final goal is to produce a local file anyway.
+|      Byte |   0..3  |    4   |   5..8  |  9..12 |  
+|----------:|:-------:|:------:|:-------:|:------:|
+|      Bits |  31..0  |  7..0  |  31..0  |  0..31 |
+|     Field |   STM   |  0x0F  |   DSN   | CRC32C |
 
+##### SECCON (0x1C)
 
-#### Sliding Window Control
+|      Byte |   0..3  |    4   |   5..8  |  9 10 |  11 | 12..15 | 16..47 | 48..51 |
+|----------:|:-------:|:------:|:-------:|:-----:|:---:|:------:|:------:|:------:|
+|      Bits |  31..0  |  7..0  |  31..0  | 15..0 |7..0 | 31..0  |        |  0..31 | 
+|     Field |   STM   |  0x1C  |   SSN   |  MTU  | MTC |  MBW   | PUBKEY | CRC32C |
 
-Consider the case where a sender must transmit an arbitrarily large sequence of messages. So far, we have determined that each message must be marked with a 
-16-bit sequence number in order to be re-ordered by the receiver. We have also determined that no more than 32768 messages may be transmitted in a row before
-the receiver replies back with some kind of confirmation that either everything has been received or that some message is missing.
+##### SECACC (0x1A)
 
-In theory, a sender could be implemented in a way that a new message would only be transmitted after receiving a confirmation (from the receiver) that a previous 
-one had been successfully received. In practice, however, the time that it takes for an acknowledgement to travel may be significant. It's often going to 
-be comparable (if not equal) to the time the initial message took to arrive at the destination. In this case, the resulting throughput is bound to be much lower
-than what could be achieved (theoretically). And the perceived latency will be proportional by the total number of messages in the output queue. For instance,
-a sequence of 10 messages *m~0~* to *m~9~* will take 10 * `RTT` to be fully transmitted regardless of the actual link bandwidth.
+|      Byte |   0..3  |    4   |   5..8  |  9 10 |  11 | 12..15 | 16..19 | 20 21 | 22..53 |  54..61 | 62..77 |
+|----------:|:-------:|:------:|:-------:|:-----:|:---:|:------:|:------:|:-----:|:------:|:-------:|:------:|
+|      Bits |  31..0  |  7..0  |  31..0  | 15..0 |7..0 | 31..0  | 31..0  | 15..0 |        |  63..0  |        |
+|     Field |   STM   |  0x1A  |   SSN   |  MTU  | MTC |  MBW   |  ATM   |  RW*  | PUBKEY |  NONCE  |   MAC  |
 
-**Problem #12: How can a sender transmit messages as quickly as possible in order to maximize throughput and minimize the perceived latency?**
+^* encrypted^
 
-If all messages are equally important and must eventually be delivered, a [sliding window protocol](#sliding-window-protocols) can be employed. The maximum number
-of messages allowed to be in flight (that is messages that have been transmitted but not acknowledged yet) is the size of the sequence window (32768). Sender and 
-receiver must then play slightly different roles:
+##### SECDAT (0x1D)
 
-**Sender:**
+|      Byte |   0..3  |    4   |  5 6  |  7..N |  N+1..N+8 | N+17..N+24 | 
+|----------:|:-------:|:------:|:-----:|:-----:|:---------:|:----------:|
+|      Bits |  31..0  |  7..0  | 15..0 |       |   63..0   |            |
+|     Field |   STM   |  0x1D  |  RW*  | MSGS* |   NONCE   |     MAC    |
 
-*The sender must "push" its sliding window forward.* 
+^* encrypted^
 
-The sliding window of the sender is the range of sequence numbers that can be used to transmit new messages. Every time a valid acknowledgement (`ACK`) is 
-received, the upper bound of the window is recalculated in terms of the next sequence number expected by the receiver (`ACK`.`ASEQ`). A sender must not 
-transmit new messages beyond the upper bound of its sliding window for such messages would either be dropped or misinterpreted by the receiver.
+##### SECRST (0x1F)
 
-Given a sender that tracks:
+|      Byte |   0..3  |    4   |  5..37 |  38..45 | 46..61 |
+|----------:|:-------:|:------:|:------:|:-------:|:------:|
+|      Bits |  31..0  |  7..0  |        |  63..0  |        |
+|     Field |   STM   |  0x1F  | PUBKEY |  NONCE  |   MAC  |
 
-- `TX.SEQ`: the next sequence number to send;
-- `TX.ASEQ`: the next sequence number expected by the receiver;
+#### Messages
 
-The invariants are:
+Messages are encoded in the same way regardless of the packet being secure or insecure because the encryption algorithm must be format-preserving.
 
-1) `TX.SEQ` >= `TX.ASEQ`;
-2) |`TX.SEQ` - `TX.ASEQ`| < 32768;
+##### Message Flags
 
-By combining (1) and (2) we can derive that the next sequence number that can be transmitted by a sender must be either the next expected by the receiver or a 
-value inside the sequence window of 32768 elements from the next expected (that is `TX.ASEQ` <= `TX.SEQ` <= `TX.ASEQ` +  32767). Every valid `ACK` will 
-cause `TX.ASEQ` to move forward, thus making room for more messages to be transmitted.
-
-Note that this is an oversimplification to illustrate the main point. In practice, acknowledgements may arrive out of order, too late or not arrive at all.
-In order to communicate anomalies to the sender a receiver may issue alternative acknowledgements with more information than just a `SEQ`. 
-Refer to [Acknowledgements](#acknowledgements) for more details. In the same context, a sender may have to keep track of [retransmissions](#retransmissions). 
-
-
-**Receiver:**
-
-*The receiver must "pull" its sliding window forward.* 
-
-The sliding window of the receiver is the range of sequence numbers that must be acknowledged to the sender. It can be further divided in two subranges:
-The lower subrange is comprised of sequence numbers that have been received already but to which the sender might not have received an `ACK` yet. It's expected
-that duplicates of these messages may still arrive (due to retransmissions) and they must be acknowledged, though not used any further. The upper subrange is 
-comprised of sequence numbers that have not been received yet, that is of expectedly new messages (effectively the full range of 32768 messages from and 
-including the next sequence number expected, which is equivalent to any sequence number *s* >= the next expected). The division point of the two subranges is 
-thus the next sequence number expected (`RX.SEQ`).
-
-Given a sender that tracks:
-
-- `RX.SEQ`: the next sequence number expected;
-- `RX.LASEQ`: the lowest acknowledgeable sequence number;
-
-The invariants are:
-
-1) `RX.LASEQ` <= `RX.SEQ`;
-2) |`RX.SEQ` - `RX.LASEQ`| <= 32768;
-
-When a message *m* arrives:
-
-```
-if (m.SEQ >= RX.LASEQ)
-{
-    send ACK
-
-    if (m.SEQ == RX.SEQ) // m is the next expected       
-    {
-        do 
-        {
-            deliver m       
-            RX.SEQ++
-            m = next buffered message
-        }
-        while (m.SEQ == RX.SEQ);        
-    }
-    else if (m.SEQ > RX.SEQ)  // m is ahead of the next expected
-    {
-        if (m.SEQ has not been received yet)
-            buffer m
-    }
-
-    // Adjust the lower bound of the sliding window according to RX.SEQ, "pulling " it forward
-    if (RX.LASEQ < RX.SEQ - 32768)
-        RX.LASEQ = RX.SEQ - 32768
-}
-```
+|      Bit   |   7    |     6     |    5    |     4     |  3..0 |
+|-----------:|:------:|:---------:|:-------:|:---------:|:-----:|
+|       Flag |  ACK   |  GAP/REL  |   DATA  |  DUP/FRAG |   CH  |
 
 
-#### Acknowledgements
+- All control acks are `0b1--0----`;
+  - There is only one control ack currently supported that is `ACKACC = 0x8A`;
+- All data acks are `0b1--1----`;
+  - Bit 6 indicates if it has gap information;
+  - Bit 4 indicates if it has duplicate information;
+  - Bits 3 to 0 indicate the channel;
+- All user data messages are `0b0--1----`;
+  - Bit 6 indicates if it is unreliable(0) or reliable (1);
+  - Bit 4 indicates if it is a segment(0) or fragment (1);
+  - Bits 3 to 0 indicate the channel;
 
-An acknowledgement `ACK` may be considered a type of control message that can be batched in a packet alongside segments and fragments but does not carry any 
-user data. Thus, an `ACK` does not require a message sequence number to represent itself. It must only carry the sequence number being acknowledged 
-(i.e. the next sequence number expected by the receiver)
+##### ACKACC (0x8A)
 
-A hypothetical packet containing a single `ACK` message would then look like this:
+|      Byte |    0   |   1..4  | 
+|----------:|:------:|:-------:|
+|      Bits |  7..0  |  31..0  |
+|     Field |  0x8A  |   ATM   |
 
-    IPHEADER(40) UDPHEADER(8) PFLAGS(1) MSGFLAGS(1) ASEQ(2) CRC(4) 
+##### ACK (0xA-)
 
-^*This is not a valid Carambolas.Net packet. It's just an illustration of what a packet would possibly look like after all the design considerations so far.*^
+|      Byte |    0   |   0  |    1 2  |   3..6  | 
+|----------:|:------:|:----:|:-------:|:-------:|
+|      Bits |  7..4  | 3..0 |  15..0  |  31..0  |
+|     Field |  1010  |  CH  |   NEXT  |   ATM   |
 
-- `MSGFLAGS`: determines if the following parameters are of a `SEGMENT`, a `FRAGMENT` or an `ACK`;
-- `ASEQ`: the next sequence number expected by the receiver;
+##### DUPACK (0xB-)
 
-The convention of tracking and replying back with the next sequence number **expected** instead of the actual sequence number received/sent may look like a 
-technicality but it is indeed more convenient in many ways. *Mainly by providing an initial state that is equivalent to any other intermediary state in both sender 
-and receiver.* In other words, when a host starts, no message has been received or transmitted yet. An initial next sequence number expected (or to be 
-transmitted) can be simply assumed zero or whatever pre-defined inital value that is more convenient. On the other hand, handling a non-existent last 
-received/transmitted sequence number to calculate the next one requires special treatment in the code. Comparisons, for instance, can be simplified when a 
-receiver tracks the *next* sequence number expected. If the *last* received sequence number is tracked, instead, the receiver must perform an extra operation 
-for every message *m* that arrvives, that is calculate `RX.LastSEQ` + 1 to compare with *m*.`SEQ`.
-   
-Carambolas.Net, as any other [sliding window protocol](#sliding-window-protocols), requires that at least some messages transmitted in a sequence window are 
-acknowledged (specifically the lower bound ones) before the window may advance and new messages can be transmitted. If a sender transmits several (possibly all) 
-messages in a sequence window in order to maximize throughput, it can become quite expensive to reply back with an individual `ACK` for every message (potentially 
-up to 32768 `ACK`s every `RTT`). Instead, sender and receiver may opt to exchange cumulative `ACK`s. That is, instead of representing the acknowledgement of an 
-individual message, an `ACK` is assumed to represent *the acknowledgement of an individual message **and** every other message prior to that one*. This way, a 
-receiver can reduce the number of `ACK`s sent back after receiving several messages in a row.
+|      Byte |    0   |   0  |    1 2  |    3 4  |   5..8  | 
+|----------:|:------:|:----:|:-------:|:-------:|:-------:|
+|      Bits |  7..4  | 3..0 |  15..0  |  15..0  |  31..0  |
+|     Field |  1011  |  CH  |   CNT   |   NEXT  |   ATM   |
 
-Yet packets (and their containing messages) may still arrive out of order or get lost in transit, which means a receiver may end up with one or more gaps in the 
-expected sequence window. For example, consider a sender that just transmitted a full window M = { *m~0~, m~1~, m~2~, ..., m~32767~* } of messages and is now 
-waiting for a cumulative `ACK`. Hardly, all these messages could have fit in a single packet, so there's always a chance of packet loss or out of order arrival.
+##### GAP (0xE-)
 
-Consider a receiver that has just received the first few packets with messages *m~0~* to *m~10~*. Because *m~0~* was the next expected message, the receiver can 
-deliver it, process the rest, and deliver each one to the user application in order. A cumulative `ACK` may be sent back now with `ACK`.`ASEQ` = *m~11~*, 
-indicating that the next expected sequence number is that of message *m~11~*. When the sender receives this `ACK` it will advance its sliding window by 11 positions 
-and could eventually send 11 more new messages, but let's assume, for simplicity, that the sender has nothing else to send. A few more packets, then, arrive at the 
-receiver with messages *m~12~* to *m~40~*, *m~50~* to *m~100~* and *m~102~* to *m~200~*. Now the receiver, which was still expecting message *m~11~*, 
-received instead *m~12~* to *m~40~*. Since *m~11~* is still missing it cannot send a cumulative `ACK` back to the sender to indicate that *m~12~* to *m~40~* 
-have been received. The best it can do is send a duplicate `ACK`.`ASEQ` = *m~11~* to advice the sender that something has been received but *m~11~* is still 
-missing. Then when the receiver processes *m~50~* to *m~100~*, once again it cannot send a new cumulative `ACK` as there's even a much larger gap now (of 41 to 
-49) but still it can send another duplicate `ACK`.`ASEQ` = *m~11~* to indicate that something more has been received but *m~11~* is still missing. In a large 
-range such as a full window 32768, several gaps may appear (up to 16384 actually). Some may even fix themselves. Certain packets arriving out of relative order may 
-end up closing some gaps further away in the sequence without the sender ever becoming aware of those temporary gaps. But the point is that after processing all the 
-packets received so far, a host could avoid having to send back many repeated duplicate ACKs and instead send a single `DupACK` message that contained a counter 
-indicating how many times an ack would have been repeated with the same next sequence number expected. An simple `ACK` then becomes a special case of `DupACK` 
-with an implicit count of 1.
+|      Byte |    0   |   0  |    1 2  |    3 4  |   5..8  | 
+|----------:|:------:|:----:|:-------:|:-------:|:-------:|
+|      Bits |  7..4  | 3..0 |  15..0  |  15..0  |  31..0  |
+|     Field |  1110  |  CH  |   NEXT  |   LAST  |   ATM   |
 
-A hypothetical packet containing a single `DupACK` message would then look like this:
+##### DUPGAP (0xF-)
 
-    IPHEADER(40) UDPHEADER(8) PFLAGS(1) MSGFLAGS(1) CNT(2) ASEQ(2) CRC(4) 
+|      Byte |    0   |   0  |    1 2  |    3 4  |    5 6  |   7..10  | 
+|----------:|:------:|:----:|:-------:|:-------:|:-------:|:--------:|
+|      Bits |  7..4  | 3..0 |  15..0  |  15..0  |  15..0  |   31..0  |
+|     Field |  1111  |  CH  |   CNT   |   NEXT  |   LAST  |    ATM   |
 
-^*This is not a valid Carambolas.Net packet. It's just an illustration of what a packet would possibly look like after all the design considerations so far.*^
-
-- `CNT` (2 bytes) indicates the number of times (>1) that an equivalent `ACK` would have been repeated for the same `ASEQ` since the last `ACK` or 
-  `DupACK` was sent;
+##### SEG (0x2- or 0x6-)
  
-Now let's say that the packet with message *m11* arrives. The receiver must send a cumulative `ACK`.`ASEQ` = *m~41~*. But this acknowledgement is now 
-ambiguous. A sender cannot say anymore if just *m41* is missing, if everything after and including *m41* is missing or only some messages after *m~41~* are missing. 
-It would be too complicated to construct an acknowledgement describing every gap so far in the received sequence but a receiver can at least indicate the 
-immediate next `GAP` by sending back not only the next sequence number expected but also the last sequence number expected (`LSEQ`). From the example, those are 
-*m~41~* and *m~49~*.
+|      Byte |        0      |   0  |    1 2  |    3 4  |    5 6  |   7..SEGLEN+7  | 
+|----------:|:-------------:|:----:|:-------:|:-------:|:-------:|:--------------:|
+|      Bits |      7..4     | 3..0 |  15..0  |  15..0  |  15..0  |                |
+|     Field | 0010 or 0110  |  CH  |   SEQ   |   RSN   |  SEGLEN |     PAYLOAD    |
 
-A hypothetical packet containing a single `GAP` message would then look like this:
-
-    IPHEADER(40) UDPHEADER(8) PFLAGS(1) MSGFLAGS(1) ASEQ(2) LSEQ(2) CRC(4) 
-
-^*This is not a valid Carambolas.Net packet. It's just an illustration of what a packet would possibly look like after all the design considerations so far.*^
-
-- `LSEQ` (2 bytes) is the last missing sequence number after `ASEQ`;
-- By definition, `LSEQ` > `ASEQ` otherwise a simple `ACK` would have been enough;
-
-`GAP` is somewhat analogous to the [Gap Ack Block in SCTP](https://tools.ietf.org/html/rfc4960#section-3.3.4).
-
-It's easy to see how the same `GAP` would have to be transmitted several times when only messages after that interval are received, like a cumulatve `ACK` would. 
-Thefore, we can define a `DupGAP`, similarly to a `DupACK`.
-
-A hypothetical packet containing a single `DupGAP` message would then look like this:
-
-    IPHEADER(40) UDPHEADER(8) PFLAGS(1) MSGFLAGS(1) CNT(2) ASEQ(2) LSEQ(2) CRC(4) 
-
-
-By defining 4 specialized types of acknowledgements (`ACK`, `DupACK`, `GAP`, and `DupGAP`) instead of a simple cumulative `ACK`, a sender has more information 
-available to implement better [retransmission](#retransmission) strategies. Also note that, acknowledgements have been described as messages, as if a packet could
-contain more than one. In fact, this seems odd when thinking about acknowledgments being cumulative over a single sequence of messages (aka a stream in SCTP) but 
-it's more convinient to think this way because on connections that support multiple [channels](#channels) a packet may indeed batch multiple independent cumulative 
-acks, potentially one for each supported channel (up to 16 total).
-
-
-##### Ping
-
-*A ping is an empty segment message transmitted in order to induce an acknowledgement* which provides both a confirmation that the remote host is still alive and 
-listening and an oportunity to update the [estimated `RTT`](#roundtrip-time). A sender may send a ping when there's uncertainty about a remote host's capability 
-to receive new messages but there's no user data to transmit. 
-
-Not to be confused with the [ping command](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/ping)
-available in the command line interface of many platforms, which is a tool used to measure roundtrip time to arbitrary destinations.
-
-A host must ensure that the remote end remains connected and listening even in the absense of user data to transmit. In this case, a ping guarantees that 
-acknowledgements will keep flowing. Once there's any user data to be acknowledged, there's no point in sending pings anymore. The maximum time a host can wait for 
-some user data to transmit before sending a ping is called the `Idle Timeout`
-
-
-#### Old duplicates
-
-Old duplicates are packets transmitted in a past time which are not relevant anymore to the receiver but may be mistaken for an up-to-date packet.
-
-There are two main sources of old duplicates:
-
-1) packets originated on a previous connection between the same two end points;
-2) packets originated on the current connection (in a previous incarnation of the same sliding window position) that arrive late enough (possibly due to 
-   retransmissions);
-
-In the abscence of a way to tie a message (or all messages in a packet, for that matter) to a connection, the message sequence number becomes the only identifying 
-resource available. As [noted before](#sequence-numbers), n-bit sequence numbers are subject to wrap around and thus can only be reliably ordered within a limited 
-window of 2^n-1^ elements. Consequently, an old packet may arrive as in (1) or (2) and contain one (or more) messages with seemingly valid sequence numbers for the 
-current state of the connection - i.e sequence numbers that are within 2^n-1^ from the next expected value. Such late messages would be indistinguishable from 
-legitimate ones at the receiver. 
-
-Both TCP and SCTP employ strategies to address (1) and (2). TCP imposes a time-wait to reduce the probability of (1). It also uses 32-bit sequence numbers with
-varying initial values so that according to [RFC793](https://tools.ietf.org/html/rfc793#page-27):
+##### FRAG (0x3- or 0x7-)
  
->When new connections are created, an initial sequence number (ISN) generator is employed which selects a new 32 bit ISN. The generator is bound to a (possibly 
->fictitious) 32 bit clock whose low order bit is incremented roughly every 4 microseconds. Thus, the ISN cycles approximately every 4.55 hours. Since we assume 
->that segments will stay in the network no more than the Maximum Segment Lifetime (MSL) and that the MSL is less than 4.55 hours we can reasonably assume that 
->ISN’s will be unique.
-  
-Unfortunately, despite of the assummed uniques of ISN's even being reasonable it's not enough to avoid wrap around in just a few round-trips on large bandwidth 
-links. Therefore, in order to address (2), a receiver must employ a [special algorithm](https://tools.ietf.org/html/rfc7323#section-5) which relies on 32-bit 
-timestamps. SCTP packets may include both a 32-bit timestamp and a random 32-bit Tag Value used to correlate a packet to its connection (so it can avoid imposing 
-a time-wait). 
-
-{#source-time}
-**Problem #13: How to detect old duplicates?**
-
-A possible solution should be similar to SCTP in order to avoid the need for a global time-wait (which would be unfeasable for a user-space implementation). 
-Packets could be transmitted with a source time (`STM`) and a session identifier (`SSN`). The value of `STM` could be assigned on packet transmission from a
-host's internal [time source](#time-source). 
-
-There should be no need to worry about the possibility of two packets bearing the same `STM` value. An `STM` is not a unique id. In fact, it's perfectly valid 
-to expect multiple packets to be transmitted with the same `STM`. If, for instance, a sender has more messages to be batched than can fit in a single packet
-(due to MTU constraints), several packets could be generated and transmitted in the same iteration and this iteration could be shorter than 1ms resulting in 
-those packets sharing the same `STM`. For all that matters, this should have the same practical effect as if the sender had transmitted a single arbitrarily
-large packet containing all the messages. In such case, none of the messages could have been duplicates themselves. Even a retransmitted message would have been 
-a minimum time apart from its previous transmission (at least one `RTT` >= 0.001s but way more than this in practice). 
-
-**Carambolas.Net assumes that `RTT` >= 0.001s**
-
-The `SSN` should be generated in the connection handshake and the only requirement would be a minimum (arbitrary) period to avoid accidental collisions if 
-several connections are estabilished and closed between the same two end points in rapid succesion. Refer to [Session identifiers](#session-identifiers) for a 
-complete description.
-
-With every packet containing an `STM`, and a wrap around period that is much larger than the maximum time a packet is ever expected to be in flight, we can 
-track the latest `STM` received to determine how relatively late a packet is arriving. If a packet happens to be the latest or is relatively recent, it may 
-contain brand new messages or valid retransmissions. If it's old beyond a [certain threshold](#packet-lifetime) it may be considered irrelevant and silently 
-dropped. After introducing different levels of [QoS](#qos) in a single channel we will identify a situation where the [Sliding Window Control](#sliding-window-control) 
-is not enough to validate messages and a more elaborate [algorithm](#time-windows) based on `STM` will be required to detect old duplicates, similarly to
-how [PAWS](https://tools.ietf.org/html/rfc1323#section-4) operates in TCP.
+|      Byte |        0      |   0  |    1 2  |    3 4  |    5 6  |      7     |   8 9   |  10..SEGLEN+9  | 
+|----------:|:-------------:|:----:|:-------:|:-------:|:-------:|:----------:|:-------:|:--------------:|
+|      Bits |      7..4     | 3..0 |  15..0  |  15..0  |  15..0  |     7..0   |  15..0  |                |
+|     Field | 0011 or 0111  |  CH  |   SEQ   |   RSN   |  SEGLEN |  FRAGINDEX | FRAGLEN |     PAYLOAD    |
 
 
-#### Time source
+### Connection
 
-A monotonic non-decreasing 32-bit unsigned time counter capable of returning the time in milliseconds modulo 2^32^ since `EPOCH` with granularity `G` <= 1ms.
-
-`EPOCH` is 00:00:00.0000000 UTC, January 1, 0001, in the Gregorian calendar.
-
-The time source is used to stamp packets (`STM`) and generate session identifiers (`SSN`). This means that even if a host were capable of producing a packet 
-every millisecond it would still take aprox. 49 days for an `STM` collision. The same is also applicable to `SSN` generation. No packet is expected to remain 
-in flight for such a long time so, in a sense, `STM` serves as a form of high level sequence number that can used to detect [old packets](#old-duplicates) and 
-[retransmissions](#retransmissions). 
-
-A unsigned 32-bit timestamp can be viewed as a particular case of an [n-bit sequence number](#comparing-unsigned-n-bit-sequence-numbers) with a maximum window
-size of 2^31^ milliseconds, that is roughly equivalent to 24 days. 
-
-Since Carambolas.Net is a user-space protocol, host instances might be spread over multiple processes. In such case, there's no reliable way to employ a global
-time-wait strategy (like TCP or SCTP) in order to address the problem of old packets arriving from a previous connection. Thus, a time source must be resilient
-to system crashes and reboots or external adjustments performed during runtime (i.e. daylight saving time or user settings). 
-
-Generally, the system clock cannot offer these guarantees, but there is often an alternative in the form of a secondary general purpose monotonic non-decreasing 
-counter (e.g. clock ticks since system startup, proccess time, etc). If a platform can offer such a counter with at least 1KHz, the following procedure may be 
-used: 
-
-  - On startup: 
-    - Let `UTCSCR` be a time source that returns the current time in UTC with granularity `G` = 1ms;
-    - Let `TICKSRC` be a general purpose monotonic non-decreasing counter;
-    - Let `FREQ` be the frequency in ticks/s of `TICKSRC`;
-    - Store `START`~time~ = |`UTC` - `EPOCH`| in milliseconds modulo 2^32^;    
-    - Store `START`~ticks~ = `TICKSRC`
-  - On time requested:
-    - Return [`START`~time~ + (`TICKSRC` - `START`~ticks~) / (`FREQ` * 1000)] mod 2^32^ 
-
-Note that the time sources used by any two hosts in a connection never depend on each other, so they are not required to be synchronized. Clock skew, however,
-should be kept to a minimum, preferably below 10%, as it will directly impact `RTT` estimation on each respective remote end.
-
-#### Roundtrip time
-  
-Roundtrip time (`RTT`) is effectively the amount of time that it takes for a transmitted message to arrive at the destination plus the time taken for a 
-confirmation to be replied back and arrive at the sender. 
-
-Acknowledgements which are already used as a form of confirmation of receipt can be used to measure `RTT` if they are modified to carry the latest `STM` 
-received since the last `ACK` (or variant) transmitted. In this case the time information would called acknowledged time (`ATM`).
-
-A hypothetical packet containing a single `ACK` with `ATM` would then look like this:
-
-    IPHEADER(40) UDPHEADER(8) STM(4) PFLAGS(1) SSN(4) MSGFLAGS(1) ASEQ(2) ATM(4) CRC(4) 
-
-^*This is not a valid Carambolas.Net packet. It's just an illustration of what a packet would possibly look like after all the design considerations so far.*^
-
-- `STM`: the [source time](#source-time);
-- `SSN`: session identifier;
-- `ATM`: the latest `STM` received since the last `ACK` was transmitted; 
-
-The problem with roundtrip time is that it's the result of propagation delay and processing delays of intermediary nodes in the network path to the destination
-and back. There's no guarantee that two consecutive measurements will return the same value. In fact, the any `RTT` measured is by definition out-of-date because 
-it represents the time already taken by a message (and back). Nothing can be said, about a new message.  In fact, two consecutive measurements may return wildly 
-different results in face of possible route changes, packet loss, varying performance of intermediary nodes, etc. So since we cannot assume `RTT` to remain 
-constant in any arbitrarily small time interval we must devise a method to produce a reasonable estimate.
-
-**Problem #14: How can we reliably estimate `RTT`?**
-
-This problem has been extensively researched in the early days of the internet and is [addressed by TCP](https://tools.ietf.org/html/rfc6298#section-2) as follows:
-
-- `SRTT` (smooth roundtrip time) is the currently estimated `RTT`;
-- `RTTvar` is the currently estimated `RTT` variance;
-- When the first `RTT` measurement *R* is made:
-  - `SRTT` = *R*
-  - `RTTvar` = *R*/2
-- When a subsequent `RTT` measurement *R'* is made:
-  - `RTTvar` = 3/4 * `RTTvar` + 1/4 * |`SRTT` - *R'*|
-  - `SRTT` <- 7/8 * `SRTT` + 1/8 * *R'*
-
-
-#### Session identifiers
-
-A session identifier `SSN` can be used to determine if a packet belongs to the current connection or is an old packet from a previous connection between the 
-same two end points.
-
-**Carambolas.Net assumes that a packet may remain up to 24 hours in flight**. 
-
-This is definitely an overestimated assumption. In real life, packets are not expected to live for more than a few minutes, but it's not impossible 
-(although extremely unlikely) that a network node may end up retaining a packet for even a few hours. Hence, to stay on the safe side, the `SSN` generation 
-period should be no shorter than 86400000 (the total number of milliseconds in a day). In this case, a value from the host's internal [time source](#time-source) 
-should suffice and be cheaper than relying on more elaborate methods like a random generator. 
-
-**Carambolas.Net assumes that since `RTT` >= 0.001s a host must take more than 1ms to connect, close and reconnect with the same remote end point**. 
-
-Note that we're not concerning ourselves about mitigating security threats yet. All packets are transmitted in the clear anyway and trying to mitigate the risk
-of tampering or particular threats such as flooding or man-in-the-middle attacks (as intended by TCP and SCTP) are considered futile half-measures that add a 
-disproportional amount of complexity in exchange for very little to no real security. Refer to [Encryption](#encryption) and [Vulnerabilities](#vulnerabilities) 
-for more on this topic.
-
-
-...
-
-
-
-#### Packet lifetime
-
-...
-
-
-#### Connection
-
-##### 3-Way Handshake {#three-way-handshake}
+#### 3-Way Handshake {#three-way-handshake}
 
 
                     A                                         B
@@ -877,11 +529,12 @@ for more on this topic.
      (see [Session identifiers](#session-identifier)) *except for CON packets*;
   - If two or more `CON` packets arrive in sequence this may indicate that either:
     1. The same remote host is retransmitting because it hasn't received a reply;
-    2. More than one process with the same endpoint is trying to connect at the same time (this is bad, see [vulnerabilities](#vulnerabilities));
+    2. More than one process with the same endpoint is trying to connect at the same time (this is irregular and should not happen, may cause the connection to 
+       be reset. Refer to [Vulnerabilities](#vulnerabilities) for more details);
     3. A previous process `A'` sent one or more `CON` packets, terminated and then another process, `A`, reusing its predecessor's end point, sent
       a `CON` packet; 
 
-    **Problem #15: How in face of possible out of order delivery can `B` determine if a `CON` packet is valid?**. 
+    *How in face of possible out of order delivery can `B` determine if a `CON` packet is valid?*
 
     In the first case the `SSN` must be the same and serve as enough evidence that it's a retranmsission; in the other two cases, the best `B` can do is rely 
     on both packets originating from the same network node (there's no way to tell if they're coming from behind a gateway at this point) and assume the 
@@ -894,7 +547,7 @@ for more on this topic.
   same applies to the maximum transmission channel. The hosts must also exchange information about the maximum receiving bandwidth each other plans to dedicate and to 
   which the corresponding remote side should adhere by not sending data in excess;
 
-##### Cross-connection Handshake
+#### Cross-connection Handshake
 
 This is a scenario where both hosts know each others end points and try to actively connect aproximately at the same time.
 
@@ -925,8 +578,7 @@ This is a scenario where both hosts know each others end points and try to activ
 
 More complicated scenarios arise when `CON`, `ACC` and `ACCACK` are retransmitted.
 
-
-##### Half-open connection
+#### Half-open connection
 
 
                     A                                         B'
@@ -971,7 +623,7 @@ Another case of half-open connection may occur when the passive side suffers a r
 Note that a host in a secure session cannot trust any insecure packet including `RST` for the same reasons a `SECCON` cannot be trusted and if `B` is 
 disconnected it has no shared key with `A` to be able to create a `SECRST`. 
 
-#### Disconnection
+### Disconnection
 
 [TCP/IP describes a cooperative disconnection procedure](https://tools.ietf.org/html/rfc793#section-3.5) where hosts may indicate to each other when there is 
 no more data to send, a process analogous to producing an EOF marker on an output stream. SCTP, being stream oriented, follows a [similar, albeit more 
@@ -1033,9 +685,7 @@ Make sure to refer to [Encryption](#encryption) and [Vulnerabilities](#vulnerabi
 
 #### State Machine
 
-[Peer](#peer) is the term used to refer to the remote host of a connection. 
-
-Internally a peer may be in one of 4 private states of protocol control:
+[Peer](#peer) is the term used to refer to the remote host of a connection. Internally a peer may be in one of 4 private states of protocol control:
 
 * Disconnected
 * Connecting
@@ -1055,8 +705,8 @@ backed by message buffers may appear confusing in terms of what to expect from a
 the form of bursts spaced out by some silent time. If immediately after one of these bursts the connection is terminated (either due to a `RST` packet or a 
 timeout), what should happen?
 
-**Problem #16: From one side, the connection has just been terminated and there is a peer object that must now be considered disconnected. Any send operation 
-should fail. However, from the user's perspective there's a bunch of data still arriving, immediately available from the host's internal message buffer.** 
+*From one side, the connection has just been terminated and there is a peer object that must now be considered disconnected. Any send operation 
+should fail. However, from the user's perspective there's a bunch of data still arriving, immediately available from the host's internal message buffer.*
 
 Should a user application be delivered a disconnection event from a host and yet remain capable of reading the buffered data? Should the data be discarded? 
 Should the event be postponed instead? If the event is postponed, does it make sense to display a peer's connection state as disconnected if no disconnection 
@@ -1117,100 +767,426 @@ the peer remains in a *Connected* internal state while its public state changes 
 immediate disconnect at any time but is not allowed to send any new data.
 
 
-#### QoS
+### Sequence Numbers
 
-##### Reliable
+When a message arrives, the receiver may find it relevant to determine how this message relates to other messages already received or yet to be received from 
+the sender. This forms the basis for the definition of different [levels of service](#qos) (delivery services, for that matter).
 
-##### Semireliable
+More specifically a receiver would like to answer the following questions:
 
-##### Unreliable
+- Has the message arrived behind, in order or ahead of other messages?
+- If behind, is it still relevant? How far behind is it (how many messages behind)?
+- If ahead, can it be delivered to the user application right now or should we wait for the late ones? How many messages ahead is this one?
+- Has this message been received yet (is it a duplicate/retransmission)? 
 
-##### Volatile
+***Carambolas.Net employs two types of sequence numbers. `SEQ` is the main sequence number used to identify a message and acknowledge receipt. In order to support
+both reliable and unreliable sequenced delivery on the same channel, a second sequence number is used, `RSN`, that is only incremented when a new reliable 
+message is transmitted.***
 
+With both `SEQ` and `RSN` (transmitted with every message) a receiver is thus capable of restoring the original order of transmission and determine for every message, 
+specially those arriving ahead of others, if there's any prior reliable message still to be received or all eventual missing messages are unreliable.
 
-#### Flow control
+A receiver reconstruct the original transmission order regardless of the order that messages may arrive as long as: 
 
-##### Remote Window (aka Receive Window)
+  1) The initial sequence number is known by both ends; 
+  2) Sequence numbers are strictly increasing;
+  3) The difference between any two consecutive sequence numbers is 1;
 
-##### Congestion Window
+In practice only item number 2 requires special consideration:
 
-##### Bandwidth Window
+  - There are ways to represent arbitrarily large integer numbers (i.e. bigint) but they are computationally expensive when compared to simple fixed size integers;
+  - An unsigned 64-bit integer starting from zero could be used to tag 1.8446744 * 10<sup>19</sup> messages before wraping around. This is roughly equivalent to a sender
+    transmitting 1 billion messages per second for 584 years. Definitely more than enough. Unfortunately this means 8 extra bytes of overhead per message from which
+    the 4 most significant will always be 0 for the first 4 billion messages or so which is starting to look like a waste;
+  - There are relatively simple methods to compress low 64-bit integer values and mitigate the wasted space (i.e. varint) but eventhough they're not as expensive 
+    as arbitrarily large integers they're still considerably more expensive than using regular small integers;
 
+*What's the minimum number of bytes required for a sequence number?*
 
-#### Retransmissions
+Surprisingly the answer to this question can be as low as 1 bit as long as we are willing to accept a few constraints. This problem is a major aspect of 
+[Sliding Window Protocols](#sliding-window-protocols).
 
-##### Timeout Retransmissions
+Consider a strictly increasing finite sequence S of 1-byte numbers starting from 0 with a constant difference of 1.
 
-##### Fast Retransmissions
+    S = ( 0, 1, ... 254, 255 )
 
-##### Exponential Backoff
+Note that *s<sub>a</sub>* comes before *s<sub>b</sub>* if and only if *s<sub>a</sub>* < *s<sub>b</sub>*. This may seem obvious at first but now consider an 
+infinite sequence Z so that for every element *z<sub>i</sub>* there is an element *s<sub>j</sub>* so that *j = i mod 256*. This is equivalent to having: 
 
-The acknowledgement timeout `ATO` mimics TCP's *RTO* as described by [RFC6298](https://tools.ietf.org/html/rfc6298) thus we support a binary exponential backoff 
-the same way for retransmissions as proposed by Jacobson.
+    Z x S => ( (z0, s0); (z1, s1); ... (z254, s254); (z255, s255); (z256, s0); (z257, s1); ... (z510, s254); z(511, s255); ... )
 
-A side effect of this type of backoff, though, is that depending on the values of `SRTT` and `RTTVar`, the connection timeout `CTO` becomes dominant and 
-hardly restricts the number of retransmission attempts. In a way, `CTO` imposes a soft upper limit to (`SRTT`, `RTTvar`) beyond which a lost packet will always 
-trigger a disconnection (`CTO` <= `SRTT` + 4 * `RTTvar`)
+In this sequence it's not possible anymore to determine the relative order between any two arbitrary elements just by looking at *s* but it's possible to say 
+that *(z<sub>p</sub>, s<sub>a</sub>)* comes before *(z<sub>q</sub>, s<sub>b</sub>)* if q - p < 128 and 0 < (b - a)<sub>mod 256</sub> < 128. That is, although 
+it's not possible anymore to order random elements it's still possible to order ZxS as long as we only have to compare elements that are at most 128 positions 
+apart. Therefore we may redefine *s<sub>a</sub>* < *s<sub>b</sub>* to:
 
-The combination of connection timeout and ack timeout with backoff and ack fail limit may sometimes even result in an unexpected behaviour. This is because with a 
-multiplicative backoff factor the time interval between consecutive ack timeouts (and eventual retransmissions) grows exponentially while connection timeout and ack fail
-limit are constants. The consequence is that depending on where the initial ack timeout (derived from the `RTT`) stands relative to a threshold the number of retransmissions 
-will be limited by the ack fail limit and the total timeout to disconnect is going to be less than the connection timeout. As the initial ack timeout moves beyond this threshold, 
-the reponse timeout becomes the limiting factor so the actual number of retransmissions amount to less than the ack fail limit.
+*s<sub>a</sub>* < *s<sub>b</sub>* <=> 0 < (b - a)<sub>mod 256</sub> < 128
+ 
+This delta of 128 positions is called a *window* and can be generalized to any positive range so that for R = [0, r-1], r > 1 there is a maximum window 
+W<sub>R</sub> = floor(r / 2)
 
-The threshold in case can be calculated taking into account the backoff factor, the connection timeout and the ack fail limit.
+{#16-bit-sequence-numbers}
+By employing an unsigned 16-bit sequence number, for instance, a receiver must be able to order up to 32768 messages with an extra overhead of only 2 bytes per
+message. A design decision that not only affects the packet structure but also the amount of memory a receiver may have to allocate (consider a worst case 
+scenario in which all messages arrive in the reverse order!)
+ 
+A Carambolas.Net (insecure) packet containing a single user data segment looks like this:
+    
+    IPHEADER(40) UDPHEADER(8) PFLAGS(1) SSN(4) RW(2) MSGFLAGS(1) SEQ(2) RSN(2) SEGLEN(2) PAYLOAD(N) CRC(4) 
 
-The ack timeout (`ATO`) of the *i-th* transmission (i >= 0) is given by: *`ATO`~i~ = `ATO`~0~ * k^i^*, where *k* >= 1 is the ack backoff factor and *`ATO`~0~* is the initial `ATO` 
-derived from the `RTT`. The equivalent recursive formulation is: *`ATO`~i~ = `ATO`~i-1~ * k, i > 0, k >= 1*
+Maximum N is the Maximum Segment Size (`MSS`) and it depends directly on the negotiated `MTU` for the connection.
 
-The partial sum for *n* transmissions is then given by: *`ATO`~0~ * { 1 + k * [ ( k^n-1^ ) -1 ] / ( k-1 ) }, n > 0*
+max(`MTU`, N) = `MTU` - 40 - 8 - 1 - 4 - 2 - 2 - 2 - 2 - 4  = `MTU` - 66
 
-Note that the protocol defaults will produce a pretty aggresive retransmission behaviour with each retransmission taking up only 25% more time than the previous attempt.
-
-The closer *k* gets to 0, the more aggressive retransmissions will be - i.e. closer in time.
-
-Assuming a peer that never replies, the dynamic behaviour produced by the protocol defaults should be aproximately as follows:
-
-Connection timeout (`CTO`) = 30s
-Ack Backoff Factor (K) = 1.25s
-Ack Fail Limit (`AFL`) = 10
-
-| Initial Ack Timeout(s) | Number of transmissions (counting the first) | Total time(s) until disconnect |
-|------------:|------------------------:|--------------:|
-|        0.2  |          10             |       6.651   |
-|        0.5  |          10             |      16.626   |                      
-|        1.0  |          10             |      30.000   | 
-|        2.0  |           7             |      30.000   |
-|        4.0  |           5             |      30.000   |
-|        8.0  |           3             |      30.000   |
-|       16.0  |           2             |      30.000   |
-
-
-
-Note that for the given parameters the limiting factor is `AFL` when `ATO`~0~ < 1s and the disconnection is going to happen before `CTO`. After `ATO`~0~ >= 1s, the limitation becomes 
-the `CTO` with the number of transmissions that we can fit inside that time window decreasing. Once `ATO`~0~ >= `CTO`/2, only one retransmission is ever possible so the connection becomes 
-extremely sensitive to packet loss.
-
-> ![Illustration of the retransmission curve for an initial timeout of 0.2s](Retransmission-Curve.jpg)
->
->*Retransmission curve for an initial timeout of 0.2s*
-
-In general, `CTO` should be at least one order of manitude greater than the average `SRTT` projected for the connection. 
-Assuming an `SRTT` = 400ms and `RTTVar` = 40ms as the norm (see [Reasonable real-life conditions](#reasonable-real-life-conditions))
-then `CTO` could be as low as 5s. In fact given an `ATO`~0~ it's possible to determine the minimum `CTO` needed for at least *n* retransmissions by:
-       
-`CTO` >= ∑^n^~i=0~ (2^i^ * `ATO`~0~), ie. `CTO` >= 35s, *n* = 2 and `AFL` = 1 + *n*
-
-The same relationship can be used to demonstrate that there's not much use in having `AFL` > 8 unless one can increase `CTO` exponentially to accomodate 
-the extra retransmissions. 
-
-In the best network conditions `ATO`~0~ = `ATO`~min~ = 200ms, the minimum `CTO` for at  least *n* retransmissions is given by:
-
-`CTO` >= ∑^n^~i=0~ (2^i^ * `ATO`~0~), ie. `CTO` >= 51s, *n* = 7 and `CTO` >= 102.2s, *n* = 8
+max(1280, N) = 1280 - 65 = 1214
+      
+That means that a sender may transmit up to 32768 messages of 1214 bytes (aprox. 37MB) worth of user data until it needs to hear from the receiver again (about 
+missing messages or with a confirmation to proceed to the next 32768). Assuming for simplicity that the receiver is infinitely fast, this wait time would be a minimum 
+of 1 [roundtrip time (RTT)](#round-trip-time), or in other words, the amount of time that all the packets would take to arrive at the receiver plus the time
+a reply takes to travel from the receiver back to the sender. It's generally safe to assume `RTT` > 0.001s although in real networks this value must be one or
+two orders of magnitude higher. This amounts to a purely hypothetical (and totally unrealistic) upper limit for the throughput of aprox 37GB/s (or about 296Gbit/s). 
+Nevertheless, even with an `RTT` of 0.15s, which is much more likely to occur, we would still reach aproximately 252MB/s (or about 2Gbit/s) - way more than any
+user applicaton is expected to push into the link (see [Normal operating conditions](#normal-operating-conditions)).
 
 
+##### Comparing unsigned n-bit sequence numbers
 
-#### Time Windows
+Given two unsigned n-bit sequence numbers (*s*, *t*) we say *s* < *t* if 0 < (*t* - *s*) < 2<sup>n-1</sup>, computed in unsigned n-bit arithmetic. This means
+that if *s* is within a distance from *t* (in modulo 2^n^) that is greater than or equal to 2^n-1^ we must assume it's from a previous "window", thus lower 
+than *t* in respect to order.
+
+
+### Time source
+
+Carambolas.Net requires a monotonic non-decreasing 32-bit unsigned time counter capable of returning the time in milliseconds modulo 2<sup>32</sup> since 
+`EPOCH` with granularity `G` <= 1ms.
+
+`EPOCH` is 00:00:00.0000000 UTC, January 1, 0001, in the Gregorian calendar.
+
+The time source is used to stamp packets (`STM`) and generate session identifiers (`SSN`). This means that even if a host were capable of producing a packet 
+every millisecond it would still take aprox. 49 days for an `STM` collision. The same is also applicable to `SSN` generation. No packet is expected to remain 
+in flight for such a long time so, in a sense, `STM` serves as a form of high level sequence number that can be used to detect [old packets](#old-duplicates) and 
+[retransmissions](#retransmissions). 
+
+A unsigned 32-bit timestamp can be viewed as a particular case of an [n-bit sequence number](#comparing-unsigned-n-bit-sequence-numbers) with a maximum window
+size of 2<sup>31</sup> milliseconds, that is roughly equivalent to 24 days. 
+
+Since Carambolas.Net is a user-space protocol, host instances might be spread over multiple processes. In this case, there's no reliable way to employ a global
+time-wait strategy (as employed by TCP) in order to address the problem of old packets arriving from a previous connection. Thus, a time source must be resilient
+to system crashes and reboots or external adjustments performed during runtime (i.e. daylight saving time or user settings). 
+
+Generally, the system clock cannot offer these guarantees, but there is often an alternative in the form of a secondary general purpose monotonic non-decreasing 
+counter (e.g. clock ticks since system startup, proccess time, etc). If a platform can offer such a counter with at least 1KHz, the following procedure may be 
+used: 
+
+  - On startup: 
+    - Let `UTCSCR` be a time source that returns the current time in UTC with granularity `G` = 1ms;
+    - Let `TICKSRC` be a general purpose monotonic non-decreasing counter;
+    - Let `FREQ` be the frequency in ticks/s of `TICKSRC`;
+    - Store `START`<sub>time</sub> = |`UTC` - `EPOCH`| in milliseconds modulo 2<sup>32</sup>;
+    - Store `START`<sub>ticks</sub> = `TICKSRC`
+  - On time requested:
+    - Return [`START`<sub>time</sub> + (`TICKSRC` - `START`<sub>ticks</sub>) / (`FREQ` * 1000)] mod 2<sup>32</sup> 
+
+Note that the time sources used by any two hosts in a connection never depend on each other, so they are not required to be synchronized. Clock skew, however,
+should be kept to a minimum, preferably below 10%, as it will directly impact `RTT` estimation on each respective remote end.
+
+
+### Roundtrip time
+
+Roundtrip time (`RTT`) is effectively the amount of time that it takes for a transmitted message to arrive at the destination plus the time taken for a 
+confirmation to be replied back and arrive at the sender. 
+
+[Acknowledgements](#acknowledgements) which are already used as a form of confirmation of receipt can be used to measure `RTT` if they are modified to carry 
+the latest `STM` received since the last `ACK` (or variant) was transmitted. This time information is then refered to as acknowledged time (`ATM`).
+
+The problem with roundtrip time is that it's the result of propagation delay and processing delays of intermediary nodes in the network path to the destination
+and back. There's no guarantee that two consecutive measurements will return the same value. In fact, any `RTT` measured is by definition out-of-date because 
+it represents the time already taken by a message (and back). Nothing can be said, about what the next message will subject to. In fact, two consecutive 
+measurements may return wildly different results in face of eventual route changes, packet loss, varying performance of intermediary nodes, etc. So since we 
+cannot assume `RTT` to remain constant for any arbitrarily small time interval we must devise a method to produce a reasonable estimate.
+
+This problem has been extensively researched in the early days of the internet and the proposed method is the same specified by [TCP](https://tools.ietf.org/html/rfc6298#section-2):
+
+- `SRTT` (smooth roundtrip time) is the currently estimated `RTT`;
+- `RTTvar` is the currently estimated `RTT` variance;
+- When the first `RTT` measurement *R* is made:
+  - `SRTT` = max(*R*, 0.001)
+  - `RTTvar` = *R*/2
+- When a subsequent `RTT` measurement *R'* is made:
+  - `RTTvar` = 3/4 * `RTTvar` + 1/4 * |`SRTT` - *R'*|
+  - `SRTT` = max(7/8 * `SRTT` + 1/8 * *R'*, 0.001)
+
+
+### Sliding Window Control
+
+***Carambolas.Net employs a modified version of the the sliding window protocol where unreliable messages that timeout may be dropped. Therefore despite a 
+window size of 32768, only 32767 messages may carry user data. The last message of the window is reserved for an eventual [ping](#ping) in case all the previous
+messages in the window are dropped.*** 
+
+Consider the case where a sender must transmit an arbitrarily large number of messages. Each message must be marked with a 16-bit `SEQ` but no more than 32768 
+messages may be transmitted in a row before the sender needs to wait for a reply back with some kind of confirmation that either everything has been received or 
+that some message is missing.
+
+In theory, a sender could be implemented in a way that a new message would only be transmitted after a confirmation (from the receiver) that a previous one had 
+been successfully received. In practice, however, the time that it takes for an acknowledgement to travel back may be significant. It's often going to be 
+comparable (if not similar) to the time the initial message took to arrive at the destination. In this case, the resulting throughput is bound to be much lower
+(possibly half) than what could be achieved (theoretically). And the perceived latency will be proportional to the total number of messages in the output queue. 
+For instance, a sequence of 10 messages *m<sub>0</sub>* to *m<sub>9</sub>* will take 10 * `RTT` seconds to be fully transmitted regardless of the actual link 
+bandwidth.
+
+If all messages are equally important and must eventually be delivered, a [sliding window protocol](#sliding-window-protocols) can be employed. The maximum number
+of messages allowed to be in flight (that is, messages that have been transmitted but not acknowledged yet) is the size of the sequence window (32768). Sender and 
+receiver must then be implemented as follows:
+
+**Sender:**
+
+*The sender must "push" its sliding window forward.* 
+
+The sliding window of the sender is the range of sequence numbers that can be used to transmit new messages. Every time a valid acknowledgement (`ACK`) is 
+received, the upper bound of the window is recalculated in terms of the next sequence number expected by the receiver (`ACK`.`ANEXT`). A sender must not 
+transmit new messages beyond the upper bound of its sliding window for such messages would either be dropped or misinterpreted by the receiver.
+
+Given a sender that tracks:
+
+- `TX.SEQ`: the next sequence number to send;
+- `TX.ASEQ`: the next sequence number expected by the receiver;
+
+The invariants are:
+
+1) `TX.SEQ` >= `TX.ASEQ`;
+2) |`TX.SEQ` - `TX.ASEQ`| < 32768;
+
+By combining (1) and (2) we can derive that the next sequence number that can be transmitted by a sender must be either the next expected by the receiver or a 
+value inside the sequence window of 32768 elements from the next expected (that is `TX.ASEQ` <= `TX.SEQ` <= `TX.ASEQ` +  32767). Every valid `ACK` will 
+cause `TX.ASEQ` to move forward, thus making room for more messages to be transmitted.
+
+Note that this is an oversimplification to illustrate the main point. In practice, acknowledgements may arrive out of order, too late or not arrive at all.
+In order to communicate anomalies to the sender a receiver may issue alternative acknowledgements with more information than just a `SEQ`. 
+Refer to [Acknowledgements](#acknowledgements) for more details. In the same context, a sender has to keep track of [retransmissions](#retransmissions). 
+
+
+**Receiver:**
+
+*The receiver must "pull" its sliding window forward.* 
+
+The sliding window of the receiver is the range of sequence numbers that must be acknowledged to the sender. It can be further divided in two subranges:
+The lower subrange is comprised of sequence numbers that have been received already but to which the sender might not have received an `ACK` yet. It's expected
+that duplicates of these messages may still arrive (due to retransmissions) and they must be acknowledged all the same, though not used any further. The upper 
+subrange is comprised of sequence numbers that have not been received yet, that is, of expectedly new messages (effectively the full range of 32768 messages 
+from and including the next sequence number expected, which is equivalent to any sequence number *s* >= the next expected). The division point of the two 
+subranges is thus the next sequence number expected (`RX.SEQ`).
+
+Given a sender that tracks:
+
+- `RX.SEQ`: the next sequence number expected;
+- `RX.LASEQ`: the lowest acknowledgeable sequence number;
+
+The invariants are:
+
+1) `RX.LASEQ` <= `RX.SEQ`;
+2) |`RX.SEQ` - `RX.LASEQ`| <= 32768;
+
+When a message *m* arrives:
+
+```
+if (m.SEQ >= RX.LASEQ)
+{
+    send ACK
+
+    if (m.SEQ == RX.SEQ) // m is the next expected       
+    {
+        do 
+        {
+            deliver m       
+            RX.SEQ++
+            m = next buffered message
+        }
+        while (m.SEQ == RX.SEQ);        
+    }
+    else if (m.SEQ > RX.SEQ)  // m is ahead of the next expected
+    {
+        if (m.SEQ has not been received yet)
+            buffer m
+    }
+
+    // Adjust the lower bound of the sliding window according to RX.SEQ, "pulling " it forward
+    if (RX.LASEQ < RX.SEQ - 32768)
+        RX.LASEQ = RX.SEQ - 32768
+}
+```
+
+### Acknowledgements
+
+An acknowledgement `ACK` is a control message that can be batched in a data packet but does not carry any user data. Instead, an `ACK` carries the sequence 
+number of the message being acknowledged (i.e. the next sequence number expected by the receiver)
+
+***Carambolas.Net employs cummulative acks and defines 4 alternative forms of ack with extended information.***
+
+The convention of tracking and replying back with the next sequence number **expected** instead of the actual sequence number received/sent may look like a 
+technicality but it is indeed more convenient in many ways. *Mainly by providing an initial state that is equivalent to any other intermediary state in both sender 
+and receiver.* In other words, when a host starts, no message has been received or transmitted yet. An initial next sequence number expected (or to be 
+transmitted) can be simply assumed zero or whatever pre-defined inital value that is more convenient. On the other hand, handling a non-existent last 
+received/transmitted sequence number to calculate the next one requires special treatment in the code. Comparisons, for instance, can be simplified when a 
+receiver tracks the *next* sequence number expected. If the *last* received sequence number is tracked, instead, the receiver must perform an extra operation 
+for every message *m* that arrvives, that is to calculate `RX.LastSEQ` + 1 to compare with *m*.`SEQ`.
+   
+***Carambolas.Net, as any other [sliding window protocol](#sliding-window-protocols), requires that at least some of the messages transmitted in a sequence window 
+are acknowledged (specifically the lower bound ones) before the window may advance and new messages can be transmitted.***
+
+If a sender transmits several (possibly all) messages in a sequence window in order to maximize throughput, it can become quite expensive to reply back with an 
+individual `ACK` for every message (potentially up to 32768 `ACK`s every `RTT`). Instead, sender and receiver mmust exchange cumulative `ACK`s. Instead of 
+representing the acknowledgement of an individual message, an `ACK` is assumed to represent *the acknowledgement of an individual message **and** every other 
+message prior to that one*. This way, a receiver can reduce the number of `ACK`s sent back after receiving several messages in a row.
+
+Yet packets (and their containing messages) may still arrive out of order or get lost in transit, which means a receiver may end up with one or more gaps in the 
+expected sequence window. For example, consider a sender that just transmitted a full window M = { *m<sub>0</sub>, m<sub>1</sub>, m<sub>2</sub>, ..., 
+m<sub>32767</sub>* } of messages and is now waiting for a cumulative `ACK`. Hardly, all these messages could have fit in a single packet, so there's always a 
+chance of packet loss or out of order arrival.
+
+Consider a receiver that has just received the first few packets with messages *m<sub>0</sub>* to *m<sub>10</sub>*. Because *m<sub>0</sub>* was the next expected 
+message, the receiver can deliver it, process the rest, and deliver each one to the user application in order. A cumulative `ACK` must be sent back now with 
+`ACK`.`ANEXT` = *m<sub>11</sub>*,  indicating that the next expected sequence number is that of message *m<sub>11</sub>*. When the sender receives this `ACK` 
+it will advance its sliding window by 11 positions and could eventually send 11 more new messages, but let's assume, for simplicity, that the sender has nothing
+else to send. A few more packets, then, arrive at the receiver with messages *m<sub>12</sub>* to *m<sub>40</sub>*, *m<sub>50</sub>* to *m<sub>100</sub>* and 
+*m<sub>102</sub>* to *m<sub>200</sub>*. Now the receiver, which was still expecting message *m<sub>11</sub>*, processed instead *m<sub>12</sub>* to *m<sub>40</sub>*. 
+Since *m<sub>11</sub>* is still missing it cannot send a cumulative `ACK` back to the sender to indicate that *m<sub>12</sub>* to *m<sub>40</sub>*  have been 
+received. The best it can do is send a duplicate `ACK`.`ANEXT` = *m<sub>11</sub>* to advice the sender that something has been received but *m<sub>11</sub>* is 
+still missing. When the receiver processes *m<sub>50</sub>* to *m<sub>100</sub>*, once again it cannot send a new cumulative `ACK` as there's even a much larger 
+gap now (of 41 to 49) but still it can send another duplicate `ACK`.`ANEXT` = *m<sub>11</sub>* to indicate that something more has been received but 
+*m<sub>11</sub>* is still missing. In a large range such as a full 32768 window, several gaps may appear (up to 16384 actually). Some may even get fixed by 
+themselves as certain packets arriving out of relative order may end up closing some gaps further away in the sequence without the sender ever becoming aware of 
+those gaps. But the point is that after processing all the packets received so far, a host could avoid having to send back many repeated duplicate `ACK`s and 
+in place send a single `DupACK` message that contained a counter indicating how many times an `ACK` would have been repeated with the same next sequence number 
+expected. An simple `ACK` then may be deemed a special case of `DupACK` with an implicit count of 1.
+ 
+Now let's say that the packet with message *m<sub>11</sub>* arrives. The receiver must send a cumulative `ACK`.`Anext` = *m<sub>41</sub>*. But this 
+acknowledgement is now ambiguous. A sender cannot say anymore if just *m<sub>41</sub>* is missing, if everything after and including *m<sub>41</sub>* is missing 
+or only some messages after *m<sub>41</sub>* are missing. It would be too complicated to construct an acknowledgement describing every gap so far in a received 
+sequence but a receiver can at least indicate the immediate next `GAP` by sending back not only the next sequence number expected but also the last sequence 
+number expected (`ALAST`). From the example, those are *m<sub>41</sub>* and *m<sub>49</sub>*.
+
+By definition, `ALAST` > `ANEXT` otherwise a simple `ACK` would have sufficed. 
+
+`GAP` is somewhat analogous to the [Gap Ack Block in SCTP](https://tools.ietf.org/html/rfc4960#section-3.3.4).
+
+It's easy to see how the same `GAP` would have to be transmitted several times when only messages after that interval are received, like a cumulatve `ACK` would. 
+Hence, we can define a `DupGAP`, similarly to a `DupACK`.
+
+By defining 4 specialized types of acknowledgements (`ACK`, `DupACK`, `GAP`, and `DupGAP`) instead of a simple cumulative `ACK`, a sender has more information 
+available to implement better [retransmission](#retransmission) strategies. Also note that, acknowledgements have been described as messages, as if a packet could
+contain more than one. In fact, this seems odd when thinking about acknowledgments being cumulative over a single sequence of messages (aka a stream in SCTP) but 
+it's more convenient to think this way because on connections that support multiple [channels](#channels) a packet may indeed batch multiple independent cumulative 
+`ACK`s, potentially one for each supported channel, up to a total of 16.
+
+
+### Ping
+
+*A ping is an empty segment message transmitted in order to induce an acknowledgement* which provides both a confirmation that the remote host is still alive and 
+listening and an oportunity to update the [estimated `RTT`](#roundtrip-time). A sender may send a ping when there's uncertainty about a remote host's capability 
+to receive new messages but there's no user data to transmit. 
+
+Not to be confused with the [ping command](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/ping)
+available in the command line interface of many platforms, which is a tool used to measure roundtrip time to arbitrary destinations.
+
+A host must ensure that the remote end remains connected and listening even in the absense of user data to transmit. In this case, a ping guarantees that 
+acknowledgements will keep flowing. Once there's any user data to be acknowledged, there's no point in sending pings anymore. The maximum time a host can wait for 
+some user data to transmit before sending a ping is called the `Idle Timeout`
+
+### Session identifiers
+
+A session identifier `SSN` is used to determine if a packet belongs to the current connection or is an old packet from a previous connection between the same 
+two end points. Each host generates and advertises its own `SSN` in the connection handshake, which effectively means "the session number that is going to be 
+used by the source to transmit packets". Session numbers must be defined by the source rather than the destination so that `RST` packets may be constructed by 
+a receiver (echoing back the `SSN`) in the abscence of a proper connection (e.g. half-open connections).
+
+**Carambolas.Net assumes that a packet may remain up to 24 hours in flight**. 
+
+This is definitely an overestimation. In real life, packets are not expected to live for more than a few minutes, but it's not impossible (although extremely 
+unlikely) that a network node may end up retaining a packet for even a few hours. Hence, to stay on the safe side, the `SSN` generation period should be no 
+shorter than 86400000 (the total number of milliseconds in a day). In this case, a value from the host's internal [time source](#time-source) should be enough 
+and cheaper than relying on more elaborate methods like a random number generator. 
+
+**Carambolas.Net assumes that since `RTT` >= 0.001s a host must take more than 1ms to connect, close and reconnect with the same remote end point**. 
+
+Note that we're not concerning ourselves about mitigating security threats yet. All packets are transmitted in the clear anyway and trying to mitigate the risk
+of tampering or particular threats such as flooding or man-in-the-middle attacks (as attempted by TCP and SCTP) are considered futile half-measures that add a 
+disproportional amount of complexity for very little to no real security benefits. Refer to [Encryption](#encryption) and [Vulnerabilities](#vulnerabilities) 
+for more on this topic.
+
+### Old duplicates
+
+Old duplicates are packets transmitted in the past which are not relevant anymore to the receiver but may be mistaken for an up-to-date packet.
+
+There are two main sources of old duplicates:
+
+1) packets originated on a previous connection between the same two end points;
+2) packets originated on the current connection (in a previous incarnation of the same sliding window position) that arrive late enough (possibly due to 
+   retransmissions);
+
+In the abscence of a way to tie a message (or all messages in a packet, for that matter) to a connection, the message sequence number becomes the only identifying 
+resource available. As [noted before](#sequence-numbers), n-bit sequence numbers are subject to wrap around and thus can only be reliably ordered within a limited 
+window of 2<sup>n-1</sup> elements. Consequently, an old packet may arrive as in (1) or (2) and contain one (or more) messages with seemingly valid sequence numbers 
+for the current state of the connection - i.e. sequence numbers that are within 2<sup>n-1</sup> from the next expected value. Such late messages would be 
+indistinguishable from legitimate ones at the receiver. 
+
+Both TCP and SCTP employ strategies to address (1) and (2). TCP imposes a time-wait to reduce the probability of (1). It also uses 32-bit sequence numbers with
+varying initial values so that according to [RFC793](https://tools.ietf.org/html/rfc793#page-27):
+ 
+>When new connections are created, an initial sequence number (ISN) generator is employed which selects a new 32 bit ISN. The generator is bound to a (possibly 
+>fictitious) 32 bit clock whose low order bit is incremented roughly every 4 microseconds. Thus, the ISN cycles approximately every 4.55 hours. Since we assume 
+>that segments will stay in the network no more than the Maximum Segment Lifetime (MSL) and that the MSL is less than 4.55 hours we can reasonably assume that 
+>ISN’s will be unique.
+  
+Unfortunately, for TCP, despite the assummed uniqueness of ISN's even being reasonable it's not enough to avoid wrap around in just a few roundtrips on large 
+bandwidth links. Thus, in order to address (2), a receiver must employ a [special algorithm](https://tools.ietf.org/html/rfc7323#section-5) which relies on 32-bit 
+timestamps. SCTP packets may include both a 32-bit timestamp and a random 32-bit Tag Value used to correlate a packet to its connection (so it can avoid imposing 
+a time-wait). 
+
+{#source-time}
+Carambolas.Net requires a solution similar to that of SCTP in order to avoid the need for a global time-wait (which would be unfeasable for a user-space 
+implementation anyway). Packets must be transmitted with a source timestamp (`STM`) and a session identifier (`SSN`). The value of `STM` must be assigned on 
+packet transmission from the host's internal [time source](#time-source). 
+
+There should be no need to worry about the possibility of two packets bearing the same `STM` value. An `STM` is not a unique id. In fact, it's perfectly valid 
+to expect multiple packets to be transmitted with the same `STM`. If, for instance, a sender has more messages to be batched than can fit in a single packet
+(due to MTU constraints), several packets could be generated and transmitted in the same iteration and this iteration could be shorter than 1ms resulting in 
+those packets sharing the same `STM`. For all that matters, this should have the same practical effect as if the sender had transmitted a single arbitrarily
+large packet containing all those messages. In such case, none of the messages could have been duplicates themselves. Even a retransmitted message would have been 
+a minimum time apart from its previous transmission (at least one `RTT` >= 0.001s but way more than this in practice). 
+
+**Carambolas.Net assumes that `RTT` >= 0.001s**
+
+The `SSN` is generated in the connection handshake and the only requirement is a minimum period to avoid accidental collisions if several connections are 
+estabilished and closed between the same two end points in rapid succesion. Refer to [Session identifiers](#session-identifiers) for a complete description.
+
+With every packet containing an `STM`, and a wrap around period that is much larger than the maximum time a packet is ever expected to be in flight, we can 
+track the latest `STM` received to determine how relatively late a packet is arriving. If a packet happens to be the latest or is relatively recent, it may 
+contain brand new messages or valid retransmissions. If it's old beyond a [certain threshold](#packet-lifetime), the packet is considered irrelevant and 
+silently dropped. 
+
+With different levels of [QoS](#qos) in the same channel a pure [Sliding Window Control](#sliding-window-control) is not enough to validate messages and a more 
+elaborate [algorithm](#time-windows) based on `STM` will be required to detect old duplicates, similarly to how 
+[PAWS](https://tools.ietf.org/html/rfc1323#section-4) operates in TCP.
+
+
+### Packet Lifetime
+
+Packets older than 60s (or any other arbitrary duration) are most probably irrelevant and should be dropped, but a receiver cannot tell how much time a packet 
+has been in flight because the time source used to stamp `STM` is only known by the sender. There are no guarantees that both sender and receiver will have 
+synchronized time sources. 
+
+However we can approach this problem in a slightly different way by taking into account that:
+
+  1) `STM` is monotonically non-decreasing;
+  2) If all packets arrive in order it doesn't really matter how old they are at least in the protocol level;
+  3) If a packet arrives late, its time in flight must have been at least the *Δt* between its `STM` and the most recent `STM` already received;
+  
+So a receiver may produce an acceptable lifetime validation by keeping track of the most recent `STM` received and comparing other arriving packets to it to 
+determine how relatively late they are. If a packet is instead ahead of time,`the most recent `STM` is simply updated.
+
+
+### Time Windows
 
 With a 16-bit sequence number the size of the sliding window must be at most 32768. The sliding window size also determines the maximum number of messages that 
 may be in flight, in this case 32768 - 1. The reason for the -1 is that if a full window of 32768 consecutive unreliable messages are lost in a row, the sender 
@@ -1218,16 +1194,16 @@ is forced to move its sliding window forward by the same amount (because there's
 remain unchanged. This will cause the receiver to misinterpret all further 32768 messages as old/late and acknowledge them all without delivering any data. The 
 sender will believe these new 32768 messages are being delivered when in fact they're being acknowledged and dropped by the receiver. An easy way to address this 
 problem without increasing the sequence number space is to rely on the fact that if the sender considers all messages in flight to be lost (i.e they were all 
-unreliable) a ping must be injected to find if the receiver is still alive. In this case if we reserve the last sequence number of the sliding window for an 
-eventual (reliable) ping message, there will be no crossing over sequence window boundaries. The receiver will be able to naturally adjust its sliding window 
-once the ping is received and the sender, on its side, can now safely wait for an ack to move its own sliding window instead of having to artifically adjust when
-messages are lost.
+unreliable) a ping must be injected to find if the receiver is still alive. In this case we must reserve the last sequence number of the sliding window for an 
+eventual (reliable) ping message. There will be no crossing over sequence window boundaries anymore. The receiver will be able to naturally adjust its sliding 
+window once the ping is received and the sender, on its side, can now safely wait for a cumulative `ACK` to move its own sliding window instead of having to 
+artifically adjust when messages are lost.
 
-A problem with sliding windows protocols is how to determine whether an incoming message is an old duplicate from a previous cycle of the window without having to 
-augment the space of sequence numbers. 
+A problem with sliding windows protocols is how to determine whether an incoming message is an old duplicate from a previous cycle of the window without having 
+to augment the space of sequence numbers. 
 
-Given a receiver that stores the lowest sequence number that can be acknowledged (LSEQ) the next expected sequence number (`ESEQ`) and the next expected source time 
-(`ESTM`), any incoming message m is:
+Given a receiver that stores the lowest sequence number that can be acknowledged (`LSEQ`) the next expected sequence number (`ESEQ`) and the next expected 
+source time (`ESTM`), any incoming message m is:
 
 - acceptable if m.`STM` >= `ESTM`
 - may be acknowledged if m.`SEQ` >= `LSEQ` 
@@ -1327,215 +1303,206 @@ and possibly replace it in error.
 A misbehaving sender that does not honour the monotonic increasing modulo 2^16^ requirement of sequence numbers is out of scope.
 
 
+### Fragmentation
 
-#### Channels
+***Carambolas.Net supports payloads of up to 65535 bytes which can be split in up to 256 fragments depending on the value of `MTU`.***
 
+Initially, the maximum amount of data that can be transmitted (the maximum segment size `MSS`) is limited by the negotiated `MTU`. A problem may arise 
+if the `MTU` advertised by the remote host is lower than the one expected/required by the user application. 
 
-### Packet Structure
- 
-A packet is any datagram with a valid size formatted according to the following rules.
-
-The number in parenthesis is the atom size in bytes. Angle brackets indicate multiple possibilities for an element. Square brackets denote optional element(s). 
-Curly brackets denote an encrypted group of elements.
-
-    STM(4) PFLAGS(1) <CON | SECCON | ACC | SECACC | DAT | SECDAT | RST | SECRST>
-
-       CON ::= SSN(4) MTU(2) MTC(1) MBW(4) CRC(4)
-    SECCON ::= SSN(4) MTU(2) MTC(1) MBW(4) PUBKEY(32) CRC(4)
-       ACC ::= SSN(4) MTU(2) MTC(1) MBW(4) ATM(4) RW(2) ASSN(4) CRC(4)
-    SECACC ::= SSN(4) MTU(2) MTC(1) MBW(4) ATM(4) {RW(2)} PUBKEY(32) NONCE(8) MAC(16)
-       DAT ::= SSN(4) RW(2) MSGS CRC(4)
-    SECDAT ::= {RW(2) MSGS} NONCE(8) MAC(16)
-       RST ::= SSN(4) CRC(4)
-    SECRST ::= PUBKEY(32) NONCE(8) MAC(16)
+For instance, consider a user application that is required to transmit small files of 1024 bytes (1KB) exactly. This is fine if the application can assume 
+`MTU` = 1280 which by the protocl spec would leave us with `MSS` = 1214 bytes. However, if the remote host requires a lower `MTU`, because it has 
+additional information about the link from its end, and the resulting `MSS` < 1024 then the user application is left with 3 options:
+  
+  1) Disconnect;
+  2) Let every send operation fail because the amount of data does not fit in the calculated `MSS`;
+  3) Split each file in two or more pieces depending on the calculated `MSS` and require the remote host to be capable of re-assembling those pieces;
     
-      MSGS ::= MSG [MSG...]
-       MSG ::= MSGFLAGS(1) <ACKACC | ACK | DUPACK | GAP | DUPGAP | SEG | FRAG>
-    ACKACC ::= ATM(4)
-       ACK ::= NEXT(2) ATM(4)
-    DUPACK ::= CNT(2) NEXT(2) ATM(4)
-       GAP ::= NEXT(2) LAST(2) ATM(4)
-    DUPGAP ::= CNT(2) NEXT(2) LAST(2) ATM(4)
-       SEG ::= SEQ(2) RSN(2) SEGLEN(2) PAYLOAD(N)
-      FRAG ::= SEQ(2) RSN(2) SEGLEN(2) FRAGINDEX(1) FRAGLEN(2) PAYLOAD(N)
+The first two options are obviously undesirable. Option 3 deserves some consideration. It implies that every user application will be required to handle
+the possibility of user data being larger than the calculated `MSS` and implement a custom solution for fragmentation and reassembling. This is due to the
+exact negotiated `MTU` for the connection being unpredictable. It would be ideal if a host could take care of user data fragmentation by itself. The IP layer
+provides transparent datagram fragmentation for free but only at the cost of [a few additional problems](#ip-level-fragmentation) and it can only operate in the 
+whole packet not at the message level. A custom strategy, on the other hand, supported by the protocol, would have a few advantages such as:
 
-- `PFLAGS`: Packet type;
-- `STM`: Source Time in milliseconds mod 2^32^ since 00:00:00.0000000 UTC, January 1, 0001, in the Gregorian calendar.
-- `SSN`: Session Number used to identify the source instance;
-- `MTU`: Maximum Transmission Unit in bytes supported by the source. A host may refuse a connection based on this value;
-- `MTC`: Maximum Tranmission Channel (0 to 15) supported by the source. A host may refuse a connection based on this value;
-- `MBW`: Maximum Bandwidth in bits per second supported by the source. Destination should not transmit data at a rate higher than this. 
-       A host may refuse a connection based on this value;
-- `ATM`: Acknowledged Time used to calculate RTT;
-- `RW`: Receive window at the source; 
-- `ASSN`: Acknowledged session number used to match the connection request and establish the session pair;
-- `DSN`: Destination session number reset;
-- `CRC32C`: CRC32c (castangnoli);
-- `PUBKEY`: Source public key;
-- `NONCE`: Source nonce used to encrypt/sign;
-- `MSGS`: See [Messages](#messages);
-- `MFLAGS`: Message type and options including channel (CH) when applicable. See [Message Flags](#message-flags);
-- `MAC`: Source message authentication code;
-- `NEXT`: Next sequence number expected by the source;
-- `LAST`: Last sequence number of a series expected by the source;
-- `CNT`: Number of accumulated acknowledgements from source;
-- `SEQ`: Sequence number;
-- `RSN`: Reliable sequence number;
-- `SEGLEN`: Complete Segment length;
-- `FRAGINDEX`: Fragment index;
-- `FRAGLEN`: Fragment length;
+  1) Support for different QoS levels;
+  2) Fine-grained retransmissions (at the fragment level rather than the whole packet);
+  3) Better control over the memory allocated to hold fragments at the receiver;
+  4) Better average packet occupation when transmitting the last fragment (since it can be batched with other messages in the same packet);
 
-#### Packets
+*How should data be fragmented?*
 
-##### CON (0x0C)
+This problem can be further decomposed in the following questions:
 
-|      Byte |   0..3  |    4   |   5..8  |  9 10 |  11 | 12..15 |  16..19 |
-|----------:|:-------:|:------:|:-------:|:-----:|:---:|:------:|:-------:|
-|      Bits |  31..0  |  7..0  |  31..0  | 15..0 |7..0 | 31..0  |  0..31  | 
-|     Field |   STM   |  0x0C  |   SSN   |  MTU  | MTC |  MBW   | CRC32C  |
+- Should fragments have a variable length or should a fragment's payload always be maximal? 
+- How can a receiver determine that all fragments have been received?
+- How can fragments be ordered?
+- What's the maximum number of fragments that can be produced?
 
-##### ACC (0x0A)
+And depending on the answers, not only will a fragment message look differently but also both sender and receiver will be faced with additional requirements. 
 
-|      Byte |   0..3  |    4   |   5..8  |  9 10 |  11 | 12..15 | 16..19 | 20 21 | 22..25 | 26..29 |
-|----------:|:-------:|:------:|:-------:|:-----:|:---:|:------:|:------:|:-----:|:------:|:------:|
-|      Bits |  31..0  |  7..0  |  31..0  | 15..0 |7..0 | 31..0  | 31..0  | 15..0 | 31..0  |  0..31 |
-|     Field |   STM   |  0x0A  |   SSN   |  MTU  | MTC |  MBW   |  ATM   |  RW   |  ASSN  | CRC32C |
+* If fragments are allowed to have a variable length, let's say depending on the available space in the packet (which might have been partially filled with 
+  other messages) by the time of the transmission, then fragments cannot be constructed until a packet is about to be transmitted; 
+  * A sender will never be able determine the number of messages waiting to be transmitted (only the total amount of user data bytes);
+* If fragments are always maximal, they may all be pre-calculated. All will have the same Maximum Fragment Size (`MFS`) except for the last one that is 
+  going to be `SEGLEN` % `MFS` where `SEGLEN` is the complete user data segment length;
+* For a receiver to be able to determine when all fragments have been received it must know either the complete segment length or the total number of fragments
+  to expect; 
+  * Knowing the complete segment length has the advantage of allowing the receiver to pre-allocate all the memory needed to reconstruct the packet;
+* Fragments must be ordered to form a complete segment; 
+  * Each fragment message must have some kind of sequence number of its own such as a fragment index or rely on the message sequence number [as used by data segments](#16-bit-sequence-numbers); 
+  * Although the idea of relying on the message sequence number to order fragments may seem attractive (specially as it does not incur extra overhead) it's 
+    proved to be problematic when messages arrive out of order. Consider the case of a transmitted subsequence of messages *m<sub>0</sub>, m<sub>1</sub>, m<sub>2</sub>, m<sub>3</sub>, ... m<sub>9</sub>*. 
+    At a given point in time, messages *m<sub>4</sub>* to *m<sub>7</sub>* arrive at the receiver ahead of *m<sub>0</sub>* to *m<sub>3</sub>* while *m<sub>8</sub>* to *m<sub>9</sub>* 
+    have not arrived yet. The receiver can determine that the messages received so far are fragments by their `MSGFLAGS`, it can even deduce their relative 
+    order from their sequence numbers and that there are still 3 more fragments to come (assumed every fragment contains either information about the complete
+    segment length or the total number of fragments) but the receiver is incapable of deducing by the sequence numbers alone if the missing fragments must come before 
+    *m<sub>4</sub>* or after *m<sub>7</sub>* because a message sequence number does not carry information about how a fragment must be positioned inside its 
+    complete segment, it only tells how a message must be position in the big picture, that is among other messages, regardless of type;
+* The maximum number of fragments that can be produced (or the correlated maximum complete segment size) will directly impact the receiver which must be able to buffer 
+  at least a complete segment minus 1 byte (with 1 byte being the minimum possible size of a last fragment) 
+  * Consider the worst case where all fragments arrive in the reverse order; 
+  * There is no point in establishing an inpractical maximum such as 2<sup>64</sup> fragments. A maximum that cannot be honored is equivalent to letting the receiver impose any 
+    arbitrary and potentially unpredicatble limit according to its own available resources (i.e. memory);
 
-##### DAT (0x0D)
+Consider a user application that is required to send files of exactly 65535 bytes. Coincidently this is also the (never-achievable) maximum UDP datagram size. 
+A minimum fragment message capable of carrying fragments of a complete segment whose length is at most 65535 needs only 3 extra pieces of information when compared to 
+a normal segment message:
 
-|      Byte |   0..3  |    4   |   5..8  |  9 10 | 11..N | N+1..N+4 | 
-|----------:|:-------:|:------:|:-------:|:-----:|:-----:|:--------:|
-|      Bits |  31..0  |  7..0  |  31..0  | 15..0 |       |   0..31  |
-|     Field |   STM   |  0x0D  |   SSN   |   RW  |  MSGS |  CRC32C  |
+  1) `MSGFLAGS` (1 byte) indicating if the parameters that follow are of a segment or a fragment;
+  2) `SEGLEN` (2 bytes) for the complete segment length;
+  3) `FRAGINDEX` (2 bytes) for the fragment index (as we may send up to 65535 fragments of 1 byte);
+  
+That last statement about `FRAGINDEX` sounds pretty unreasonable, though. An `MTU` that is so low as to cause `MFS` to be 1 byte should never happen in real-life.
+In fact, if we can ensure `MFS` >= 256 then `FRAGINDEX` can be reduced to 1 byte (65535 = 256 * 256 - 1). An insecure packet containing a single fragment would 
+look like this:
 
-##### RST (0x0F)
+    IPHEADER(40) UDPHEADER(8) PFLAGS(1) SSN(4) RW(2) MSGFLAGS(1) SEQ(2) RSN(2) SEGLEN(2) FRAGINDEX(1) FRAGLEN(2) PAYLOAD(N) CRC(4) 
+   
+Where N >= 256 <=> `MTU` >= 40 + 8 + 1 + 4 + 2 + 1 + 2 + 2 + 2 + 1 + 2 + N + 4; that is 324 <= `MTU` <= 65535
 
-|      Byte |   0..3  |    4   |   5..8  |  9..12 |  
-|----------:|:-------:|:------:|:-------:|:------:|
-|      Bits |  31..0  |  7..0  |  31..0  |  0..31 |
-|     Field |   STM   |  0x0F  |   DSN   | CRC32C |
+Note that the very minimum `MTU` value for Carambolas.Net is actually higher (345 bytes) because secure packets have a bit more overhead. 
 
-##### SECCON (0x1C)
+***Carambolas.Net requires the negotiated `MTU` to be valid or the connection is refused.***
 
-|      Byte |   0..3  |    4   |   5..8  |  9 10 |  11 | 12..15 | 16..47 | 48..51 |
-|----------:|:-------:|:------:|:-------:|:-----:|:---:|:------:|:------:|:------:|
-|      Bits |  31..0  |  7..0  |  31..0  | 15..0 |7..0 | 31..0  |        |  0..31 | 
-|     Field |   STM   |  0x1C  |   SSN   |  MTU  | MTC |  MBW   | PUBKEY | CRC32C |
+*What's an ideal maximum `SEGLEN`?*
 
-##### SECACC (0x1A)
+A few points must be taken into account:
 
-|      Byte |   0..3  |    4   |   5..8  |  9 10 |  11 | 12..15 | 16..19 | 20 21 | 22..53 |  54..61 | 62..77 |
-|----------:|:-------:|:------:|:-------:|:-----:|:---:|:------:|:------:|:-----:|:------:|:-------:|:------:|
-|      Bits |  31..0  |  7..0  |  31..0  | 15..0 |7..0 | 31..0  | 31..0  | 15..0 |        |  63..0  |        |
-|     Field |   STM   |  0x1A  |   SSN   |  MTU  | MTC |  MBW   |  ATM   |  RW*  | PUBKEY |  NONCE  |   MAC  |
+  1) By increasing the maximum `SEGLEN` beyond 65535 we will be required to increase the footprint of both `SEGLEN` and `FRAGINDEX` in the fragment message;
+  2) The bigger maximum `SEGLEN` becomes, the more memory a receiver will need to reserve to reassemble a complete segment;
+  3) The protocol is intended for low-latency links with a small bandwidth-delay product, i.e. a rapid exchange of small packets;
 
-^* encrypted^
-
-##### SECDAT (0x1D)
-
-|      Byte |   0..3  |    4   |  5 6  |  7..N |  N+1..N+8 | N+17..N+24 | 
-|----------:|:-------:|:------:|:-----:|:-----:|:---------:|:----------:|
-|      Bits |  31..0  |  7..0  | 15..0 |       |   63..0   |            |
-|     Field |   STM   |  0x1D  |  RW*  | MSGS* |   NONCE   |     MAC    |
-
-^* encrypted^
-
-##### SECRST (0x1F)
-
-|      Byte |   0..3  |    4   |  5..37 |  38..45 | 46..61 |
-|----------:|:-------:|:------:|:------:|:-------:|:------:|
-|      Bits |  31..0  |  7..0  |        |  63..0  |        |
-|     Field |   STM   |  0x1F  | PUBKEY |  NONCE  |   MAC  |
-
-#### Messages
-
-Messages are encoded in the same way regardless of the packet being secure or insecure because the encryption algorithm is required to be format-preserving.
-
-##### Message Flags
-
-|      Bit   |   7    |     6     |    5    |     4     |  3..0 |
-|-----------:|:------:|:---------:|:-------:|:---------:|:-----:|
-|       Flag |  ACK   |  GAP/REL  |   DATA  |  DUP/FRAG |   CH  |
+It's been demonstrated that a maximum `SEGLEN` of 65535 can be achieved with a minimum overhead (only 3 bytes) over a normal single message segment as long as 
+a minimum `MTU` value is enforced. Increasing the maximum `SEGLEN` beyond 65535 would only put pressure in the receiver given that most of the traffic is 
+expected to be of small payloads (under 64KB in size). A maximum `SEGLEN` of 65535 does not preclude a user application from transfering large chunks of data
+(i.e. large files) of more than 64KB, but then a custom fragmentation and reassembling strategy will have to be implemented. In such cases, however the user 
+application is often in a position to do a better job than a generic library. For instance, an application that expects to transfer files of several megabytes 
+may opt to buffer fragments directly on disk and save memory since the final goal is to produce a local file anyway.
 
 
-- All control acks are `0b1--0----`;
-  - There is only one control ack currently supported that is `ACKACC = 0x8A`;
-- All data acks are `0b1--1----`;
-  - Bit 6 indicates if it has gap information;
-  - Bit 4 indicates if it has duplicate information;
-  - Bits 3 to 0 indicate the channel;
-- All user data messages are `0b0--1----`;
-  - Bit 6 indicates if it is unreliable(0) or reliable (1);
-  - Bit 4 indicates if it is a segment(0) or fragment (1);
-  - Bits 3 to 0 indicate the channel;
+### QoS
 
-##### ACKACC (0x8A)
+#### Reliable
 
-|      Byte |    0   |   1..4  | 
-|----------:|:------:|:-------:|
-|      Bits |  7..0  |  31..0  |
-|     Field |  0x8A  |   ATM   |
+#### Semireliable
 
-##### ACK (0xA-)
+#### Unreliable
 
-|      Byte |    0   |   0  |    1 2  |   3..6  | 
-|----------:|:------:|:----:|:-------:|:-------:|
-|      Bits |  7..4  | 3..0 |  15..0  |  31..0  |
-|     Field |  1010  |  CH  |   NEXT  |   ATM   |
+#### Volatile
 
-##### DUPACK (0xB-)
+### Retransmissions
 
-|      Byte |    0   |   0  |    1 2  |    3 4  |   5..8  | 
-|----------:|:------:|:----:|:-------:|:-------:|:-------:|
-|      Bits |  7..4  | 3..0 |  15..0  |  15..0  |  31..0  |
-|     Field |  1011  |  CH  |   CNT   |   NEXT  |   ATM   |
+#### Timeout Retransmissions
 
-##### GAP (0xE-)
+#### Fast Retransmissions
 
-|      Byte |    0   |   0  |    1 2  |    3 4  |   5..8  | 
-|----------:|:------:|:----:|:-------:|:-------:|:-------:|
-|      Bits |  7..4  | 3..0 |  15..0  |  15..0  |  31..0  |
-|     Field |  1110  |  CH  |   NEXT  |   LAST  |   ATM   |
+#### Exponential Backoff
 
-##### DUPGAP (0xF-)
 
-|      Byte |    0   |   0  |    1 2  |    3 4  |    5 6  |   7..10  | 
-|----------:|:------:|:----:|:-------:|:-------:|:-------:|:--------:|
-|      Bits |  7..4  | 3..0 |  15..0  |  15..0  |  15..0  |   31..0  |
-|     Field |  1111  |  CH  |   CNT   |   NEXT  |   LAST  |    ATM   |
+The acknowledgement timeout `ATO` mimics TCP's *RTO* as described by [RFC6298](https://tools.ietf.org/html/rfc6298) thus we support a binary exponential backoff 
+the same way for retransmissions as proposed by Jacobson.
 
-##### SEG (0x2- or 0x6-)
- 
-|      Byte |        0      |   0  |    1 2  |    3 4  |    5 6  |   7..SEGLEN+7  | 
-|----------:|:-------------:|:----:|:-------:|:-------:|:-------:|:--------------:|
-|      Bits |      7..4     | 3..0 |  15..0  |  15..0  |  15..0  |                |
-|     Field | 0010 or 0110  |  CH  |   SEQ   |   RSN   |  SEGLEN |     PAYLOAD    |
+A side effect of this type of backoff, though, is that depending on the values of `SRTT` and `RTTVar`, the connection timeout `CTO` becomes dominant and 
+hardly restricts the number of retransmission attempts. In a way, `CTO` imposes a soft upper limit to (`SRTT`, `RTTvar`) beyond which a lost packet will always 
+trigger a disconnection (`CTO` <= `SRTT` + 4 * `RTTvar`)
 
-##### FRAG (0x3- or 0x7-)
- 
-|      Byte |        0      |   0  |    1 2  |    3 4  |    5 6  |      7     |   8 9   |  10..SEGLEN+9  | 
-|----------:|:-------------:|:----:|:-------:|:-------:|:-------:|:----------:|:-------:|:--------------:|
-|      Bits |      7..4     | 3..0 |  15..0  |  15..0  |  15..0  |     7..0   |  15..0  |                |
-|     Field | 0011 or 0111  |  CH  |   SEQ   |   RSN   |  SEGLEN |  FRAGINDEX | FRAGLEN |     PAYLOAD    |
+The combination of connection timeout and ack timeout with backoff and ack fail limit may sometimes even result in an unexpected behaviour. This is because with a 
+multiplicative backoff factor the time interval between consecutive ack timeouts (and eventual retransmissions) grows exponentially while connection timeout and 
+ack fail limit are constants. The consequence is that depending on where the initial ack timeout (derived from the `RTT`) stands relative to a threshold the number 
+of retransmissions will be limited by the ack fail limit and the total timeout to disconnect is going to be less than the connection timeout. As the initial ack 
+timeout moves beyond this threshold, the reponse timeout becomes the limiting factor so the actual number of retransmissions amount to less than the ack fail limit.
+
+The threshold in case can be calculated taking into account the backoff factor, the connection timeout and the ack fail limit.
+
+The ack timeout (`ATO`) of the *i-th* transmission (i >= 0) is given by: *`ATO`<sub>i</sub> = `ATO`<sub>0</sub> * k<sup>i</sup>*, where *k* >= 1 is the ack 
+backoff factor and *`ATO`<sub>0</sub>* is the initial `ATO` derived from the `RTT`. The equivalent recursive formulation is: 
+*`ATO`<sub>i</sub> = `ATO`<sub>i-1</sub> * k, i > 0, k >= 1*
+
+The partial sum for *n* transmissions is then given by: *`ATO`<sub>0</sub> * { 1 + k * [ ( k<sup>n-1</sup> ) -1 ] / ( k - 1 ) }, n > 0*
+
+Note that the protocol defaults will produce a pretty aggresive retransmission behaviour with each retransmission taking up only 25% more time than the previous 
+attempt.
+
+The closer *k* gets to 0, the more aggressive retransmissions will be - i.e. closer in time.
+
+Assuming a peer that never replies, the dynamic behaviour produced by the protocol defaults should be aproximately as follows:
+
+Connection timeout (`CTO`) = 30s
+Ack Backoff Factor (K) = 1.25s
+Ack Fail Limit (`AFL`) = 10
+
+| Initial Ack Timeout(s) | Number of transmissions (counting the first) | Total time(s) until disconnect |
+|------------:|------------------------:|--------------:|
+|        0.2  |          10             |       6.651   |
+|        0.5  |          10             |      16.626   |                      
+|        1.0  |          10             |      30.000   | 
+|        2.0  |           7             |      30.000   |
+|        4.0  |           5             |      30.000   |
+|        8.0  |           3             |      30.000   |
+|       16.0  |           2             |      30.000   |
+
+
+
+Note that for the given parameters the limiting factor is `AFL` when `ATO`<sub>0</sub> < 1s and the disconnection is going to happen before `CTO`. After 
+`ATO`<sub>0</sub> >= 1s, the limitation becomes the `CTO` with the number of transmissions that we can fit inside that time window decreasing. Once 
+`ATO`<sub>0</sub> >= `CTO`/2, only one retransmission is ever possible so the connection becomes extremely sensitive to packet loss.
+
+> ![Illustration of the retransmission curve for an initial timeout of 0.2s](Retransmission-Curve.jpg)
+>
+>*Retransmission curve for an initial timeout of 0.2s*
+
+In general, `CTO` should be at least one order of manitude greater than the average `SRTT` projected for the connection. 
+Assuming an `SRTT` = 400ms and `RTTVar` = 40ms as the norm (see [Reasonable real-life conditions](#reasonable-real-life-conditions))
+then `CTO` could be as low as 5s. In fact given an `ATO`<sub>0</sub> it's possible to determine the minimum `CTO` needed for at least *n* retransmissions by:
+       
+`CTO` >= ∑<sup>n</sup><sub>i=0</sub> (2<sup>i</sup> * `ATO`<sub>0</sub>), ie. `CTO` >= 35s, *n* = 2 and `AFL` = 1 + *n*
+
+The same relationship can be used to demonstrate that there's not much use in having `AFL` > 8 unless one can increase `CTO` exponentially to accomodate 
+the extra retransmissions. 
+
+In the best network conditions `ATO`<sub>0</sub> = `ATO`<sub>min</sub> = 200ms, the minimum `CTO` for at  least *n* retransmissions is given by:
+
+`CTO` >= ∑<sup>n</sup><sub>i=0</sub> (2<sup>i</sup> * `ATO`<sub>0</sub>), ie. `CTO` >= 51s, *n* = 7 and `CTO` >= 102.2s, *n* = 8
+
+
+### Flow control
+
+#### Remote Window (aka Receive Window)
+
+#### Congestion Window
+
+#### Bandwidth Window
+
+
+
+### Channels
 
 ### Encryption
-
-### Characterization of packet loss
-
-Packet loss patterns fall into one of two major model categories: random or burst loss. In the random loss model, each packet has an equal probability of 
-getting lost. In other words consecutive packet to packet loss probabilities are uncorrelated. In the burst loss model consecutive packet to packet loss 
-probabilities are correlated and losses tend to occur in bursts. Most real world network losses can be modeled with burst loss model which can be simulated using
-a four-state Markov model such as Gilbert-Elliot's.
-
-Since the average message in normal use-cases is expected to be relatively small compared to the `MPU`, there is high probability that two or more messages 
-will be batched in a single packet in order to reduce system interruptions and packet overhead imposed by UDP/IP and protocol headers.
-
-In such conditions, even the loss of a single packet may represent the loss of several messages (probably consecutive over more than one channel), thus inducing 
-a pattern of burst loss regardless of the actual characterization of the underlying network.
 
 
 
 ## Implementation details
+
 
 ### IPEndPoint and IPAddress
 
@@ -1573,14 +1540,6 @@ Known native library issues:
   - SocketOptionName.TimeToLive option is not supported by the operating system and is ignored;
   
 ### Memory management
-
-### Events
-
-### Host
-
-
-### Peer
-
 
 
 ## Vulnerabilities

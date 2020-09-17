@@ -1,17 +1,11 @@
 # Carambolas
 
-[![GitHub release](https://img.shields.io/github/release/nlebedenco/Carambolas.svg?style=flat-square)](https://github.com/nlebedenco/Carambolas/releases) 
-[![NuGet package](https://img.shields.io/nuget/v/carambolas.svg)](https://www.nuget.org/packages/carambolas/)
-
-[![PayPal](https://raw.githubusercontent.com/Rageware/Shields/master/paypal.svg)](https://www.paypal.me/nlebedenco) 
-[![Bountysource](https://raw.githubusercontent.com/Rageware/Shields/master/bountysource.svg)](https://salt.bountysource.com/checkout/amount?team=nlebedenco) 
-
 Carambolas is an ever evolving general purpose support library comprised of multiple [**.NET Standard 2.0**](https://github.com/dotnet/standard/blob/master/docs/versions/netstandard2.0.md)
 assemblies. In particular, <ins>it features a custom multi-channel reliable UDP protocol implementation intended for low latency/low [bandwidth-delay product](#what-is-the-bandwidth-delay-product)
 network applications</ins>.
 
 The first release is a minimal core with a fully functional network module. This repository is structured around a single solution because I plan to expand 
-the core and add other useful modules in the near future.
+by adding new modules in the future.
 
 Test coverage is still minimal so no level of correctness or performance should be implied without a close inspection of the source code. This is an on-going
 project in its earliest stages. 
@@ -23,11 +17,6 @@ Binaries are available in the [archive section]((https://github.com/nlebedenco/C
 [![GitHub release](https://img.shields.io/github/release/nlebedenco/Carambolas.svg?style=flat-square)](https://github.com/nlebedenco/Carambolas/releases) 
 [![NuGet package](https://img.shields.io/nuget/v/carambolas.svg)](https://www.nuget.org/packages/carambolas/)
 
-## Documentation
-
-
-- **[Carambolas](Doc/README-Carambolas.md)**    
-- **[Carambolas.Net](Doc/README-Carambolas.Net.md)**
 
 ## Quick Start
 
@@ -46,7 +35,7 @@ hosts simultaneously.
 
 **Examples**:
 
-- Instantiate a host object to connect to a remote peer. The inner loop is responsible to ensure events don't accummulate to the next iteration.
+Host object instantiated to connect to a remote peer. The inner loop is responsible to ensure events don't accummulate to the next iteration.
 
 ```csharp
 using (var host = new Host("MyHost")
@@ -76,7 +65,7 @@ using (var host = new Host("MyHost")
 }
 ```
 
-- Instantiate a host object and wait for up to 10 incoming connections. The inner loop is responsible to ensure events don't accummulate to the next iteration.
+Host object instantiated to wait for up to 10 incoming connections. The inner loop is responsible to ensure events don't accummulate to the next iteration.
 
 ```csharp
 using (var host = new Host("MyHost")
@@ -104,6 +93,33 @@ using (var host = new Host("MyHost")
     }
 }
 ```
+
+## Documentation
+
+### Motivation
+
+This project dates back to 2015 when I came to Canada to study Video Game Design and Development at the Toronto Film School. The original motivation was to 
+create a compilation of accessory classes that could be re-used in multiple [Unity3d](https://unity.com) projects. After a while, I started to research network
+solutions for a prospect multiplayer game and the focus shifted towards designing a reusable network module. Initially, I approached the problem as a simple
+matter of integrating UNet or any other suitable 3rd party library I could find at the time. Soon after, I started bumping into all sorts of problems from
+broken assumptions to hidden implementation trade-offs. It was not uncommon to find inflated (almost misleading) feature lists out there. Design
+incompatibilities or plain broken implementations of what could have otherwise been considered good concepts were not unusual either. In particular, what
+bothered me most was that in many solutions certain aspects seemed randomly arbitrary with little to no explanation of why a specific approach was preferred, 
+or a certina limit imposed. I would spend hours inspectig a project's source code taking notes to find how and why something was implemented only to realize 
+later that it was in direct contradiction to another (supposedly intentional) assumption made by the library's developer somewhere else. 
+
+All this drove me into more work and eventually I decided to build a lightweight network library myself with a reasonable feature list that I could implement 
+and verify. No rush, no deadlines. Just a genuine attempt to implement the best technical solution I could devise. 
+
+Meanwhile, I graduated, went back to a full-time job and had to set this project aside. A year ago, after finding some old notes, I restored my archive of 
+prototypes and decided to put together a comprehensive build with all the information I gathered so that not only other people could experiment with it but also
+understand the way it worked and why.
+
+### Modules
+
+- **[Carambolas](Doc/README-Carambolas.md)**    
+- **[Carambolas.Net](Doc/README-Carambolas.Net.md)**
+
 
 ## Building from source
 
@@ -309,7 +325,7 @@ Because native libraries are optional, the program can't tell whether a missing 
 logged for a missing native library. By definition, a missing native library is NEVER an error.
 
 
-##### How can I tell if native libraries are actually being used?
+##### How can I tell if a native library is actually being used?
 
 In general, you can't. And you shouldn't, at least not from an API perspective. It should not matter to the user what underlying implementation strategy
 is employed. However this information might be relevant for deployment, so every time an interop object is created that also has an automatic fallback, the code 
