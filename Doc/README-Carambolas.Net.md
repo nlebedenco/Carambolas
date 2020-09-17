@@ -414,7 +414,7 @@ Secure packets are:
 |      Bits |  31..0  |  7..0  |  31..0  | 15..0 |7..0 | 31..0  | 31..0  | 15..0 |        |  63..0  |        |
 |     Field |   STM   |  0x1A  |   SSN   |  MTU  | MTC |  MBW   |  ATM   |  RW*  | PUBKEY |  NONCE  |   MAC  |
 
-^* encrypted^
+<sup>* encrypted</sup>
 
 ##### SECDAT (0x1D)
 
@@ -423,7 +423,7 @@ Secure packets are:
 |      Bits |  31..0  |  7..0  | 15..0 |       |   63..0   |            |
 |     Field |   STM   |  0x1D  |  RW*  | MSGS* |   NONCE   |     MAC    |
 
-^* encrypted^
+<sup>* encrypted</sup>
 
 ##### SECRST (0x1F)
 
@@ -852,7 +852,7 @@ user applicaton is expected to push into the link (see [Normal operating conditi
 ##### Comparing unsigned n-bit sequence numbers
 
 Given two unsigned n-bit sequence numbers (*s*, *t*) we say *s* < *t* if 0 < (*t* - *s*) < 2<sup>n-1</sup>, computed in unsigned n-bit arithmetic. This means
-that if *s* is within a distance from *t* (in modulo 2^n^) that is greater than or equal to 2^n-1^ we must assume it's from a previous "window", thus lower 
+that if *s* is within a distance from *t* (in modulo 2<sup>n</sup>) that is greater than or equal to 2<sup>n-1</sup> we must assume it's from a previous "window", thus lower 
 than *t* in respect to order.
 
 
@@ -1300,7 +1300,7 @@ Finally, a misbehaving sender that transmits messages without observing the sequ
 whole sequence number space - of messages to arrive later than some message m[k][i] for its `SEQ` to overlap with some window[k-2] message m[k-2][i] 
 and possibly replace it in error.
 
-A misbehaving sender that does not honour the monotonic increasing modulo 2^16^ requirement of sequence numbers is out of scope.
+A misbehaving sender that does not honour the monotonic increasing modulo 2<sup>16</sup> requirement of sequence numbers is out of scope.
 
 
 ### Fragmentation

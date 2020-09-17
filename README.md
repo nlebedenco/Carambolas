@@ -292,16 +292,12 @@ Note that there are a few caveats when using Clumsy with the loopback interface.
 
 ## Support this project
 
-Donations are most welcome and will help further development of this project.
-
-[![PayPal](https://raw.githubusercontent.com/Rageware/Shields/master/paypal.svg)](https://www.paypal.me/nlebedenco) 
-[![Bountysource](https://raw.githubusercontent.com/Rageware/Shields/master/bountysource.svg)](https://salt.bountysource.com/checkout/amount?team=nlebedenco) 
-
-
-I'm always open to contributions too, either in the form of bug reports, bug fixes (even better!) or improved test coverage. 
+I'm always open to contributions, either in the form of bug reports, bug fixes (even better!) or improved test coverage. 
 
 Feature requests are welcome but may be kept in a backlog depending on how extensive, feasible or desirable they are. If a feature request is too complex
 it may depend on sponsorship as I have limited resources (time and money) to dedicate.
+
+If you would like to support this project I may be interested in hearing from you, so reach out!
 
 
 ## FAQ
