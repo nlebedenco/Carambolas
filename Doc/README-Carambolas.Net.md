@@ -8,7 +8,7 @@ In a sense because there's no such thing as a definitve network solution. Behind
 boundaries and assumptions. I tried my best to make them clear both in the source code and in the documentation. 
 
 This is not a formal research project so although I seek to back design choices with sound arguments and I may sometimes cite open standards or someone else's 
-research, no effort is made to formally prove hypotheses beyond an intuitive explanation.
+research, no effort was made to formally prove hypotheses beyond an intuitive explanation.
 
 
 ## Introduction
