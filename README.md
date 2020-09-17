@@ -2,7 +2,7 @@
 
 Carambolas is an ever evolving general purpose support library comprised of multiple [**.NET Standard 2.0**](https://github.com/dotnet/standard/blob/master/docs/versions/netstandard2.0.md)
 assemblies. In particular, <ins>it features a custom multi-channel reliable UDP protocol implementation intended for low latency/low [bandwidth-delay product](#what-is-the-bandwidth-delay-product)
-network applications</ins>.
+network applications with soft real-time constraints</ins>.
 
 The first release is a minimal core with a fully functional network module. This repository is structured around a single solution because I plan to expand 
 by adding new modules in the future.

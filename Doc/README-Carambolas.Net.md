@@ -13,9 +13,9 @@ research, no effort was made to formally prove hypotheses beyond an intuitive ex
 
 ## Introduction
 
-Carambolas.Net is a reliable UDP networking protocol implemented in C# for user applications that prioritize latency minimization and only require a small 
-bandwidth-delay product (of one or two orders of mangnitude), i.e. rapid exchange of small payloads (64KB or less). Examples include simulations, multiplayer 
-video games and sensor networks. 
+Carambolas.Net is a reliable UDP networking protocol implemented in C# for user applications with soft real-time constraints that prioritize latency minimization 
+and only require a small bandwidth-delay product (of one or two orders of mangnitude), i.e. rapid exchange of small payloads (64KB or less). Examples include 
+simulations, multiplayer video games and sensor networks. 
 
 
 ## Main features 
