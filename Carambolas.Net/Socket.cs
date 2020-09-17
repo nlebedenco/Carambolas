@@ -51,6 +51,13 @@ namespace Carambolas.Net.Sockets
         public Socket(in IPEndPoint endPoint) : this(in endPoint, in Settings.Default, Log.Default) { }
         public Socket(in IPEndPoint endPoint, in Settings settings) : this(in endPoint, in settings, Log.Default) { }
 
+#if USE_NATIVE_SOCKET
+        /// <summary>
+        /// Zero if a log message has not been issued yet indicating that the native library is in use.
+        /// </summary>
+        private static int logged;
+#endif
+
         public Socket(in IPEndPoint endPoint, ILog log) : this(in endPoint, in Settings.Default, log) { }        
         public Socket(in IPEndPoint endPoint, in Settings settings, ILog log)
         {
@@ -66,8 +73,8 @@ namespace Carambolas.Net.Sockets
             try
             {
                 socket = new Native.Socket(addressFamily);
-
-                log.Info($"Using {typeof(Native.Socket).FullName}");
+                if (logged == 0 && Interlocked.Exchange(ref logged, 1) == 0)
+                    log.Info($"Using {typeof(Native.Socket).FullName}");
             }
             catch (DllNotFoundException)
             {
