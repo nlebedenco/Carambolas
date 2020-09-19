@@ -3,12 +3,14 @@
 
 ## Disclaimer
 
-This library and its associated protocol definitions are not meant to be ultra-fast, ultra-lightweight, better than *xyz* or any other superlative. 
-In a sense because there's no such thing as a definitve network solution. Behind any advertised set of features, there's always a list of pre-conditions, 
-boundaries and assumptions. I tried my best to make them clear both in the source code and in the documentation. 
+This library and its associated protocol definitions are not meant to be ultra-fast, ultra-lightweight, better than *xyz* or any other superlative. Eventhough
+performance and a minimum protocol overhead happen to be two major design goals, they're not absolute and several examples of compromises exist throughout the 
+source code. In general, such cases should be highlighted in the documentation or properly commented in the source code. Keep in mind, there's no such thing as
+a definitve network solution. Behind any advertised set of features, there's always a list of pre-conditions, boundaries and assumptions which may or may not 
+suit someone's needs. I tried my best to make those crystal clear. 
 
-This is not a formal research project so although I seek to back design choices with sound arguments and I may sometimes cite open standards or someone else's 
-research, no effort was made to formally prove hypotheses beyond an intuitive explanation.
+This is not a formal research project, either, so despite my best attempts to back design decisions with sound arguments and citations (of open standards or 
+published papers), no effort has been made to formally prove hypotheses beyond an intuitive explanation.
 
 
 ## Introduction
@@ -144,7 +146,7 @@ The IPv4 RFC states that `TTL` is measured in seconds but acknowledges this is a
 take to process a packet and most will do so in far less than a second. Based on this assumption, in theory the maximum time a packet can exist in the network 
 is aproximately 4.25 min (255 seconds). 
 
-[RFC2460 (IPv6)](#https://www.ietf.org/rfc/rfc2460.txt) is more conservative:
+[RFC 2460 (IPv6)](#https://www.ietf.org/rfc/rfc2460.txt) is more conservative:
 
 >Unlike IPv4, IPv6 nodes are not required to enforce maximum packet lifetime.  That is the reason the IPv4 "Time to Live" field was
 >renamed "Hop Limit" in IPv6.  In practice, very few, if any, IPv4 implementations conform to the requirement that they limit packet
@@ -506,7 +508,7 @@ Messages are encoded in the same way regardless of the packet being secure or in
 
 ### Connection
 
-#### 3-Way Handshake {#three-way-handshake}
+#### Three-Way Handshake
 
 
                     A                                         B
@@ -661,7 +663,10 @@ In practice however, TCP connection closing suffers from a few drawbacks:
 5) Because of (2) and because of other real-life scenarios such as half-open connections, user applications cannot avoid having to anticipate and handle aborted 
    connections even when (4) is not an issue;
 
-Taking all into consideration, **Carambolas.Net does not try to define what a "graceful" disconnection is, leaving that to the user application.**
+Taking all this into consideration, 
+
+**Carambolas.Net does not try to define what a "graceful" disconnection is, leaving that to the user application.**
+
 Therefore, no disconnection handshake is specified. Firstly, a host may become unresponsive at any time without notice so any user application must already be 
 capable of handling abrupt disconnections due to timeouts. And secondly, user applications may require wildly different disconnection steps, which can be more 
 efficiently implemented using custom payloads and any of the available [QoS levels](#qos). For example, a user application designed to exchange files may require
@@ -825,7 +830,6 @@ apart. Therefore we may redefine *s<sub>a</sub>* < *s<sub>b</sub>* to:
 This delta of 128 positions is called a *window* and can be generalized to any positive range so that for R = [0, r-1], r > 1 there is a maximum window 
 W<sub>R</sub> = floor(r / 2)
 
-{#16-bit-sequence-numbers}
 By employing an unsigned 16-bit sequence number, for instance, a receiver must be able to order up to 32768 messages with an extra overhead of only 2 bytes per
 message. A design decision that not only affects the packet structure but also the amount of memory a receiver may have to allocate (consider a worst case 
 scenario in which all messages arrive in the reverse order!)
@@ -1131,7 +1135,7 @@ for the current state of the connection - i.e. sequence numbers that are within 
 indistinguishable from legitimate ones at the receiver. 
 
 Both TCP and SCTP employ strategies to address (1) and (2). TCP imposes a time-wait to reduce the probability of (1). It also uses 32-bit sequence numbers with
-varying initial values so that according to [RFC793](https://tools.ietf.org/html/rfc793#page-27):
+varying initial values so that according to [RFC 793](https://tools.ietf.org/html/rfc793#page-27):
  
 >When new connections are created, an initial sequence number (ISN) generator is employed which selects a new 32 bit ISN. The generator is bound to a (possibly 
 >fictitious) 32 bit clock whose low order bit is incremented roughly every 4 microseconds. Thus, the ISN cycles approximately every 4.55 hours. Since we assume 
@@ -1143,9 +1147,8 @@ bandwidth links. Thus, in order to address (2), a receiver must employ a [specia
 timestamps. SCTP packets may include both a 32-bit timestamp and a random 32-bit Tag Value used to correlate a packet to its connection (so it can avoid imposing 
 a time-wait). 
 
-{#source-time}
 Carambolas.Net requires a solution similar to that of SCTP in order to avoid the need for a global time-wait (which would be unfeasable for a user-space 
-implementation anyway). Packets must be transmitted with a source timestamp (`STM`) and a session identifier (`SSN`). The value of `STM` must be assigned on 
+implementation anyway). Packets are be transmitted with a source timestamp (`STM`) and a session identifier (`SSN`). The value of `STM` must be assigned on 
 packet transmission from the host's internal [time source](#time-source). 
 
 There should be no need to worry about the possibility of two packets bearing the same `STM` value. An `STM` is not a unique id. In fact, it's perfectly valid 
@@ -1349,7 +1352,7 @@ And depending on the answers, not only will a fragment message look differently 
   to expect; 
   * Knowing the complete segment length has the advantage of allowing the receiver to pre-allocate all the memory needed to reconstruct the packet;
 * Fragments must be ordered to form a complete segment; 
-  * Each fragment message must have some kind of sequence number of its own such as a fragment index or rely on the message sequence number [as used by data segments](#16-bit-sequence-numbers); 
+  * Each fragment message must have some kind of sequence number of its own such as a fragment index or rely on the message sequence number [as used by data segments](#sequence-numbers); 
   * Although the idea of relying on the message sequence number to order fragments may seem attractive (specially as it does not incur extra overhead) it's 
     proved to be problematic when messages arrive out of order. Consider the case of a transmitted subsequence of messages *m<sub>0</sub>, m<sub>1</sub>, m<sub>2</sub>, m<sub>3</sub>, ... m<sub>9</sub>*. 
     At a given point in time, messages *m<sub>4</sub>* to *m<sub>7</sub>* arrive at the receiver ahead of *m<sub>0</sub>* to *m<sub>3</sub>* while *m<sub>8</sub>* to *m<sub>9</sub>* 
@@ -1402,24 +1405,68 @@ may opt to buffer fragments directly on disk and save memory since the final goa
 
 ### QoS
 
-#### Reliable
+Messages can be transmitted according to one of two possible delivery modes supported by the protocol: Reliable and Unreliable.
 
-#### Semireliable
+**Reliable** messages are sequenced, acknowledged and retransmitted (in case an acknowledgement is not received in time). A receiver must deliver messages in 
+order to the user application and reliable messages must always be delivered. One or more missing reliable messages in the sequence may cause delivery to stall 
+and force the receiver to buffer further messages until the missing one(s) arrive(s). `DupACK` and `DupGAP` messages are thus used by the receiver to signal
+there are relevant messages missing. 
 
-#### Unreliable
+**Unreliable** messages are sequenced, acknowledged (for flow control) but not retransmitted. If an acknowledgement is not received in time, the sender will
+simply deem the message lost. Upon arrival it must be either delivered immediately or dropped, unless the pipeline is stalled by a prior reliable message that 
+is missing, in which case all further messages regardless of QoS have to be buffered. Unreliable messages never produce delivery stalls because in face of out 
+of order arrival, a receiver must simply give up on those that have not yet arrived, advancing its next expected sequence number and sending back a 
+cumulative `ACK`. This will make the sender believe that all messages have arrived which may potentially cause a distortion to the bytes-in-flight estimation. 
+However this situation should only arise if:
 
-#### Volatile
+1) prior messages were indeed lost but the network link has recovered to a stable state already since at least one packet that is more up to date has made it through;
+2) prior messages took a different longer path before a new path flow was established since at least one packet that is more up to date has made it through. Prior 
+messages may still be in flight consuming network resources but the receiver has now way of knowing and neither does the sender;
+
+In both cases, there's nothing sender and receiver can do except to assume the network had a temporary congestion that resolved itself and the new flow is akin of 
+the current estimated link capacity. Following a principle of locality, the new path should also be the one taken by next transmitted messages. If this assumption 
+is wrong, further packets will fail to arrive and congestion control will take care of reducing the send window to alleviate the load on the link.
+
+The sender implementation also provides two additional variations of unreliable delivery that do not require adaptation of the protocol: Semireliable and Volatile. 
+
+**Semireliable** messages are flagged as unreliable at the protocol level and yet retransmitted by the sender until acknowledged. These messages are flagged as 
+unreliable so the receiver may opt to give up on them and cause retransmission to cease as soon as a more up-to-date message arrives (either reliable or unreliable).
+This is useful for applications that send unreliable data in relatively large time intervals compared to the `RTT` but may still sometimes produce small bursts of
+unreliable messages. Also large user data segments that produce semireliable fragments are less likely to be dropped because fragments may be retransmitted 
+individually while the whole segment remains unreliable complying to the service contract, in other words the receiver will still give up on all the fragments and 
+retransmissions will effectively cease as soon as a more up-to-date segment or fragment of another segment arrives and is acknowledged. 
+
+**Volatile** messages are normal unreliable messages that are attributed an expiration time while still in the sender's output queue. If they don't get 
+transmitted within this time limit there's no point in transmitting at all. This mode depends exclusively on the sender and is useful to avoid wasting bandwidth 
+with applications that transmit state updates at regular intervals. By definition, volatile messages can never be reliable as there's not even a guarantee that 
+they are going to be transmitted at all. Messages dropped by the sender are not assigned a sequence number so flow control is never affected. All fragments of a 
+user data segment set to expire have the same expirarion time. Once a fragment is discarded so are all the remaining ones. Note that a volatile fragmented user 
+segment may be dropped if it expires in the middle of the transmission process as well. That is, some of its fragments would have been transmitted in previous iterations 
+but the remaining ones have just expired.
+
+
+***Carambolas.Net does not support out-of-band messages. All messages are sequenced.***
+
+This is a consequence of the fact that a message identifier is required for acknowledgments, retransmissions and consequently flow control. Also, fragmentation 
+of unsequenced messages either would have to be forbidden (limiting unsequenced messages to one `MSS`) or require a particular solution. In this case, only one 
+(the latest) unsequenced fragmented message can in fact be reassembled in order to avoid buffer bloating at the receiver with potentially several unrelated 
+fragments. After all, an unreliable framented message may never be completed if one of its fragments become lost in transit. Note that the notion of "latest" 
+implies some sort of sequencing of unsequenced messages which sounds very funny. Message validation would also become a challenge as late messages cannot be 
+associated with any specific sequence window. 
+
+And most of all, in terms of quality of service, unsequenced messages cannot be distinguished from sequenced unreliable messages by the user application. 
+
 
 ### Retransmissions
 
-#### Timeout Retransmissions
+#### Acknowledgement Timeout (`ATO`)
 
 #### Fast Retransmissions
 
 #### Exponential Backoff
 
 
-The acknowledgement timeout `ATO` mimics TCP's *RTO* as described by [RFC6298](https://tools.ietf.org/html/rfc6298) thus we support a binary exponential backoff 
+The acknowledgement timeout `ATO` mimics TCP's *RTO* as described in [RFC 6298](https://tools.ietf.org/html/rfc6298) thus we support a binary exponential backoff 
 the same way for retransmissions as proposed by Jacobson.
 
 A side effect of this type of backoff, though, is that depending on the values of `SRTT` and `RTTVar`, the connection timeout `CTO` becomes dominant and 

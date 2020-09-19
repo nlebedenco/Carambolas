@@ -397,6 +397,10 @@ messages or complete packets.
 
 All the source code and any binaries produced to be deployed alongside a user application are licensed under an [MIT license](LICENSE).
 
+*Carambolas.Security.Criptography.Crc32c* was based on [Crc32.Net by force](https://github.com/force-net/Crc32.NET) under its [MIT license](LICENSE-Crc32.Net).
+
+*Carambolas.Security.Criptography.NaCl* was based and expanded on [NaCl.Core by David De Smet](https://github.com/daviddesmet/NaCl.Core) under its [MIT license](LICENSE-NaCl.Core).
+
 The [protocol dissector](Tools/Wireshark/plugins/carambolas.lua) written in lua for [Wireshark](https://www.wireshark.org) is available under a 
 [GPLv3 license](Tools/Wireshark/plugins/LICENSE). It's only supposed to be used as an input file for Wireshark in order to extend it's capabilities and allow 
 it to display more information about UDP packets formatted according to the carambolas network protocol. Therefore it's completely separate and does not interact, 

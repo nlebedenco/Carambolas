@@ -964,6 +964,7 @@ namespace Carambolas.Net
                                         packet.UnsafeWrite(transmit.Encoded, 0, length);
                                         packet.UnsafeOverwrite(seq, position);
                                         packet.UnsafeOverwrite(channel.TX.NextReliableSequenceNumber, position + 2);
+                                        // Unreliable messages are not retransmitted so the encoded message may now be discarded.
                                         transmit.Encoded.Dispose();
                                         transmit.Encoded = null;
                                         break;
