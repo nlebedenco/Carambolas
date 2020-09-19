@@ -663,12 +663,12 @@ In practice however, TCP connection closing suffers from a few drawbacks:
 5) Because of (2) and because of other real-life scenarios such as half-open connections, user applications cannot avoid having to anticipate and handle aborted 
    connections even when (4) is not an issue;
 
-Taking all this into consideration, 
+Taking all this into account, 
 
 **Carambolas.Net does not try to define what a "graceful" disconnection is, leaving that to the user application.**
 
-Therefore, no disconnection handshake is specified. Firstly, a host may become unresponsive at any time without notice so any user application must already be 
-capable of handling abrupt disconnections due to timeouts. And secondly, user applications may require wildly different disconnection steps, which can be more 
+Therefore, no disconnection handshake is specified. Firstly, a host may become unresponsive at any time without warning so any user application must already be 
+capable of handling sudden disconnections due to timeouts. And secondly, user applications may require wildly different disconnection steps, which can be more 
 efficiently implemented using custom payloads and any of the available [QoS levels](#qos). For example, a user application designed to exchange files may require
 that a sender does not actively disconnect until a receiver has confirmed that the file has been completely received, but may not care about active disconnections 
 happening while exchanging other types of payloads. This sort of requirement still depends on a cooperative sender but requires knowledge about the message payloads 
@@ -690,7 +690,7 @@ Make sure to refer to [Encryption](#encryption) and [Vulnerabilities](#vulnerabi
 
 #### State Machine
 
-[Peer](#peer) is the term used to refer to the remote host of a connection. Internally a peer may be in one of 4 private states of protocol control:
+Peer is the term used to refer to the remote host of a connection. Internally a peer may be in one of 4 private states of protocol control:
 
 * Disconnected
 * Connecting
@@ -1405,17 +1405,21 @@ may opt to buffer fragments directly on disk and save memory since the final goa
 
 ### QoS
 
-Messages can be transmitted according to one of two possible delivery modes supported by the protocol: Reliable and Unreliable.
+***Carambolas.Net resorts to a form of eventual consistency and reliability is defined in terms of 
+["at least once delivery"](https://bravenewgeek.com/you-cannot-have-exactly-once-delivery/), that is at least one copy of the message is guaranteed to be 
+delivered to the destination or the communication is compromised and must be interrupted.***
 
-**Reliable** messages are sequenced, acknowledged and retransmitted (in case an acknowledgement is not received in time). A receiver must deliver messages in 
-order to the user application and reliable messages must always be delivered. One or more missing reliable messages in the sequence may cause delivery to stall 
-and force the receiver to buffer further messages until the missing one(s) arrive(s). `DupACK` and `DupGAP` messages are thus used by the receiver to signal
-there are relevant messages missing. 
+Messages can thus be transmitted according to one of two possible delivery modes supported by the protocol: *Reliable* and *Unreliable*.
 
-**Unreliable** messages are sequenced, acknowledged (for flow control) but not retransmitted. If an acknowledgement is not received in time, the sender will
-simply deem the message lost. Upon arrival it must be either delivered immediately or dropped, unless the pipeline is stalled by a prior reliable message that 
-is missing, in which case all further messages regardless of QoS have to be buffered. Unreliable messages never produce delivery stalls because in face of out 
-of order arrival, a receiver must simply give up on those that have not yet arrived, advancing its next expected sequence number and sending back a 
+**Reliable** messages are sequenced, acknowledged and eventually retransmitted in case an acknowledgement is not received in time. A receiver must deliver 
+messages in order to the user application and reliable messages must always be delivered so one or more missing reliable messages in the sequence may cause 
+delivery to stall and force the receiver to buffer further messages until the missing one(s) arrive(s). `GAP`, `DupACK` and `DupGAP` messages are then 
+used by the receiver to signal when there are relevant messages missing. 
+
+**Unreliable** messages are sequenced, acknowledged (for flow control) but not required to be retransmitted. If an acknowledgement is not received in time, 
+the sender may simply deem the message lost. Upon arrival it must be either delivered immediately or dropped, unless the pipeline is stalled by a prior reliable
+message that is missing, in which case all further messages regardless of QoS have to be buffered. Unreliable messages never produce delivery stalls because in
+face of out of order arrival, a receiver must simply give up on those that have not yet arrived, advancing its next expected sequence number and sending back a 
 cumulative `ACK`. This will make the sender believe that all messages have arrived which may potentially cause a distortion to the bytes-in-flight estimation. 
 However this situation should only arise if:
 
@@ -1448,20 +1452,25 @@ but the remaining ones have just expired.
 ***Carambolas.Net does not support out-of-band messages. All messages are sequenced.***
 
 This is a consequence of the fact that a message identifier is required for acknowledgments, retransmissions and consequently flow control. Also, fragmentation 
-of unsequenced messages either would have to be forbidden (limiting unsequenced messages to one `MSS`) or require a particular solution. In this case, only one 
-(the latest) unsequenced fragmented message can in fact be reassembled in order to avoid buffer bloating at the receiver with potentially several unrelated 
+of unsequenced messages either would have to be prevented (limiting unsequenced messages to one `MSS`) or require a particular solution. In the latter case, only 
+one (the latest) unsequenced fragmented message can in fact be reassembled in order to avoid buffer bloating at the receiver with potentially several unrelated 
 fragments. After all, an unreliable framented message may never be completed if one of its fragments become lost in transit. Note that the notion of "latest" 
 implies some sort of sequencing of unsequenced messages which sounds very funny. Message validation would also become a challenge as late messages cannot be 
-associated with any specific sequence window. 
-
-And most of all, in terms of quality of service, unsequenced messages cannot be distinguished from sequenced unreliable messages by the user application. 
+associated with any specific sequence window cycle and fragments from different user data segments may arrive interchangebly. And after all, in terms of quality 
+of service, unsequenced messages are indistinguishable from sequenced unreliable messages by a user application. 
 
 
 ### Retransmissions
 
+TODO
+
 #### Acknowledgement Timeout (`ATO`)
 
+TODO
+
 #### Fast Retransmissions
+
+TODO
 
 #### Exponential Backoff
 
@@ -1534,19 +1543,27 @@ In the best network conditions `ATO`<sub>0</sub> = `ATO`<sub>min</sub> = 200ms, 
 
 ### Flow control
 
+TODO
+
 #### Remote Window (aka Receive Window)
+
+TODO
 
 #### Congestion Window
 
+TODO
+
 #### Bandwidth Window
 
-
+TODO
 
 ### Channels
 
+TODO
+
 ### Encryption
 
-
+TODO
 
 ## Implementation details
 
@@ -1589,8 +1606,19 @@ Known native library issues:
 ### Memory management
 
 
-## Vulnerabilities
 
+### Transmission Backlog
+
+Arriving messages are subject to the receive buffer space pre-allocated by the socket implementation and there's nothing a receiver can do once this buffer is full.
+Departing messages, however, may have to remain in a temporary output queue managed by the sender if the protocol flow control imposes a transmission rate that is 
+less than the user application's output rate, even if for a short timespan due to output bursts (temporary peaks in the user application's output rate). Therefore,
+every Peer object tracks its transmission backlog, which is the number of bytes in the transmit queue (across all channels), and defines a maximum transmission backlog
+above which further send operations will throw System.IO.InternalBufferOverflowException. A user application must consider carefully what would be a reasonable 
+MaxTransmissionBacklog but also what to do in case this threshold is reached. Should it fail silently? Should it close the connection? Should it try again after a 
+while? How many times? These questions cannot be universally addressed by the protocol or the underlying implementation so they're left for the user application.
+
+
+## Vulnerabilities
 
 ### Common to all session types
 
@@ -1606,7 +1634,7 @@ forcing the target to disconnect.
 
 An attacker may initiate a normal connection and, taking advantage of the fact that a host's receive buffer is shared between all connected peers, start to 
 aggressively transmit large messages disregarding all flow control indicators. If the attacker's upstream bandwidth is large enough, it may succeed in filling 
-up the target's socket receive buffer, blocking packets from all other peers and force them to disconnect.
+up the target's socket receive buffer, blocking packets from all other peers and forcing them all to disconnect.
 
 ##### Malicious Packet Corruption
 
@@ -1638,11 +1666,12 @@ An attacker possessing knowledge about the protocol and the next sequence number
 with malicious messages that once received will cause the target to drop further legitimate message(s) transmitted by the sender with those same sequence numbers 
 while still producing a cumulative ACK that masquarades the situation from the sender.
 
+
 ### Secure Sessions
 
 ##### Private key stored in unprotected memory
 
-A [Host](#host) must have access to a private key (at least while open) in order to be able to compute the shared key required for incoming secure connection
+A Host object must have access to a private key (at least while open) in order to be able to compute the shared key required for incoming secure connection
 requests. .NET Standard 2.0 does not provide a portable way of specifying protected memory regions to store sensitive information such as secret keys and the 
 alternative of repeatedly reading an encrypted key file from disk is inpractical. While .NET offers slightly better security against ordinary buffer overflow 
 attacks, a private key will be in the clear if an attacker has access to the machine memory directly or indirectly (through memory dumps, for instance). In order 
