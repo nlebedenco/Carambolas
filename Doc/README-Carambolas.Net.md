@@ -311,11 +311,11 @@ A packet is any datagram with a valid size (<= `MTU`) formatted according to the
        CON ::= SSN(4) MTU(2) MTC(1) MBW(4) CRC(4)
     SECCON ::= SSN(4) MTU(2) MTC(1) MBW(4) PUBKEY(32) CRC(4)
        ACC ::= SSN(4) MTU(2) MTC(1) MBW(4) ATM(4) RW(2) ASSN(4) CRC(4)
-    SECACC ::= SSN(4) MTU(2) MTC(1) MBW(4) ATM(4) {RW(2)} PUBKEY(32) NONCE(8) MAC(16)
+    SECACC ::= SSN(4) MTU(2) MTC(1) MBW(4) ATM(4) {RW(2)} PUBKEY(32) N64(8) MAC(16)
        DAT ::= SSN(4) RW(2) MSGS CRC(4)
-    SECDAT ::= {RW(2) MSGS} NONCE(8) MAC(16)
+    SECDAT ::= {RW(2) MSGS} N64(8) MAC(16)
        RST ::= SSN(4) CRC(4)
-    SECRST ::= PUBKEY(32) NONCE(8) MAC(16)
+    SECRST ::= PUBKEY(32) N64(8) MAC(16)
     
       MSGS ::= MSG [MSG...]
        MSG ::= MSGFLAGS(1) <ACKACC | ACK | DUPACK | GAP | DUPGAP | SEG | FRAG>
@@ -341,9 +341,10 @@ Curly brackets denote an encrypted group.
 - `RW`: Receive window at the source. Maximum number of user data bytes that can be in flight for this peer; 
 - `ASSN`: Acknowledged session number used to match the connection request and establish the session pair;
 - `DSN`: Destination session number to reset;
-- `CRC32C`: Computed CRC32-C (castangnoli);
+- `CRC32C`: Computed CRC32-C (castangnoli) - uses the iSCSI polynomial as in [RFC 3720](https://tools.ietf.org/html/rfc3720#section-12.1). The polynomial was 
+   introduced by G. Castagnoli, S. Braeuer and M. Herrmann;
 - `PUBKEY`: Source public key used in the secure session. See [Encryption](#encryption);
-- `NONCE`: Source nonce used to encrypt/sign. See [Encryption](#encryption);
+- `N64`: Source nonce used to encrypt/sign. See [Encryption](#encryption);
 - `MAC`: Authentication code. See [Encryption](#encryption);
 - `MFLAGS`: Message type and options including channel (`CH`) when applicable. See [Message Flags](#message-flags);
 - `ANEXT`: Next sequence number expected by the source;
@@ -362,17 +363,17 @@ There are 4 types of packets in both secure and insecure forms.
 
 Insecure packets are:
 
-- [`CON`](#):
-- [`ACC`](#):
-- [`DAT`](#):
-- [`RST`](#):
+- [`CON (0x0C)`](#con-0x0c): Connection request
+- [`ACC (0x0A)`](#acc-0x0a): Accepting connection reply
+- [`DAT (0x0D)`](#dat-0x0d): Data packet
+- [`RST (0x0F)`](#rst-0x0f): Connection reset indication
 
 Secure packets are:
 
-- [`SECCON`](#):
-- [`SECACC`](#):
-- [`SECDAT`](#):
-- [`SECRST`](#):
+- [`SECCON (0x1C)`](#seccon-0x1c): Connection request
+- [`SECACC (0x1A)`](#secacc-0x1a): Accepting connection reply
+- [`SECDAT (0x1D)`](#secdat-0x1d): Data packet
+- [`SECRST (0x1F)`](#secrst-0x1f): Connection reset indication
 
 ##### CON (0x0C)
 
@@ -381,12 +382,45 @@ Secure packets are:
 |      Bits |  31..0  |  7..0  |  31..0  | 15..0 |7..0 | 31..0  |  0..31  | 
 |     Field |   STM   |  0x0C  |   SSN   |  MTU  | MTC |  MBW   | CRC32C  |
 
+
+Initiates a connection. 
+
+This and `SECCON` are the only packets a host can receive from an unknown peer. It must be acknowledged by an `ACC` conforming to the 
+[three-way-handshake](#three-way-handshake) and will be retransmitted until either an `ACC` or `RST` is received or a timeout occurs.
+
+A host may silently drop `CON` packets that contain either an invalid `MTU` or `MTC`.
+
+* `SSN` must be initialized as described in [Session Identifiers](#session-identifiers);
+* 345 <= `MTU` <= 65535 bytes;
+* 0 <= `MTC` <= 15 channels;
+* `MBW`, in bits/s, affects flow control as described in [Bandwidth window](#bandwidth-window). In practice this field is clamped between (`MSS` / 0.001) * 8 
+  and 524280000 (= 65535 / 0.001 * 8) because a sender must be allowed to transmit at least 1 x `MSS` per `RTT` and cannot have more than 65535 bytes in flight per `RTT` >= 0.001s;
+
+
 ##### ACC (0x0A)
 
 |      Byte |   0..3  |    4   |   5..8  |  9 10 |  11 | 12..15 | 16..19 | 20 21 | 22..25 | 26..29 |
 |----------:|:-------:|:------:|:-------:|:-----:|:---:|:------:|:------:|:-----:|:------:|:------:|
 |      Bits |  31..0  |  7..0  |  31..0  | 15..0 |7..0 | 31..0  | 31..0  | 15..0 | 31..0  |  0..31 |
 |     Field |   STM   |  0x0A  |   SSN   |  MTU  | MTC |  MBW   |  ATM   |  RW   |  ASSN  | CRC32C |
+
+
+Serves to acknowledge a `CON` and establish a connection. It must be acknowledged by an `ACKACC` in a `DAT` packet pconforming to the 
+[three-way-handshake](#three-way-handshake) and will be retransmitted until either an `ACKACC` or `RST` is received or a timeout occurs.
+
+A host may silently drop `ACC` packets that contain either an invalid `MTU` or `MTC`.
+
+* `SSN` must be initialized as described in [Session Identifiers](#session-identifiers);
+* 345 <= `MTU` <= 65535 bytes;
+* 0 <= `MTC` <= 15 channels;
+* `MBW`, in bits/s, affects flow control as described in [Bandwidth window](#bandwidth-window). In practice this field must be ignored if less than 
+  (`MSS` / 0.001) * 8  or greater than 524280000 (= 65535 / 0.001 * 8) because a sender must be allowed to transmit at least 1 x `MSS` per `RTT` but cannot
+  have more than 65535 bytes in flight at any time;
+* `ATM` contains the respective `CON` packet's `STM` and is used to initiate `RTT` estimation;
+* `RW` affects flow control as described in [Remote Window](#receive-window). A host is free to send any value between 0 and 65535 but in practice this field
+   must be ignored if less than 1 x `MSS` as this is the minimum amount of data any host is required to be able to buffer;
+* `ASSN` contains the respective `CON` packet's `SSN` and is used to detect old `ACC` duplicates (when there's a mismatch);
+
 
 ##### DAT (0x0D)
 
@@ -395,12 +429,29 @@ Secure packets are:
 |      Bits |  31..0  |  7..0  |  31..0  | 15..0 |       |   0..31  |
 |     Field |   STM   |  0x0D  |   SSN   |   RW  |  MSGS |  CRC32C  |
 
+`DAT` contains messages from multiple channels including `ACKACC`.
+
+* `SSN` must be the same value advertised in either `CON` or `ACC`;
+* `RW` affects flow control as described in [Remote Window](#receive-window). A host is free to send any value between 0 and 65535. In practice this field 
+   must be ignored if less than 1 x `MSS`, as this is the minimum amount of data any host is required to be able to buffer. Note that this field differs from
+   the advertised receive window in SCTP or TCP/IP as it does not indicate how much space is free in the receive buffer but the total size of the receive 
+   buffer currently reserved for the connection. In case of hosts connected to multiple peers this size may vary according to when other peers connect and 
+   disconnect. This is because implementations may not be able to change the receive buffer size of the underlying socket arbitrarily or after it's bound to a
+   local address so each peer will have its alloted share reduced as more connections are established. In any case, a sender does not have to react to increased 
+   or reduced values of `RW` beyond what is described in [Flow Control](#flow-control). 
+
 ##### RST (0x0F)
 
 |      Byte |   0..3  |    4   |   5..8  |  9..12 |  
 |----------:|:-------:|:------:|:-------:|:------:|
 |      Bits |  31..0  |  7..0  |  31..0  |  0..31 |
 |     Field |   STM   |  0x0F  |   DSN   | CRC32C |
+
+Used to indicate that a connection is permanently terminated conforming a minimum [disconnection](#disconnection) procedure. 
+
+* `DSN` is the session number of the destination so that a `RST` packet may be produced even if the connection has already been terminated by the source. For 
+  example, a `RST` may be sent in reply to a `DAT` packet in order to terminate a half-open connection.
+
 
 ##### SECCON (0x1C)
 
@@ -409,21 +460,41 @@ Secure packets are:
 |      Bits |  31..0  |  7..0  |  31..0  | 15..0 |7..0 | 31..0  |        |  0..31 | 
 |     Field |   STM   |  0x1C  |   SSN   |  MTU  | MTC |  MBW   | PUBKEY | CRC32C |
 
+Initiates a secure connection. The packet itself is not secure since no secure shared key could have been established yet. 
+
+This and `CON` are the only packets a host can receive from an unknown peer. It must be acknowledged by a `SECACC` conforming to the 
+[three-way-handshake](#three-way-handshake) and will be retransmitted until either a `SECACC` or `SECRST` is received or a timeout occurs.
+
+ * `PUBKEY` must be part of a random key pair generated for this connection.
+
 ##### SECACC (0x1A)
 
 |      Byte |   0..3  |    4   |   5..8  |  9 10 |  11 | 12..15 | 16..19 | 20 21 | 22..53 |  54..61 | 62..77 |
 |----------:|:-------:|:------:|:-------:|:-----:|:---:|:------:|:------:|:-----:|:------:|:-------:|:------:|
 |      Bits |  31..0  |  7..0  |  31..0  | 15..0 |7..0 | 31..0  | 31..0  | 15..0 |        |  63..0  |        |
-|     Field |   STM   |  0x1A  |   SSN   |  MTU  | MTC |  MBW   |  ATM   |  RW*  | PUBKEY |  NONCE  |   MAC  |
+|     Field |   STM   |  0x1A  |   SSN   |  MTU  | MTC |  MBW   |  ATM   |  RW*  | PUBKEY |   N64   |   MAC  |
 
 <sup>* encrypted</sup>
+
+Serves to acknowledge a `SECCON` and establish a secure connection. It must be acknowledged by an `ACKACC` in a `SECDAT` packet conforming to the 
+[three-way-handshake](#three-way-handshake) and will be retransmitted until either an `ACKACC` or `SECRST` is received or a timeout occurs.
+
+This packet and all subsequent packets are secured by a secret shared key only valid for the session.
+
+* `PUBKEY` must be used by the destination to compute the secret shared key. 
+
+* `N64` is a 64-bit strictly increasing counter. A Carambolas.Net.Host concatenates `STM` and `N64` to produce a `NONCE` = (`STM` << 64) | `N64` which is then 
+  used to validate `MAC` and decrypt `RW`. Refer to [Encryption](#encryption) for more details.
+
+* A Carambolas.Net.Host may be configured to validate the remote key in which case it will reject a `SECACC` with any other `PUBKEY` than the pre-configured one.
+
 
 ##### SECDAT (0x1D)
 
 |      Byte |   0..3  |    4   |  5 6  |  7..N |  N+1..N+8 | N+17..N+24 | 
 |----------:|:-------:|:------:|:-----:|:-----:|:---------:|:----------:|
 |      Bits |  31..0  |  7..0  | 15..0 |       |   63..0   |            |
-|     Field |   STM   |  0x1D  |  RW*  | MSGS* |   NONCE   |     MAC    |
+|     Field |   STM   |  0x1D  |  RW*  | MSGS* |    N64    |     MAC    |
 
 <sup>* encrypted</sup>
 
@@ -432,7 +503,7 @@ Secure packets are:
 |      Byte |   0..3  |    4   |  5..37 |  38..45 | 46..61 |
 |----------:|:-------:|:------:|:------:|:-------:|:------:|
 |      Bits |  31..0  |  7..0  |        |  63..0  |        |
-|     Field |   STM   |  0x1F  | PUBKEY |  NONCE  |   MAC  |
+|     Field |   STM   |  0x1F  | PUBKEY |   N64   |   MAC  |
 
 #### Messages
 
