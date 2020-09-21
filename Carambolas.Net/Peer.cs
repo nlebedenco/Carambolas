@@ -233,7 +233,7 @@ namespace Carambolas.Net
         /// <summary>
         /// Number of bytes sent but not yet acknowledged.
         /// </summary>
-        public ushort BytesInFlight { get; private set; }        
+        public uint BytesInFlight { get; private set; }  // must be a uint because an eventual ping must consume 1 "virtual" and the previous 32767 unreliable messages may have taken up 65535 bytes already.
 
         /// <summary>
         /// Number of bytes in the transmit queue (across all channels).
@@ -907,7 +907,7 @@ namespace Carambolas.Net
                                 // Note that unreliable messages should not be dropped due to the lack of send window or sequence window space. 
                                 // Otherwise all datagrams larger than the send window are going to be ultimately lost (last fragments dropped). 
                                 // And if the user never sends a datagram smaller than the send window *several broken datagrams* will have to be
-                                // partially acknowledged and buffered by the receiver until the send window has grown large enough to accomodate a
+                                // partially acknowledged and buffered by the receiver until the send window has grown large enough to accommodate a
                                 // complete datagram. Large datagrams will also be wasted if they go across the upper edge of the sequence window. 
                                 // And even worst in some cases only the last fragment of a datagram (or a short succession of datagrams) would be 
                                 // transmitted because their first fragments would not fit in the send window (SendWindow - BytesInFlight < MaxFragmentSize)
@@ -1051,7 +1051,7 @@ namespace Carambolas.Net
                                 }
                                 else
                                 {
-                                    // Note that actual SEQ and RSN values must be assigned on transmit by the worker thread.
+                                    // Actual SEQ and RSN values must be assigned on transmit by the worker thread.
                                     // This is to avoid locking the generators as they would represent a shared resource between 
                                     // the user and worker threads. The worker thread may need to write update the generators to 
                                     // inject a ping in the output queue.
@@ -1129,7 +1129,7 @@ namespace Carambolas.Net
 
             encoder.UnsafeWrite(flags);
 
-            // Note that actual SEQ and RSN values must be assigned on transmit by the worker thread.
+            // Actual SEQ and RSN values must be assigned on transmit by the worker thread.
             // This is to avoid locking the generators as they would represent a shared resource between 
             // the user and worker threads. The worker thread may need to write update the generators to 
             // inject a ping in the output queue.

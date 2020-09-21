@@ -387,8 +387,8 @@ namespace Carambolas.Net
         /// On message m delivered:
         ///
         ///      ESEQ = m.SEQ + 1
-        ///      if (ESEQ - Protocol.Window.Size > LSEQ) 
-        ///          LSEQ = ESEQ - Protocol.Window.Size;
+        ///      if (ESEQ - Protocol.Ordinal.Window.Size > LSEQ) 
+        ///          LSEQ = ESEQ - Protocol.Ordinal.Window.Size;
         /// 
         /// Without loss of generality, imagine a sender that always sends a full window of messages. In this case, after a few seconds the receiver will observe
         /// something like the following pattern:
