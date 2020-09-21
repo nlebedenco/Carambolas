@@ -178,12 +178,15 @@ $ sudo apt-get install build-essential gcc-multilib g++-multilib cmake
 Dotnet core SDK 2.1 is required to compile assemblies and generate nuget packages.
 
 On Ubuntu run:
+
+```
 $ wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
 $ sudo dpkg -i packages-microsoft-prod.deb
 $ sudo apt-get update; \
   sudo apt-get install -y apt-transport-https && \
   sudo apt-get update && \
   sudo apt-get install -y dotnet-sdk-2.1
+```
 
 Use [nugetpack.sh](nugetpack.sh) to compile the native library and portable assemblies and create NuGet packages all in a single action. 
 
@@ -266,10 +269,10 @@ installed.
 
 ### Clumsy
 
-[Clumsy](https://jagt.github.io/clumsy/) is network packet capture program that runs in user-mode and is capable of intercepting packets to simulate degraded
+[Clumsy](https://jagt.github.io/clumsy/) is a network packet capture program that runs in user-mode and is capable of intercepting packets to simulate degraded
 network conditions in real-time.
 
-Add a preset filter line like the following in the config.txt file to affect hosts connected by the loopback interface on the same port used in integration tests (1313):
+Add a pre-set filter line like the following in the config.txt file to affect hosts connected by the loopback interface on the same port used in integration tests (1313):
 
 ```
 carambolas: udp and outbound and loopback and (udp.DstPort == 1313 or udp.SrcPort == 1313)
@@ -397,9 +400,13 @@ messages or complete packets.
 
 All the source code and any binaries produced to be deployed alongside a user application are licensed under an [MIT license](LICENSE).
 
-*Carambolas.Security.Criptography.Crc32c* was based on [Crc32.Net by force](https://github.com/force-net/Crc32.NET) under its [MIT license](LICENSE-Crc32.Net).
+*Carambolas.CommandLineArguments* was based on an [article by GriffonRL](http://www.codeproject.com/KB/recipes/command_line.aspx) with source code published 
+under an [MIT license](LICENSE-CommandLine) with additional ideas from another [article by Jake Ginnivan](http://jake.ginnivan.net/c-sharp-argument-parser/) 
+that expanded on the original source.
 
-*Carambolas.Security.Criptography.NaCl* was based and expanded on [NaCl.Core by David De Smet](https://github.com/daviddesmet/NaCl.Core) under its [MIT license](LICENSE-NaCl.Core).
+*Carambolas.Security.Criptography.Crc32c* was based on [Crc32.Net by force](https://github.com/force-net/Crc32.NET) under an [MIT license](LICENSE-Crc32.Net).
+
+*Carambolas.Security.Criptography.NaCl* was based and expanded on [NaCl.Core by David De Smet](https://github.com/daviddesmet/NaCl.Core) under an [MIT license](LICENSE-NaCl.Core).
 
 The [protocol dissector](Tools/Wireshark/plugins/carambolas.lua) written in lua for [Wireshark](https://www.wireshark.org) is available under a 
 [GPLv3 license](Tools/Wireshark/plugins/LICENSE). It's only supposed to be used as an input file for Wireshark in order to extend it's capabilities and allow 
