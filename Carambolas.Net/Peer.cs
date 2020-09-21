@@ -913,7 +913,7 @@ namespace Carambolas.Net
                                 // transmitted because their first fragments would not fit in the send window (SendWindow - BytesInFlight < MaxFragmentSize)
                                 // but the last fragment would. Only after the first complete datagram (or ping) arrives is when the receiver is 
                                 // able to discard all other partial datagrams previously buffered and deliver some data to the application.                                
-                                if ((SendWindow - BytesInFlight < transmit.Payload)
+                                if ((SendWindow - (int)BytesInFlight < transmit.Payload)
                                  || (channel.TX.NextSequenceNumber == channel.TX.Ack.Next + (Protocol.Ordinal.Window.Size - 1)))
                                     break;
 
