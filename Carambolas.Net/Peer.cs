@@ -901,8 +901,10 @@ namespace Carambolas.Net
                             {
                                 // If either the send window limit or the sequence window limit has been reached then stall (break to next channel).
                                 // Every data message in flight must be consuming at least 1 byte of the send window. In the worst case the number 
-                                // of messages in flight is going to be equal to Ordinal.Window.Size (Ordianal.Window.Size-1 messages containing a 
-                                // single byte of user data and 1 reliable ping message taking up 1 "virtual" byte). 
+                                // of messages in flight is going to be equal to protocol.Ordinal.Window.Size (Protocol.Ordinal.Window.Size-1 messages 
+                                // containing a single byte of user data and 1 reliable ping message taking up 1 "virtual" byte). At full occupation 
+                                // there will be Protocol.Ordinal.Window.Size-1 messages taking up 65535 bytes in total and 1 "virtual" byte (extra) 
+                                // for the ping so bytes BytesInFlight may actually reach 65536 in this special circunstance.
                                 //
                                 // Note that unreliable messages should not be dropped due to the lack of send window or sequence window space. 
                                 // Otherwise all datagrams larger than the send window are going to be ultimately lost (last fragments dropped). 
@@ -914,7 +916,7 @@ namespace Carambolas.Net
                                 // but the last fragment would. Only after the first complete datagram (or ping) arrives is when the receiver is 
                                 // able to discard all other partial datagrams previously buffered and deliver some data to the application.                                
                                 if ((SendWindow - (int)BytesInFlight < transmit.Payload)
-                                 || (channel.TX.NextSequenceNumber == channel.TX.Ack.Next + (Protocol.Ordinal.Window.Size - 1)))
+                                 || (channel.TX.NextSequenceNumber == channel.TX.Ack.Next + (Protocol.Ordinal.Window.Size - 1))) // dont' continue if next SEQ to transmit is the last one of the window as it's reserved for a ping. 
                                     break;
 
                                 // Discard message if unreliable and expired. All fragments of a datagram set to expire have the same expirarion time. 
