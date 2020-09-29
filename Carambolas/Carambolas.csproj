@@ -16,8 +16,8 @@
     <Product>Carambolas</Product>
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-    <Description>Carambolas is a modular framework for network applications based on a custom reliable UDP protocol intended for short thin networks (as opposed to long fat networks).</Description>
-    <PackageTags>udp reliable-udp modular library</PackageTags>
+    <Description>Carambolas is a modular framework for network applications based on a custom reliable UDP protocol specification.</Description>
+    <PackageTags>modular library</PackageTags>
     <Platforms>AnyCPU;x64;x86</Platforms>    
   </PropertyGroup>
   
