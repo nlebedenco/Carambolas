@@ -1,26 +1,30 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
     <BaseOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\bin\</BaseOutputPath>
   </PropertyGroup>
 
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
-    
+  
   <Import Project="../Version.props" />
   
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <UnityVersion>2019</UnityVersion>
+    <UnityInstallRoot>D:\Unity</UnityInstallRoot>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.3</LangVersion>
-    <RootNamespace>Carambolas</RootNamespace>
-    <PackageId>Carambolas</PackageId>
-    <Product>Carambolas</Product>
+    <RootNamespace>Carambolas.UnityEngine</RootNamespace>
+    <PackageId>Carambolas.UnityEngine</PackageId>
+    <Product>Carambolas.UnityEngine</Product>
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Description>Carambolas is a modular framework for network applications based on a custom reliable UDP protocol specification.</Description>
-    <PackageTags>modular library</PackageTags>
-    <Platforms>AnyCPU;x64;x86</Platforms>    
+    <PackageTags>unity3d modular library</PackageTags>
+    <Platforms>AnyCPU;x64;x86</Platforms>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
-  
+
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -52,9 +56,11 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <Compile Update="Security/Cryptography/NaCl/Curve25519.FieldElement.cs">
-        <DependentUpon>Security/Cryptography/NaCl/Curve25519.cs</DependentUpon>
-    </Compile>
+    <ProjectReference Include="..\Carambolas\Carambolas.csproj" />
   </ItemGroup>
-    
+  
+  <ItemGroup>
+    <PackageReference Include="Unity3D" Version="1.5.0" />
+  </ItemGroup>
+
 </Project>

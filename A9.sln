@@ -31,6 +31,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Carambolas.Security.Cryptog
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Carambolas.Security.Cryptography.NaCl.Tests", "Carambolas.Security.Cryptography.NaCl.Tests\Carambolas.Security.Cryptography.NaCl.Tests.csproj", "{8A1154A1-CFB9-4BAA-AD3A-940356E001E5}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Carambolas.UnityEngine", "Carambolas.UnityEngine\Carambolas.UnityEngine.csproj", "{230EEDA9-5DF9-4DF8-9792-97B3489AA8E3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Carambolas.UnityEngine.Replication", "Carambolas.UnityEngine.Replication\Carambolas.UnityEngine.Replication.csproj", "{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -111,6 +115,22 @@ Global
 		{8A1154A1-CFB9-4BAA-AD3A-940356E001E5}.Release|x64.Build.0 = Release|x64
 		{8A1154A1-CFB9-4BAA-AD3A-940356E001E5}.Release|x86.ActiveCfg = Release|x86
 		{8A1154A1-CFB9-4BAA-AD3A-940356E001E5}.Release|x86.Build.0 = Release|x86
+		{230EEDA9-5DF9-4DF8-9792-97B3489AA8E3}.Debug|x64.ActiveCfg = Debug|x64
+		{230EEDA9-5DF9-4DF8-9792-97B3489AA8E3}.Debug|x64.Build.0 = Debug|x64
+		{230EEDA9-5DF9-4DF8-9792-97B3489AA8E3}.Debug|x86.ActiveCfg = Debug|x86
+		{230EEDA9-5DF9-4DF8-9792-97B3489AA8E3}.Debug|x86.Build.0 = Debug|x86
+		{230EEDA9-5DF9-4DF8-9792-97B3489AA8E3}.Release|x64.ActiveCfg = Release|x64
+		{230EEDA9-5DF9-4DF8-9792-97B3489AA8E3}.Release|x64.Build.0 = Release|x64
+		{230EEDA9-5DF9-4DF8-9792-97B3489AA8E3}.Release|x86.ActiveCfg = Release|x86
+		{230EEDA9-5DF9-4DF8-9792-97B3489AA8E3}.Release|x86.Build.0 = Release|x86
+		{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}.Debug|x64.ActiveCfg = Debug|x64
+		{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}.Debug|x64.Build.0 = Debug|x64
+		{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}.Debug|x86.ActiveCfg = Debug|x86
+		{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}.Debug|x86.Build.0 = Debug|x86
+		{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}.Release|x64.ActiveCfg = Release|x64
+		{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}.Release|x64.Build.0 = Release|x64
+		{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}.Release|x86.ActiveCfg = Release|x86
+		{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
