@@ -174,6 +174,11 @@ namespace Carambolas.Net
         internal Protocol.Time LatestRemoteTime;
 
         /// <summary>
+        /// Receive window advertised to the remote host.
+        /// </summary>
+        public ushort ReceiveWindow => (ushort)Math.Min(ushort.MaxValue, Host.Downstream.BufferShare);
+
+        /// <summary>
         /// Maximum number of bytes that the remote host can buffer. 
         /// Updated in every packet. Note that this property may be adjusted by the 
         /// remote host after data has already been sent thus becoming temporarily 
@@ -213,7 +218,7 @@ namespace Carambolas.Net
         internal ushort InitialCongestionWindow => (ushort) (MaxSegmentSize << 2);
 
         /// <summary>
-        /// Maximum number of bytes that can be transmitted to remain below the <see cref="RemoteBandwidth"/>
+        /// Maximum number of bytes that can be transmitted in a frame to remain below the <see cref="RemoteBandwidth"/>
         /// </summary>
         public ushort BandwidthWindow { get; private set; }
 
@@ -226,14 +231,9 @@ namespace Carambolas.Net
         public int SendWindow { get; private set; }
 
         /// <summary>
-        /// Receive window advertised to the remote host.
-        /// </summary>
-        public ushort ReceiveWindow => (ushort)Math.Min(ushort.MaxValue, Host.Downstream.BufferShare);
-
-        /// <summary>
         /// Number of bytes sent but not yet acknowledged.
         /// </summary>
-        public uint BytesInFlight { get; private set; }  // must be a uint because an eventual ping must consume 1 "virtual" and the previous 32767 unreliable messages may have taken up 65535 bytes already.
+        public int BytesInFlight { get; private set; }  // must be an int because an eventual ping must consume 1 "virtual" and the previous 32767 unreliable messages may have taken up 65535 bytes already.
 
         /// <summary>
         /// Number of bytes in the transmit queue (across all channels).
@@ -267,6 +267,8 @@ namespace Carambolas.Net
         #endregion
 
         #region Statistics
+
+        private long startTick;
 
         public DateTime StartTime { get; internal set; }
         public DateTime StopTime { get; internal set; }
@@ -348,8 +350,6 @@ namespace Carambolas.Net
                 roundTripTimeVariance = (3 * roundTripTimeVariance + (uint)Math.Abs(RoundTripTime - (long)rtt)) >> 2;
             }
 
-            BandwidthWindow = (ushort)Math.Min(ushort.MaxValue, (long)RemoteBandwidth * RoundTripTime / 1000);
-
             ackTimeout = Host.AckTimeoutClamp(RoundTripTime + (roundTripTimeVariance << 2));
         }
 
@@ -381,7 +381,6 @@ namespace Carambolas.Net
             {
                 // Reset RTT estimate as it's probably too wrong now
                 RoundTripTime = 0;
-                BandwidthWindow = 0;
             }
 
             // If there's a control command waiting for an ack, flag it for retransmission
@@ -476,6 +475,8 @@ namespace Carambolas.Net
         internal void OnConnected(Protocol.Time time, Protocol.Time remoteTime, uint remoteSession, in Protocol.Message.Accept accept)
         {
             Session.State = Protocol.State.Connected;
+            startTick = Host.TimeSource.Ticks();
+
             Session.Remote = remoteSession;
             MaxTransmissionUnit = accept.MaximumTransmissionUnit;
 
@@ -488,6 +489,7 @@ namespace Carambolas.Net
 
             RemoteBandwidth = accept.MaximumBandwidth >> 3;
             CongestionWindow = (ushort)(MaxSegmentSize << 2);
+            
 
             Acknowledge(Acknowledgment.Accept, LatestRemoteTime);
 
@@ -498,6 +500,7 @@ namespace Carambolas.Net
         internal void OnAccepted(Protocol.Time time, Protocol.Time acknowledgedTime)
         {
             Session.State = Protocol.State.Connected;
+            startTick = Host.TimeSource.Ticks();
 
             control.CMD = default;
             OnAckMatched(time, acknowledgedTime);
@@ -532,7 +535,19 @@ namespace Carambolas.Net
                 ping = true;
             }
 
-            SendWindow = Max(MaxSegmentSize, Min(Host.Upstream.BufferShare, CongestionWindow, RemoteWindow, BandwidthWindow));
+            if (Session.State == Protocol.State.Connected)
+            {
+                var tick = Host.TimeSource.Ticks();
+                var uptime = Host.TimeSource.TicksToMilliseconds(tick - startTick);
+
+                // Bandwidth window is the maximum number of bytes that can be in flight and still keep the output rate less than or equal to 
+                // the remote bandwidth. Protocol overhead is disconsidered hence why datatSent is used instead of bytesSent.
+                // There's no need to use Interlocked.Read(ref dataSent) here because this is the same thread where the field is modified.
+                BandwidthWindow = (ushort)Math.Min(ushort.MaxValue, RemoteBandwidth / 1000 * uptime - dataSent);
+
+                // Maximum number of user data bytes that can be in flight this frame.
+                SendWindow = Math.Min(BandwidthWindow, Max(MaxSegmentSize, Min(Host.Upstream.BufferShare, CongestionWindow, RemoteWindow)));
+            }
         }
 
         #region Data Sending
@@ -831,7 +846,9 @@ namespace Carambolas.Net
                                     if (retransmit.Encoded == null) // This is an unreliable message that cannot be retransmitted
                                     {
                                         // Message is now considered lost (not in flight anymore).
+                                        Debug.Assert(BytesInFlight >= retransmit.Payload, "Incorrect bytes in flight");
                                         BytesInFlight -= retransmit.Payload;
+                                        
                                         // Return space to the transmit backlog.
                                         DecrementTransmissionBacklog(retransmit.Payload);
 
@@ -915,7 +932,7 @@ namespace Carambolas.Net
                                 // transmitted because their first fragments would not fit in the send window (SendWindow - BytesInFlight < MaxFragmentSize)
                                 // but the last fragment would. Only after the first complete datagram (or ping) arrives is when the receiver is 
                                 // able to discard all other partial datagrams previously buffered and deliver some data to the application.                                
-                                if ((SendWindow - (int)BytesInFlight < transmit.Payload)
+                                if ((SendWindow - BytesInFlight < transmit.Payload)
                                  || (channel.TX.NextSequenceNumber == channel.TX.Ack.Next + (Protocol.Ordinal.Window.Size - 1))) // dont' continue if next SEQ to transmit is the last one of the window as it's reserved for a ping. 
                                     break;
 
@@ -1298,6 +1315,7 @@ namespace Carambolas.Net
                         CongestionWindow = (ushort)Math.Min(ushort.MaxValue, CongestionWindow + ((CongestionWindow < LinkCapacity) ? asize : 1));
 
                     // Acknowledged bytes are not in flight anymore
+                    Debug.Assert(BytesInFlight >= asize, "Incorrect bytes in flight");
                     BytesInFlight -= asize;
 
                     if (BytesInFlight == 0) // all messages have been acknowledged                                                                         
@@ -1971,7 +1989,7 @@ namespace Carambolas.Net
             channels = null;
         }
 
-        private static int Min(int a, int b, int c, int d) => Math.Min(a, Math.Min(b, Math.Min(c, d)));
+        private static int Min(int a, int b, int c) => Math.Min(a, Math.Min(b, c));
         private static int Max(int a, int b) => Math.Max(a, b);
     }
 }

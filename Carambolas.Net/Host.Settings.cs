@@ -12,7 +12,7 @@ namespace Carambolas.Net
         [StructLayout(LayoutKind.Auto)]
         public readonly struct Settings
         {
-            public static readonly Settings Default = new Settings(0, Protocol.MTC.Default, Protocol.MTU.Default, uint.MaxValue, int.MaxValue, in Host.Stream.Settings.Default, in Host.Stream.Settings.Default, Protocol.TTL.Default, Protocol.Memory.Block.Size.Default);
+            public static readonly Settings Default = new Settings(0, Protocol.MTC.Default, Protocol.MTU.Default, Protocol.Bandwidth.MaxValue, int.MaxValue, in Host.Stream.Settings.Default, in Host.Stream.Settings.Default, Protocol.TTL.Default, Protocol.Memory.Block.Size.Default);
 
             /// <summary>
             /// Maximum number of passive (incoming) connections supported by the host. 
@@ -32,6 +32,7 @@ namespace Carambolas.Net
             /// <summary>
             /// Maximum receive bandwidth in bits per second intended for each peer. 
             /// This is the bandwidth advertised to the remote peer upon connection.
+            /// Valid values are between <see cref="Protocol.Bandwidth.MinValue"/> and <see cref="Protocol.Bandwidth.MaxValue"/>.
             /// </summary>
             public readonly uint MaxBandwidth;
 
@@ -54,7 +55,7 @@ namespace Carambolas.Net
             /// </summary>
             public readonly int BlockSize;
 
-            public Settings(ushort capacity, byte maxChannel = Protocol.MTC.Default, ushort maxTranmissionUnit = Protocol.MTU.Default, uint maxBandwidth = uint.MaxValue, int maxTransmissionBacklog = int.MaxValue, byte ttl = Protocol.TTL.Default, int blockSize = Protocol.Memory.Block.Size.Default, TOS tos = TOS.LowDelay)
+            public Settings(ushort capacity, byte maxChannel = Protocol.MTC.Default, ushort maxTranmissionUnit = Protocol.MTU.Default, uint maxBandwidth = Protocol.Bandwidth.MaxValue, int maxTransmissionBacklog = int.MaxValue, byte ttl = Protocol.TTL.Default, int blockSize = Protocol.Memory.Block.Size.Default, TOS tos = TOS.LowDelay)
                 : this(capacity, maxChannel, maxTranmissionUnit, maxBandwidth, maxTransmissionBacklog, in Host.Stream.Settings.Default, in Host.Stream.Settings.Default, ttl, blockSize) { }
 
             public Settings(ushort capacity, byte maxChannel, ushort maxTransmissionUnit, uint maxBandwidth, int maxTransmissionBacklog, in Host.Stream.Settings upstream, in Host.Stream.Settings downstream, byte ttl = Protocol.TTL.Default, int blockSize = Protocol.Memory.Block.Size.Default, TOS tos = TOS.LowDelay)
