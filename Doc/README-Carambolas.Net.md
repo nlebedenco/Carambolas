@@ -16,8 +16,8 @@ published papers), no effort has been made to formally prove hypotheses beyond a
 ## Introduction
 
 Carambolas.Net is a reliable UDP networking protocol implemented in C# for user applications with soft real-time constraints that prioritize latency minimization 
-and only require a small bandwidth-delay product (of one or two orders of mangnitude), i.e. rapid exchange of small payloads (64KB or less). Examples include 
-simulations, multiplayer video games and sensor networks. 
+on low bandwidth-delay networks (BDP of one or two orders of mangnitude), i.e. rapid exchange of small payloads (64KB or less). Examples include simulations, 
+multiplayer video games and sensor networks. 
 
 
 ## Main features 
@@ -962,7 +962,7 @@ used:
     - Return [`START`<sub>time</sub> + (`TICKSRC` - `START`<sub>ticks</sub>) / (`FREQ` * 1000)] mod 2<sup>32</sup> 
 
 Note that the time sources used by any two hosts in a connection never depend on each other, so they are not required to be synchronized. Clock skew, however,
-should be kept to a minimum, preferably below 10%, as it will directly impact `RTT` estimation on each respective remote end.
+should be kept to a minimum, best below 10%, as it will directly impact `RTT` estimation on each respective remote end.
 
 
 ### Roundtrip time
@@ -1530,7 +1530,7 @@ The [throughput](https://en.wikipedia.org/wiki/Throughput) of a connection is ef
 - link capacity;
 - packet loss rate;
 
-Note that `RTT`, bandwidth (sender and receiver), link capacity and packet los rate are all expected to vary over time, while sequence window size, send buffer
+Note that `RTT`, bandwidth (sender and receiver), link capacity and packet loss rate are all expected to vary over time, while sequence window size, send buffer
 size, receive buffer size and `MTU` should remain constant.
 
 
@@ -1652,7 +1652,18 @@ TODO
 
 ##### Bandwidth Window
 
-TODO
+This is the maximum amount of data that can be transmitted in a single update frame while still keeping the output rate less than or equal to the receive 
+bandwidth advertised by the remote host. The value of `BWND` is calculated every update frame as follows:
+
+`BWND` = `MBW` / 8000 * `UPTIME` - `TX`<sub>acc</sub>
+
+where: 
+
+- `MBW`: Maximum Bandwidth in bits per second supported by the source; 0 <= `MBW` <= 524280000 bits
+- `UPTIME`: time in milliseconds since the connection was established; 0 <= `UPTIME` <= 140739635871744 ms
+- `TX`<sub>acc</sub>: total number of user data bytes transmitted since the connection was established; 0 <= `TX`<sub>acc</sub> <= 2<sup>63</sup>-1
+
+The upper limit of `UPTIME` is to avoid arithmetic overflow.
 
 ##### Congestion Window
 
@@ -1707,7 +1718,6 @@ Known native library issues:
 ### Memory management
 
 
-
 ### Transmission Backlog
 
 Arriving messages are subject to the receive buffer space pre-allocated by the socket implementation and there's nothing a receiver can do once this buffer is full.
@@ -1718,6 +1728,19 @@ above which further send operations will throw System.IO.InternalBufferOverflowE
 MaxTransmissionBacklog but also what to do in case this threshold is reached. Should it fail silently? Should it close the connection? Should it try again after a 
 while? How many times? These questions cannot be universally addressed by the protocol or the underlying implementation so they're left for the user application.
 
+### Time Source
+
+Time source is implemented on top of the [System.Diagnostics.Stopwatch](https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.stopwatch?view=netstandard-2.0)
+and relies on the target platform supporting a high resolution timer.
+
+Note that the Stopwatch will display a measurable drift when compared to the system clock, which may accumulate over a period of time leading to different readings. 
+Some sources like https://www.codeproject.com/articles/792410/high-resolution-clock-in-csharp suggest that this drift must be aproximately 0.02%. That is 0.0002s per 
+second (ie. every millisecond actually lasts 1±0.02ms). This should not be a problem since the time source is internally used to calculate relatively small time 
+durations between correlate timestamps and never as a source of absolute time readings to be used externally or comparable to the system clock. 
+
+In regard to `RTT` estimation, the variability of measured values may be so high, as pointed out by [Sessini and Mahanti](https://pages.cpsc.ucalgary.ca/~mahanti/papers/spects.submission.pdf) that a time source skew of 0.02% is probably going to pass unnoticed. 
+It remains to be verified however if the Stopwatch accuracy may vary at higher rates or if it may be suject to negative effects due to runtime system adjustments such 
+as CPU throttling.
 
 ## Vulnerabilities
 

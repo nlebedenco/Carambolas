@@ -735,7 +735,7 @@ namespace Carambolas.Net
                 while (enabled)
                 {
                     // Start timestamp in ticks.
-                    var start = Ticks();
+                    var start = ElapsedTicks();
 
                     // Current timestamp in milliseconds
                     var time = TicksToMilliseconds(start);    
@@ -791,7 +791,7 @@ namespace Carambolas.Net
                     }
 
                     float elapsed, timeout;
-                    var ticks = Ticks();
+                    var ticks = ElapsedTicks();
 
                     // Read anything that may arrive until there's less than one millisecond remaining for this frame.
                     if ((timeout = updatePeriod - (elapsed = (float)TimeSource.TicksToSeconds(ticks - start))) > 0.001)
@@ -829,7 +829,7 @@ namespace Carambolas.Net
                                     }
                                 }
 
-                                ticks = Ticks();
+                                ticks = ElapsedTicks();
                             }
                             else // if there's no data immediately available wait for more.
                             {
@@ -837,7 +837,7 @@ namespace Carambolas.Net
                                 if (!socket.Poll(microSeconds, SelectMode.SelectRead))
                                     break;
 
-                                ticks = Ticks();
+                                ticks = ElapsedTicks();
                             }
                         }
                         while ((timeout = updatePeriod - (elapsed = (float)TimeSource.TicksToSeconds(ticks - start))) > 0.001);
@@ -946,6 +946,7 @@ namespace Carambolas.Net
                             mtc = MaxChannel;
 
                         reader.UnsafeRead(out uint mbw);
+                        mbw = Protocol.Bandwidth.Clamp(mbw);
 
                         var connect = new Protocol.Message.Connect(mtu, mtc, mbw);
 
@@ -1012,6 +1013,8 @@ namespace Carambolas.Net
                             mtc = MaxChannel;
 
                         reader.UnsafeRead(out uint mbw);
+                        mbw = Protocol.Bandwidth.Clamp(mbw);
+
                         reader.UnsafeRead(out Key remoteKey);
 
                         var connect = new Protocol.Message.Connect(mtu, mtc, mbw);
@@ -1123,6 +1126,8 @@ namespace Carambolas.Net
                             mtc = MaxChannel;
 
                         reader.UnsafeRead(out uint mbw);
+                        mbw = Protocol.Bandwidth.Clamp(mbw);
+
                         reader.UnsafeRead(out uint atm);
 
                         reader.UnsafeRead(out ushort remoteWindow);
@@ -1218,6 +1223,8 @@ namespace Carambolas.Net
                             mtc = MaxChannel;
 
                         reader.UnsafeRead(out uint mbw);
+                        mbw = Protocol.Bandwidth.Clamp(mbw);
+
                         reader.UnsafeRead(out uint atm);
 
                         // Save position and size of the ciphertext
@@ -1701,23 +1708,57 @@ namespace Carambolas.Net
 
         #region Time Source
 
-        private readonly struct TimeSource
+        /// <summary>
+        /// Measures elapsed time using a <see cref="Stopwatch"/>.
+        /// </summary>
+        /// <remarks>
+        /// Note that the <see cref="Stopwatch"/> is still subject to a measurable drift when compared to the system clock which may accumulate 
+        /// over a short period of time. Some sources like https://www.codeproject.com/articles/792410/high-resolution-clock-in-csharp 
+        /// suggest that this drift must be aproximately 0.02% that is 0.0002s per second (ie. every millisecond actually lasts 1±0.02ms).
+        /// It remains to be verified if CPU throttle may negatively affect time measured by the <see cref="Stopwatch"/>.
+        /// </remarks>
+        internal readonly struct TimeSource
         {
             private const long TicksPerSecond = 10000000;
 
             private static readonly double tickFrequency = Stopwatch.IsHighResolution ? (double)TicksPerSecond / Stopwatch.Frequency : 1.0;
 
+            /// <summary>
+            /// Gets the current number of ticks from the underlying timer mechanism.
+            /// </summary>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static long Ticks() => Stopwatch.GetTimestamp();
+
+            /// <summary>
+            /// Converts ticks to seconds.
+            /// </summary>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static double TicksToSeconds(long ticks) => ticks * tickFrequency / TimeSpan.TicksPerSecond;
+
+            /// <summary>
+            /// Converts ticks to milliseconds.
+            /// </summary>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static double TicksToMilliseconds(long ticks) => ticks * tickFrequency / TimeSpan.TicksPerMillisecond;
 
             private readonly Stopwatch stopwatch;
             private readonly uint start;
 
             public TimeSource(DateTime from) => (start, stopwatch) = (unchecked((uint)(from.Ticks / TimeSpan.TicksPerMillisecond)), Stopwatch.StartNew());
 
-            public long Ticks => stopwatch.ElapsedTicks;
+            /// <summary>
+            /// Number of ticks elapsed since that creation of the time source.
+            /// </summary>
+            public long ElapsedTicks => stopwatch.ElapsedTicks;
 
             /// <summary>
-            /// Number of milliseconds elapsed since 12:00:00 midnight, January 1, 0001 in the Gregorian calendar mod 2^32
+            /// Number of milliseconds elapsed since that creation of the time source.
+            /// </summary>
+            public long ElapsedMilliseconds => stopwatch.ElapsedMilliseconds;
+
+            /// <summary>
+            /// Number of milliseconds elapsed since 12:00:00 midnight, January 1, 0001 in the Gregorian calendar mod 2^32. 
+            /// May drift in relation to the actual system clock.
             /// </summary>
             public uint Now => unchecked(start + (uint)stopwatch.ElapsedMilliseconds);
 
@@ -1734,7 +1775,7 @@ namespace Carambolas.Net
         internal uint Now() => tmsrc.Now;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private long Ticks() => tmsrc.Ticks;
+        private long ElapsedTicks() => tmsrc.ElapsedTicks;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private uint TicksToMilliseconds(long value) => tmsrc.TotalMilliseconds(value);
