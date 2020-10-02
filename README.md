@@ -7,12 +7,12 @@ network applications with soft real-time constraints</ins>.
 The first release is a minimal core with a fully functional network module. This repository is structured around a single solution because I plan to expand 
 by adding new modules in the future.
 
-Test coverage is still minimal so no level of correctness or performance should be implied without a close inspection of the source code. This is an on-going
-project in its earliest stages. 
+Test coverage is still minimal so no level of correctness should be implied without a close inspection of the source code. This is an on-going project in its 
+earliest stages. 
 
 ## Binaries
 
-Binaries are available in the [archive section]((https://github.com/nlebedenco/Carambolas/releases)) or in the form of [nuget packages](https://www.nuget.org/packages/carambolas/). 
+Binaries are soon to be available in the [archive section]((https://github.com/nlebedenco/Carambolas/releases)) or in the form of [nuget packages](https://www.nuget.org/packages/carambolas/). 
 
 [![GitHub release](https://img.shields.io/github/release/nlebedenco/Carambolas.svg?style=flat-square)](https://github.com/nlebedenco/Carambolas/releases) 
 [![NuGet package](https://img.shields.io/nuget/v/carambolas.svg)](https://www.nuget.org/packages/carambolas/)
@@ -312,25 +312,30 @@ If you would like to support this project I may be interested in hearing from yo
 In portuguese, Carambolas is the plural form of [carambola](https://en.wikipedia.org/wiki/Carambola) (= starfruit). The term is also used colloquially in 
 certain regions of Brazil to express astonishment or impatience. 
 
+##### What's with the funny solution name?
+
+Before Carambolas, I made at least a half-dozen attempts to organize my ideas in a usable project. With Carambolas I decided to build a series of prototypes 
+in order to learn about design issues and test different approaches. Each prototype had a code name formed by a letter and a number starting at A1. The source 
+code that was initially imported in this repository was the 75th iteration of the 9th prototype, hence A9.
 
 ##### I deployed my application without native libraries and it worked just fine. Are native libraries really needed?
 
-Native libraries are provided mostly to improve performance, therefore they're totally optional. It would have been unreasonable to try to provide a native 
+Native libraries are provided mostly for performance reasons, therefore they're totally optional. It would have been unreasonable to try to provide a native 
 implementation for every possible platform (think about all desktops, mobile, console, embedded...) and relying exclusively on native libraries would reduce 
-target platforms to only a handful, possibly desktop only (windows, linux and macOS). So there's always going to be a fallback in managed code for any 
-functionality implemented by a native library. 
+target platforms to only a handful, possibly desktop only (windows, linux and macOS). So as a rule of thumb, there must always be a fallback implementation 
+in managed code for any functionality implemented by a native library. 
 
-Because native libraries are optional, the program can't tell whether a missing file was supposed to be found or not, hence why there's no error thrown or 
+Because native libraries are optional, the program can't tell whether a missing file was supposed to be there or not, hence why there's no error thrown or 
 logged for a missing native library. By definition, a missing native library is NEVER an error.
 
 
-##### How can I tell if a native library is actually being used?
+##### How can I tell if a native library is actually being used then?
 
-In general, you can't. And you shouldn't, at least not from an API perspective. It should not matter to the user what underlying implementation strategy
-is employed. However this information might be relevant for deployment, so every time an interop object is created that also has an automatic fallback, the code 
-produces an indicative log info. For instance, Carambolas.Net.Socket will produce a log info similar to "Using Carambolas.Net.Sockets.Native.Socket" when a native 
-library is found for the underlying socket implementation. This way if you're deploying with native libraries in mind you can determine whether they're actually 
-being used. 
+In general, you can't. And you shouldn't, at least not from an API perspective. It should not matter to the user (or app programmer) what underlying 
+implementation strategy is employed by a dependecy, in this case Carambolas. However this information might be relevant for deployment so, every time an interop
+object is created that also has an automatic fallback, the code produces an indicative log info. For instance, Carambolas.Net.Socket will produce a log info 
+similar to "Using Carambolas.Net.Sockets.Native.Socket" when a native library is found for the underlying socket implementation. This way if you're deploying 
+with native libraries in mind you can determine whether they're actually being used. 
 
 
 ##### Why my application is throwing System.BadImageFormatException?
@@ -339,29 +344,20 @@ This means you're deploying a native library that is either corrupt or compiled 
 
 Native libraries must go side-by-side with their corresponding interop assemblies and although assemblies may be compiled once for any CPU architecture, native
 libraries cannot. They must match the CPU architecture of the running operating system, otherwise they're treated as corrupt files and .NET throws a 
-System.BadImageFormatException. Note that this is not the same as trying to load a library that is not found which is by definition not an error, since native 
-libraries are always optional. 
+System.BadImageFormatException. Note that this is not the same as trying to load a library that is not found which is by definition not an error.
 
 
 ### Network
 
 
-##### What do you mean by short thin networks?
-
-I don't know if this the appropriate terminology as I don't remember ever seeing it in the literature but I use it in opposition to Long Fat Neworks (aka LFNs)
-which is in turn widely used in the liretature. LFNs are networks that display a bandwidth-delay product above a certain threshold.
-
-
 ##### What is the bandwidth-delay product?
 
 The bandwidth-delay product (BDP) is the product of a network link's transmission capacity (in bits per second) and its round-trip delay time (in seconds). It 
-represents the very maximum amount of data that a network can contain before any acknowledgement may arrive. 
+represents the very maximum amount of data that a network can retain before any acknowledgement may arrive. 
 
 The BDP can be used to classify networks according to whether it is above or below a certain threshold. Networks with a large BDP are called Long Fat Networks
-(LFNs). Their opposite would be Short Thin Networks (STNs), that is networks with a small BPD. 
-
-LFNs may be networks with a very large average round-trip time (regadless of bandwidth, as in satellite links) or a wide (high bandwidth) network that has 
-considerably small round-trip times (as in gigabit ethernet links).
+(LFNs). LFNs may be networks with a very large average round-trip time (regadless of bandwidth, as in satellite links) or a wide (high bandwidth) network that 
+displays considerably small round-trip times (as in gigabit ethernet links).
 
 Check the [wikipedia](https://en.wikipedia.org/wiki/Bandwidth-delay_product) for more information about it.
 
