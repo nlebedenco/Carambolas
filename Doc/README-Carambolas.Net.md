@@ -338,7 +338,7 @@ Curly brackets denote an encrypted group.
 - `MBW`: Maximum Bandwidth in bits per second supported by the source. Destination should not transmit data at a rate higher than this. 
           A host may refuse a connection based on this value;
 - `ATM`: Acknowledged Time used to calculate `RTT`;
-- `RW`: Receive window at the source. Maximum number of user data bytes that can be in flight for this peer; 
+- `RW`: Receive window at the source. Maximum number of user data bytes that can be in-flight for this peer; 
 - `ASSN`: Acknowledged session number used to match the connection request and establish the session pair;
 - `DSN`: Destination session number to reset;
 - `CRC32C`: Computed CRC32-C (castangnoli) - uses the iSCSI polynomial as in [RFC 3720](https://tools.ietf.org/html/rfc3720#section-12.1). The polynomial was 
@@ -991,6 +991,8 @@ This problem has been extensively researched in the early days of the internet a
   - `SRTT` = max(7/8 * `SRTT` + 1/8 * *R'*, 0.001)
 
 
+On the second consecutive ack timeout `RTT` must be reset to 0 and treated as uninitialized.
+
 ### Sliding Window Control
 
 Consider the situation where a sender must transmit an arbitrarily large number of messages. Each message must be marked with a 16-bit `SEQ` but no more than 
@@ -1058,7 +1060,7 @@ The invariants are:
 
 When a message *m* arrives:
 
-```
+```C#
 if (m.SEQ >= RX.LASEQ)
 {
     send ACK
@@ -1168,7 +1170,7 @@ two end points. Each host generates and advertises its own `SSN` in the connecti
 used by the source to transmit packets". Session numbers must be defined by the source rather than the destination so that `RST` packets may be constructed by 
 a receiver (echoing back the `SSN`) in the abscence of a proper connection (e.g. half-open connections).
 
-***It is assumed that a packet may remain up to 24 hours in flight***. 
+***It is assumed that a packet may remain up to 24 hours in-flight***. 
 
 This is definitely an overestimation. In real life, packets are not expected to live for more than a few minutes, but it's not impossible (although extremely 
 unlikely) that a network node may end up retaining a packet for even a few hours. Hence, to stay on the safe side, the `SSN` generation period should be no 
@@ -1472,7 +1474,7 @@ used by the receiver to signal when there are relevant messages missing.
 the sender may simply deem the message lost. Upon arrival it must be either delivered immediately or dropped, unless the pipeline is stalled by a prior reliable
 message that is missing, in which case all further messages regardless of QoS have to be buffered. Unreliable messages never produce delivery stalls because in
 face of out of order arrival, a receiver must simply give up on those that have not yet arrived, advancing its next expected sequence number and sending back a 
-cumulative `ACK`. This will make the sender believe that all messages have arrived which may potentially cause a distortion to the bytes-in-flight estimation. 
+cumulative `ACK`. This will make the sender believe that all messages have arrived which may potentially cause a distortion to the estimation of BytesInFlight.  
 However this situation should only arise if:
 
 1) prior messages were indeed lost but the network link has recovered to a stable state already since at least one packet that is more up to date has made it through;
@@ -1530,25 +1532,25 @@ The [throughput](https://en.wikipedia.org/wiki/Throughput) of a connection is ef
 - link capacity;
 - packet loss rate;
 
-Note that `RTT`, bandwidth (sender and receiver), link capacity and packet loss rate are all expected to vary over time, while sequence window size, send buffer
-size, receive buffer size and `MTU` should remain constant.
+Note that `RTT`, bandwidth (sender's and receiver's), link capacity and packet loss rate are all expected to vary over time, while sequence window size, send
+buffer size, receive buffer size and `MTU` should remain constant.
 
 
-#### Sequence Window
+#### Sequence Window (`SEQWND`)
 
-With a 16-bit [sequence number](#sequence-numbers) the size of the sliding window must be at most 32768. This is also the maximum number of messages that may be in flight. 
-In theory, however, a full window of 32768 consecutive [unreliable messages](#qos) could be lost in a row. The sender would then be forced to move its sliding 
-window forward (because after a timeout there's no hope of any acks arriving anymore) while the receiver's slindig window will remain unchanged. This will 
-cause the receiver to misinterpret all further 32768 messages as old/late and acknowledge them all without delivering any data. The sender will believe these 
-new 32768 messages are being delivered when in fact they're being acknowledged and dropped by the receiver. Consider that when a sender assumes that all 
-messages in flight are lost (i.e they were all unreliable) at least a [ping](#ping) must be transmitted to determine if the receiver is still alive. This would 
-be a problem if the full sequence window had been consumed. But if only 32767 messages had been sent, there would be space for a last (reliable) ping message 
-with no crossing over sequence window boundaries. The receiver can naturally adjust its sliding window once the ping is received (as it must be) and the sender, 
-on its side, can now safely wait for a cumulative `ACK` to move its own sliding window instead of having to artificially adjust when messages are lost. Note 
-that a ping would not have to be injected if at least one (reliable or semireliable) message in the sequence window had to be retransmitted, in which case there
-would be no need for a reserved sequence number at the end, but since implementations are free to use any sequence window size <= 32768 it's simpler to always
-reserve the last sequence number for an eventual ping than trying to track down when there's at least one retransmittable message in the transmit queue to 
-conditionally do it.
+With a 16-bit [sequence number](#sequence-numbers) the size of the sliding window must be at most 32768. This is also the maximum number of messages that may
+be in flight. In theory, however, a full window of 32768 consecutive [unreliable messages](#qos) could be lost in a row. The sender would then be forced to 
+move its sliding window forward (because after a timeout there's no hope of any acks arriving anymore) while the receiver's slindig window will remain 
+unchanged. This will cause the receiver to misinterpret all further 32768 messages as old/late and acknowledge them all without delivering any data. The sender
+will believe these new 32768 messages are being delivered when in fact they're being acknowledged and dropped by the receiver. Consider that when a sender 
+assumes that all messages in flight are lost (i.e they were all unreliable) at least a [ping](#ping) must be transmitted to determine if the receiver is still
+alive. This would be a problem if the full sequence window had been consumed. But if only 32767 messages had been sent, there would be space for a last
+(reliable) ping message with no crossing over sequence window boundaries. The receiver can naturally adjust its sliding window once the ping is received (as i
+must be) and the sender, on its side, can now safely wait for a cumulative `ACK` to move its own sliding window instead of having to artificially adjust when
+messages are lost. Note that a ping would not have to be injected if at least one (reliable or semireliable) message in the sequence window had to be 
+retransmitted, in which case there would be no need for a reserved sequence number at the end, but since implementations are free to use any sequence window 
+size <= 32768 it's simpler to always reserve the last sequence number for an eventual ping than trying to track down when there's at least one retransmittable
+message in the transmit queue to conditionally do it.
 
 ***Only 32767 messages may carry user data. The last message of the window is reserved for an eventual [ping](#ping) in case all the previous messages in the 
 window are dropped.*** 
@@ -1640,22 +1642,96 @@ In the best network conditions `ATO`<sub>0</sub> = `ATO`<sub>min</sub> = 200ms, 
 
 `CTO` >= ∑<sup>n</sup><sub>i=0</sub> (2<sup>i</sup> * `ATO`<sub>0</sub>), ie. `CTO` >= 51s, *n* = 7 and `CTO` >= 102.2s, *n* = 8
 
-#### Send Window
+##### Buffers
+
+The size of the receive buffer (`RCVBUF`) imposes a limit on the amount of data that can be effectively received by a host. It must be determined as a function
+of the average processing time, that is the time a host is occupied updating its internal state until it becomes ready to read from the socket again. It also 
+establishes the maximum burst length a host can handle. A burst is when multiple packets arrive in succession with an arbitrarily short time between them. These 
+packets may or may not have been transmitted within those same time intervals. When a burst arrives, it appears to a host as if all those packets had arrived at 
+the same time as a single inflated transmission unit. 
+
+`RCVBUF` >= *K* * `MTU` is the condition for a host to be able to store *K* packets during processing time. The constant factor determines the fraction of `MTU` 
+a host can still handle once it starts processing a packet. *K* >= 1 is required to guarantee that a host will be able to handle the largest possible packet.
+
+***It's assumed that the time taken to process any single packet is at least on order of magnitude less than the time needed for any single packet to travel to 
+its destination***.
+
+Nonetheless, a host may have to process several packets from a burst one after the other and the total processing time may be significantly higher than that of 
+any single packet.
+
+For a good estimate of the receive buffer size one must assume a worst case processing time `PTIME` and the maximum (downstream) bandwidth (`MBW`) that must be 
+supported:
+
+`RCVBUF` >= `PTIME` * `MBW` / 8
+
+where `RCVBUF` is in bytes, `PTIME` is in seconds and `MBW` is in bits/s.
+
+For example a `RCVBUF` of 8192 bytes can support a `MBW` of 65536 bps if `PTIME` <= 1s
+
+In real life, however, two more aspects must be taken into account:
+
+* socket send and receive buffers must be shared between multiple connections when the protocol is implemented in the user application level; 
+  - the actual buffer size reserved for each connection will vary according to the number of simultaneous connections;  
+  - since peers may connect and disconnect freely, a host must allocate socket buffers according to the maximum number of simultaneous connections 
+    expected (`CONCNT`<sub>max</sub>);
+* protocol overhead;
+  - average protocol overhead must be estimated and accounted for when allocating socket buffers;
+  - actual overhead may vary considerably depending on how much data is generated by the sender, how often and how it's distributed in time;
+  - Buffer utilization factor (`BUTLF`) is the complement of overhead, that is the fraction of the buffer expected to carry used data in the range [0, 1];
+  - A factor of 0.5 is a safe utilization estimate that can be applied by default;
+  
+The `RCVBUF` then becomes:
+
+`RCVBUF` >= (`PTIME` * `MBW` / 8) * `CONCNT`<sub>max</sub> / `BUTLF`
+
+For example a `RCVBUF` of 32768 bytes can support 2 simultaneous connections with a bandwidth of 64 kbps and up to 50% protocol overhead when the processing 
+time can be up to 1 second. Pushing any variable beyond its boundaries will incur a greater probability of packet loss.
+
+The equation suggests that in order to accomodate more simultaneous connections a host must either decrease its processing time or increase the buffer size. 
+
+Bear in mind that actual implementations may have a maximum value for buffer sizes imposed by the platform and/or operating system and will depend directly on 
+the amount of resources available (i.e. available RAM).  
+
+The size of the send buffer (`SNDBUF`) imposes a limit on the amount of data that a host can send in a single burst. 
+
+`SNDBUF` >= *K* * `MTU` is the condition for a host to be able to send *K* packets in a burst. *K* >= 1 is required to guarantee that a host will be able to 
+send the largest possible packet.
+
+Like the receive buffer, `SNDBUF` is also bound by bandwidth (upstream), the processing time between sends so that the buffer has an opportunity to flush, the
+number of simultaneous connections and the buffer utilization factor.
+
+`SNDBUF` may also affect the calculated [send window](#send-window) because regardless of how many bytes are in flight, a host cannot send more data in a burst 
+than its send buffer can handle.
+
+Note that there's no point in providing more than 65535 bytes for user data per connection since [`SNDWND`<sub>max</sub> = 65535](#sned-window) even though this 
+may circunstancially happen when the number of simultaneous connections is suboptimal (`CONCNT` < `CONCNT`<sub>max</sub>).
 
 
-##### Send Buffer
+##### Remote Window (`RWND`)
+
+This is the size of the receive buffer reserved for user data by the remote host. The main goal of the `RWND` is to prevent saturation of the destination.
+
+`RWND` = `RW`
+
+where `RW` this is the local *Receive Window* advertised by the remote host.
+
+At the source: 
+
+`RW` = min(65535, `RCVBUF` * `BUTL` / `CONCNT`)
+
+Note that as `RW` may vary according to the current value of `CONCNT` at the source, `RWND` will vary and may affect the [send window](#send-window) producing 
+a negative difference between `SNDWND` and BytesInFlight. This situation represents a compromise since implementations may not be able to arbitrarily increase 
+socket buffers but it must not last more than a few `RTT`s. The slow start imposed to new connections by the [congestion window](#congestion-window) is also
+expected to mitigate the issue. In practice the new connection will leave part of its allocated buffer space unused for the first few `RTT`s which in turn can
+be used for the excess packets of other connections.
 
 
-##### Remote Window (aka Receive Window)
+##### Bandwidth Window (`BWND`)
 
-TODO
+This is the maximum amount of data that can be transmitted in a single burst while still keeping the output rate less than or equal to the maximum (receive) 
+bandwidth (`MBW`) negotiated by the remote host for the connection. The value of `BWND` is calculated as follows:
 
-##### Bandwidth Window
-
-This is the maximum amount of data that can be transmitted in a single update frame while still keeping the output rate less than or equal to the receive 
-bandwidth advertised by the remote host. The value of `BWND` is calculated every update frame as follows:
-
-`BWND` = `MBW` / 8000 * `UPTIME` - `TX`<sub>acc</sub>
+`BWND` = min(65535, `MBW` / 8000 * `UPTIME` - `TX`<sub>acc</sub>)
 
 where: 
 
@@ -1663,11 +1739,84 @@ where:
 - `UPTIME`: time in milliseconds since the connection was established; 0 <= `UPTIME` <= 140739635871744 ms
 - `TX`<sub>acc</sub>: total number of user data bytes transmitted since the connection was established; 0 <= `TX`<sub>acc</sub> <= 2<sup>63</sup>-1
 
-The upper limit of `UPTIME` is to avoid arithmetic overflow.
+The upper limit of `UPTIME` is to avoid arithmetic overflow and in practice is irrelevant as a host would have to be connected for a few thousand years for it
+to become an issue.
 
-##### Congestion Window
+##### Congestion Window (`CWND`)
 
-TODO
+Since network conditions may adversely change over time, a host must keep track of the estimated capacity of the link in order to avoid producing more packets 
+than what can effectively reach the destination.
+
+`LNKCAP` is a conservative estimate of link capacity beyond which there is a higher chance of congestion. 
+
+`CWND` is the maximum number of user data bytes that can be in flight relative to `LNKCAP`. The main goal of the `CWND` is to prevent saturation of the 
+network link while seeking to maximize usage. It grows exponentially with each acknowledgement up to `LNKCAP` (slow start) and then turns to a linear growth 
+(congestion avoidance) to probe for any capacity increase. When there is an ack timeout, the link is assumed to be congested and both `CWND` and `LNKCAP` are
+re-adjusted. `LNKCAP` also interacts with [fast retransmissions](#fast-retransmissions) as they signal a (probable) packet loss that suggests the link could 
+be close to its current capacity. In this case:
+
+The recommended initial value of `LNKCAP` is infinite. In practice this is 65535. A link is first assumed to support the full output capacity of the sender. 
+
+The recommended initial value of `CWND` is based on the Fast Retransmit Threshold (`FRTHRES`) and `MSS`:
+
+`CWND` = min(65535, (`FRTHRES` + 1) * `MSS`)
+ 
+On ack received for new data (not a dup):
+```C#
+// If more than half of the congestion window was used, increase it in either slow start or avoidance mode depending on the estimated link capacity
+if (BytesInFlight > (CWND/2))
+    CWND = min(65535, CWND + ((CWND < LNKCAP) ? AcknowledgedBytes : 1));
+```
+
+If the ack received (regardless of type) triggers a fast retransmission:
+
+`LNKCAP` = max(`CWND` / 2, InitialCongestionWindow)
+
+Note that when supporting [multiple channels](#channels) `LNKCAP` must be adjusted only once, when fast retransmission is triggered for one of the channels and
+not anymore until all channels involved in the retransmissions are done.
+
+ 
+On ack timeout: 
+```C#
+if (AFLCNT == 1) // First ack timeout
+{
+    // If not retransmitting, reduce the estimated link capacity
+    if (!isRetransmitting)
+        LNKCAP = max(CWND / 2, InitialCongestionWindow);
+
+    // Reset the congestion window for a new slow start, this value should never be lower than one MaxSegmentSize
+    CWND = MSS;
+}
+```
+
+
+#### Send Window (`SWND`)
+
+This is the maximum number of user data bytes that can be sent in a single burst. 
+
+`SWND` = min(`BWND`, max(`MSS`, min(`SNDBUF` * `BUTL` / `CONCNT`, `CWND`, `RWND`)));
+
+A host must stall the transmission of new messages if the next message payload size is greater than the send window limit that is `SNDWND` - BytesInFlight 
+therefore `SWND` affects throughput.
+
+Throughput <= `SWND`<sub>max</sub> / `RTT`<sub>min</sub>
+
+Every data message in flight must be consuming at least 1 byte of the send window. In the worst case the number of messages in flight is going to be equal to 
+`SEQWND` (`SEQWND`-1 messages containing a single byte of user data and 1 reliable ping message taking up 1 "virtual" byte). At full occupation there will be 
+`SEQWND`-1 messages taking up 65535 bytes in total and 1 "virtual" byte (extra) for the ping so BytesInFlight may actually reach 65536 in this particular 
+circunstance.
+
+Note that unreliable messages should not be dropped by the source due to the lack of space in the send window (or sequence window). Otherwise all datagrams
+larger than `SWND` are going to be ultimately lost (last fragments dropped). And if the user never sends a datagram smaller than the send window *several 
+broken datagrams* will have to be partially acknowledged and buffered by the receiver until the send window has grown large enough to accommodate a complete 
+datagram. Large datagrams will also be wasted if they go across the upper edge of the sequence window. And even worst in some cases only the last fragment of
+a datagram (or a short succession of datagrams) would be transmitted because their first fragments would not fit in the send window (`SWND` - BytesInFlight < `MSS`)
+but the last fragment still could. Only after the first complete datagram (or ping) arrives is when the receiver would be able to discard all other partial 
+datagrams previously buffered and deliver some data to the application.
+
+
+
+
 
 ### Channels
 
@@ -1738,7 +1887,9 @@ Some sources like https://www.codeproject.com/articles/792410/high-resolution-cl
 second (ie. every millisecond actually lasts 1±0.02ms). This should not be a problem since the time source is internally used to calculate relatively small time 
 durations between correlate timestamps and never as a source of absolute time readings to be used externally or comparable to the system clock. 
 
-In regard to `RTT` estimation, the variability of measured values may be so high, as pointed out by [Sessini and Mahanti](https://pages.cpsc.ucalgary.ca/~mahanti/papers/spects.submission.pdf) that a time source skew of 0.02% is probably going to pass unnoticed. 
+In regard to `RTT` estimation, the variability of measured values may be so high, as pointed out by [Sessini and Mahanti](https://pages.cpsc.ucalgary.ca/~mahanti/papers/spects.submission.pdf) 
+that a time source skew of 0.02% is probably going to pass unnoticed. 
+
 It remains to be verified however if the Stopwatch accuracy may vary at higher rates or if it may be suject to negative effects due to runtime system adjustments such 
 as CPU throttling.
 
