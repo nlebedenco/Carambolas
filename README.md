@@ -119,6 +119,8 @@ understand the way it worked and why.
 
 - **[Carambolas](Doc/README-Carambolas.md)**    
 - **[Carambolas.Net](Doc/README-Carambolas.Net.md)**
+- **[Carambolas.UnityEngine](Doc/README-Carambolas.UnityEngine.md)**
+- **[Carambolas.UnityEngine.Replication](Doc/README-Carambolas.UnityEngine.Replication.md)**
 
 
 ## Building from source
@@ -142,6 +144,32 @@ easily inspected, verified and cleaned.
 The code uses DllImport to bind native libraries. DllImport may always use Windows library names and will automatically add other platforms' prefixes/suffixes 
 as required. For instance, Carambolas.Net.Native.dll, the net native library's name on Windows, becomes libCarambolas.Net.Native.dll.so on Linux 
 and libCarambolas.Net.Native.dll.dynlib on MacOS. Build scripts already create the libraries under the proper names.
+
+**Dependencies:**
+
+*Carambolas.UnityEngine* and *Carambolas.UnityEngine.Replication* depend on assemblies from the [Unity Engine](http://www.unity.com).
+
+As redistributing such assemblies would represent a breach of the license agreement, I chose to add a dependency on [this great nuget package by DerploidEntertainment](https://www.nuget.org/packages/Unity3D)
+that basically lets you refer to your own Unity installation. If you use UnityHub and installed unity in the default location nothing else should be needed.
+If you installed unity in a custom location or have multiple unity versions you may want to define exactly which installation to refer to by declaring the 
+following environment variables.
+
+```
+UnityInstallRoot=<installation root path>
+UnityVersion=<unity version>
+```
+
+Environment variables make the build very flexible and can make your life much easier too. For example, in my windows machine I have UnityHub installed at 
+its default location (on drive C:) but I keep multiple unity installations on a separate drive at D:\Unity. There I keep a symlink ([using `mklink /d`](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/mklink))
+representing every major unity version I have got installed (i.e 2017, 2018, 2019, 2020) so the only thing I need to do after a unity update is to adjust my 
+symlink. And in my system settings I declared the two environment variables as:
+
+```
+UnityInstallRoot=D:\Unity
+UnityVersion=2019
+```
+
+And that's it. I don't ever need to touch those variables again.
 
 
 ### Windows 
