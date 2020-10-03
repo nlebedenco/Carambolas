@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
     <BaseOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\bin\</BaseOutputPath>
@@ -9,9 +9,6 @@
   <Import Project="../Version.props" />
   
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <UnityVersion>2019</UnityVersion>
-    <UnityInstallRoot>D:\Unity</UnityInstallRoot>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.3</LangVersion>
     <RootNamespace>Carambolas.UnityEngine.Replication</RootNamespace>
@@ -56,6 +53,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Unity3D" Version="1.5.0" />
     <ProjectReference Include="..\Carambolas.Net\Carambolas.Net.csproj" />
     <ProjectReference Include="..\Carambolas.UnityEngine\Carambolas.UnityEngine.csproj" />
   </ItemGroup>
