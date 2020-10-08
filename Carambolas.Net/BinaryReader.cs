@@ -40,7 +40,7 @@ namespace Carambolas.Net
             if (offset > buffer.Length - length)
                 throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrLengthIsGreaterThanBuffer, nameof(offset), nameof(length)), nameof(length));
 
-            UnsafeReset(offset, length);
+            UncheckedReset(offset, length);
         }
 
         public void Reset(byte[] buffer, int offset, int length)
@@ -49,7 +49,7 @@ namespace Carambolas.Net
             Reset(offset, length);
         }
 
-        internal void UnsafeReset(int offset, int length)
+        internal void UncheckedReset(int offset, int length)
         {
             this.begin = offset;
             this.end = offset + length;
@@ -65,10 +65,10 @@ namespace Carambolas.Net
             if (end - value < 0)
                 throw new ArgumentException(string.Format(SR.BinaryReader.TruncateUnderflow, value), nameof(value));
 
-            UnsafeTruncate(value);
+            UncheckedTruncate(value);
         }
 
-        internal void UnsafeTruncate(int value) => end -= value;
+        internal void UncheckedTruncate(int value) => end -= value;
 
 
         public void Skip(int n)
@@ -76,11 +76,11 @@ namespace Carambolas.Net
             if (n > 0)
             {
                 Ensure(n);
-                UnsafeSkip(n);
+                UncheckedSkip(n);
             }
         }
 
-        internal void UnsafeSkip(int n) => position += n;
+        internal void UncheckedSkip(int n) => position += n;
 
 
         public void Read(out char value)
@@ -104,7 +104,7 @@ namespace Carambolas.Net
         public void Read(out ushort value)
         {
             Ensure(sizeof(ushort));
-            UnsafeRead(out value);
+            UncheckedRead(out value);
         }
 
         public void Read(out int value)
@@ -116,7 +116,7 @@ namespace Carambolas.Net
         public void Read(out uint value)
         {
             Ensure(sizeof(uint));
-            UnsafeRead(out value);
+            UncheckedRead(out value);
         }
 
         public void Read(out long value)
@@ -128,7 +128,7 @@ namespace Carambolas.Net
         public void Read(out ulong value)
         {
             Ensure(sizeof(ulong));
-            UnsafeRead(out value);
+            UncheckedRead(out value);
         }
 
         public void Read(out float value)
@@ -148,7 +148,7 @@ namespace Carambolas.Net
         public void Read(byte[] destinationArray, int destinationIndex, int length)
         {
             Ensure(length);
-            UnsafeRead(destinationArray, destinationIndex, length);
+            UncheckedRead(destinationArray, destinationIndex, length);
         }       
 
         public void Read(out Guid value)
@@ -179,7 +179,7 @@ namespace Carambolas.Net
         internal void Read(Memory destination, int destinationIndex, int length)
         {
             Ensure(length);
-            UnsafeRead(destination, destinationIndex, length);
+            UncheckedRead(destination, destinationIndex, length);
         }
 
 
@@ -227,7 +227,7 @@ namespace Carambolas.Net
                 return false;
             }
 
-            UnsafeRead(out value);
+            UncheckedRead(out value);
             return true;
         }
 
@@ -251,7 +251,7 @@ namespace Carambolas.Net
                 return false;
             }
 
-            UnsafeRead(out value);
+            UncheckedRead(out value);
             return true;
         }
 
@@ -275,7 +275,7 @@ namespace Carambolas.Net
                 return false;
             }
 
-            UnsafeRead(out value);
+            UncheckedRead(out value);
             return true;
         }
       
@@ -310,7 +310,7 @@ namespace Carambolas.Net
             if (Available < length)
                 return false;
 
-            UnsafeRead(destinationArray, destinationIndex, length);
+            UncheckedRead(destinationArray, destinationIndex, length);
             return true;
         }
             
@@ -360,7 +360,7 @@ namespace Carambolas.Net
             if (Available < length)
                 return false;
 
-            UnsafeRead(destination, destinationIndex, length);
+            UncheckedRead(destination, destinationIndex, length);
             return true;
         }
 
@@ -372,39 +372,39 @@ namespace Carambolas.Net
         }
 
 
-        internal void UnsafeRead(out byte value)
+        internal void UncheckedRead(out byte value)
         {
             value = buffer[position++];
         }
 
-        internal void UnsafeRead(out ushort value)
+        internal void UncheckedRead(out ushort value)
         {
             var i = position;
             value = (ushort)((buffer[i] << 8) | buffer[i + 1]);
             position = i + 2;
         }
 
-        internal void UnsafeRead(out uint value)
+        internal void UncheckedRead(out uint value)
         {
             var i = position;
             value = (uint)((buffer[i] << 24) | (buffer[i + 1] << 16) | (buffer[i + 2] << 8) | buffer[i + 3]);
             position = i + 4;
         }
 
-        internal void UnsafeRead(out ulong value)
+        internal void UncheckedRead(out ulong value)
         {
             var i = position;
             value = (ulong)((buffer[i] << 56) | (buffer[i + 1] << 48) | (buffer[i + 2] << 40) | (buffer[i + 3] << 32) | (buffer[i + 4] << 24) | (buffer[i + 5] << 16) | (buffer[i + 6] << 8) | buffer[i + 7]);
             position = i + 8;
         }
 
-        internal void UnsafeRead(byte[] destinationArray, int destinationIndex, int length)
+        internal void UncheckedRead(byte[] destinationArray, int destinationIndex, int length)
         {
             Array.Copy(buffer, position, destinationArray, destinationIndex, length);
             position += length;
         }
 
-        internal void UnsafeRead(Memory destination, int destinationIndex, int length)
+        internal void UncheckedRead(Memory destination, int destinationIndex, int length)
         {
             destination.CopyFrom(buffer, position, destinationIndex, length);
             position += length;

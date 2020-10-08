@@ -97,25 +97,22 @@ namespace Carambolas.Security.Cryptography.NaCl
                 }
                 else // incomplete last block
                 {
-                    unsafe
-                    {
-                        var block = stackalloc byte[Mac.Size];
-                        for (int j = 0; j < length; ++j, ++offset)
-                            block[j] = buffer[offset];
+                    Span<byte> block = stackalloc byte[Mac.Size];
+                    for (int j = 0; j < length; ++j, ++offset)
+                        block[j] = buffer[offset];
 
-                        block[length] = terminator;
+                    block[length] = terminator;
 
-                        for (int j = length + 1; j < Mac.Size; ++j)
-                            block[j] = 0;
+                    for (int j = length + 1; j < Mac.Size; ++j)
+                        block[j] = 0;
 
-                        t0 = LoadUInt32LittleEndian(block, 0);
-                        t1 = LoadUInt32LittleEndian(block, 4);
-                        t2 = LoadUInt32LittleEndian(block, 8);
-                        t3 = LoadUInt32LittleEndian(block, 12);
+                    t0 = LoadUInt32LittleEndian(block, 0);
+                    t1 = LoadUInt32LittleEndian(block, 4);
+                    t2 = LoadUInt32LittleEndian(block, 8);
+                    t3 = LoadUInt32LittleEndian(block, 12);
 
-                        for (int j = 0; j < Mac.Size; ++j)
-                            block[j] = 0;
-                    }
+                    for (int j = 0; j < Mac.Size; ++j)
+                        block[j] = 0;
 
                     u0 += t0 & 0x3ffffff;
                     u1 += (uint)(((((ulong)t1 << 32) | t0) >> 26) & 0x3ffffff);
@@ -230,187 +227,7 @@ namespace Carambolas.Security.Cryptography.NaCl
                 accumulator.Push(buffer, offset + i, length - i);
 
             mac = accumulator.Calculate();
-        }
-
-        // public static void Sign(byte[] buffer, int offset, int length, in Key key, out Mac mac)
-        // {
-        //     if (buffer == null)
-        //         throw new ArgumentNullException(nameof(buffer));
-        // 
-        //     if (length < 0)
-        //         throw new ArgumentOutOfRangeException(nameof(length));
-        // 
-        //     if (offset < 0)
-        //         throw new ArgumentOutOfRangeException(nameof(offset));
-        // 
-        //     if (offset > buffer.Length - length)
-        //         throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements, nameof(offset), nameof(length), nameof(buffer)), nameof(buffer));
-        // 
-        //     // Init state
-        //     var h0 = 0u;
-        //     var h1 = 0u;
-        //     var h2 = 0u;
-        //     var h3 = 0u;
-        //     var h4 = 0u;
-        // 
-        //     uint b;
-        //     // uint nb;
-        //     // 
-        //     // ulong f0, f1, f2, f3;
-        //     //ulong c;
-        // 
-        //     var (t0, t1, t2, t3, t4, t5, t6, t7) = key;
-        // 
-        //     // Precompute multipliers
-        //     var r0 = t0 & 0x3ffffff;
-        //     t0 >>= 26;
-        //     t0 |= t1 << 6;
-        //     var r1 = t0 & 0x3ffff03;
-        //     t1 >>= 20;
-        //     t1 |= t2 << 12;
-        //     var r2 = t1 & 0x3ffc0ff;
-        //     t2 >>= 14;
-        //     t2 |= t3 << 18;
-        //     var r3 = t2 & 0x3f03fff;
-        //     t3 >>= 8;
-        //     var r4 = t3 & 0x00fffff;
-        // 
-        //     var s1 = r1 * 5;
-        //     var s2 = r2 * 5;
-        //     var s3 = r3 * 5;
-        //     var s4 = r4 * 5;
-        // 
-        //     // Process blocks
-        //     for (var i = offset; i < length; i += Mac.Size)
-        //     {
-        //         var m = length - i;
-        //         if (m >= Mac.Size)
-        //         {
-        //             t0 = LoadUInt32LittleEndian(buffer, i + 0);
-        //             t1 = LoadUInt32LittleEndian(buffer, i + 4);
-        //             t2 = LoadUInt32LittleEndian(buffer, i + 8);
-        //             t3 = LoadUInt32LittleEndian(buffer, i + 12);
-        // 
-        //             h0 += t0 & 0x3ffffff;
-        //             h1 += (uint)(((((ulong)t1 << 32) | t0) >> 26) & 0x3ffffff);
-        //             h2 += (uint)(((((ulong)t2 << 32) | t1) >> 20) & 0x3ffffff);
-        //             h3 += (uint)(((((ulong)t3 << 32) | t2) >> 14) & 0x3ffffff);
-        // 
-        //             h4 = h4 + ((t3 >> 8) | (1 << 24));
-        //         }
-        //         else // incomplete last block
-        //         {
-        //             unsafe
-        //             {
-        //                 var block = stackalloc byte[Mac.Size];
-        //                 for (int j = 0; j < m; ++j, ++i)
-        //                     block[j] = buffer[i];
-        // 
-        //                 block[m] = 1;
-        // 
-        //                 for (int j = m + 1; j < Mac.Size; ++j)
-        //                     block[j] = 0;
-        // 
-        //                 t0 = LoadUInt32LittleEndian(block, 0);
-        //                 t1 = LoadUInt32LittleEndian(block, 4);
-        //                 t2 = LoadUInt32LittleEndian(block, 8);
-        //                 t3 = LoadUInt32LittleEndian(block, 12);
-        // 
-        //                 for (int j = 0; j < Mac.Size; ++j)
-        //                     block[j] = 0;
-        //             }                
-        // 
-        //             h0 += t0 & 0x3ffffff;
-        //             h1 += (uint)(((((ulong)t1 << 32) | t0) >> 26) & 0x3ffffff);
-        //             h2 += (uint)(((((ulong)t2 << 32) | t1) >> 20) & 0x3ffffff);
-        //             h3 += (uint)(((((ulong)t3 << 32) | t2) >> 14) & 0x3ffffff);
-        // 
-        //             h4 = h4 + (t3 >> 8);
-        //         }                                
-        // 
-        //         // d = r * h
-        //         var tt0 = (ulong)h0 * r0 + (ulong)h1 * s4 + (ulong)h2 * s3 + (ulong)h3 * s2 + (ulong)h4 * s1;
-        //         var tt1 = (ulong)h0 * r1 + (ulong)h1 * r0 + (ulong)h2 * s4 + (ulong)h3 * s3 + (ulong)h4 * s2;
-        //         var tt2 = (ulong)h0 * r2 + (ulong)h1 * r1 + (ulong)h2 * r0 + (ulong)h3 * s4 + (ulong)h4 * s3;
-        //         var tt3 = (ulong)h0 * r3 + (ulong)h1 * r2 + (ulong)h2 * r1 + (ulong)h3 * r0 + (ulong)h4 * s4;
-        //         var tt4 = (ulong)h0 * r4 + (ulong)h1 * r3 + (ulong)h2 * r2 + (ulong)h3 * r1 + (ulong)h4 * r0;
-        // 
-        //         // Partial reduction mod 2^130-5
-        //         unchecked
-        //         {
-        //             h0 = (uint)tt0 & 0x3ffffff;
-        //             var c = (tt0 >> 26);
-        //             tt1 += c;
-        //             h1 = (uint)tt1 & 0x3ffffff;
-        //             b = (uint)(tt1 >> 26);
-        //             tt2 += b;
-        //             h2 = (uint)tt2 & 0x3ffffff;
-        //             b = (uint)(tt2 >> 26);
-        //             tt3 += b;
-        //             h3 = (uint)tt3 & 0x3ffffff;
-        //             b = (uint)(tt3 >> 26);
-        //             tt4 += b;
-        //             h4 = (uint)tt4 & 0x3ffffff;
-        //             b = (uint)(tt4 >> 26);
-        //         }
-        // 
-        //         h0 += b * 5;
-        //     }
-        // 
-        //     // Do final reduction mod 2^130-5
-        //     b = h0 >> 26;
-        //     h0 &= 0x3ffffff;
-        //     h1 += b;
-        //     b = h1 >> 26;
-        //     h1 &= 0x3ffffff;
-        //     h2 += b;
-        //     b = h2 >> 26;
-        //     h2 &= 0x3ffffff;
-        //     h3 += b;
-        //     b = h3 >> 26;
-        //     h3 &= 0x3ffffff;
-        //     h4 += b;
-        //     b = h4 >> 26;
-        //     h4 &= 0x3ffffff;
-        //     h0 += b * 5;
-        // 
-        //     // Compute h - p
-        //     var g0 = h0 + 5;
-        //     b = g0 >> 26;
-        //     g0 &= 0x3ffffff;
-        //     var g1 = h1 + b;
-        //     b = g1 >> 26;
-        //     g1 &= 0x3ffffff;
-        //     var g2 = h2 + b;
-        //     b = g2 >> 26;
-        //     g2 &= 0x3ffffff;
-        //     var g3 = h3 + b;
-        //     b = g3 >> 26;
-        //     g3 &= 0x3ffffff;
-        //     var g4 = unchecked(h4 + b - (1 << 26));
-        // 
-        //     // Select h if h < p, or h - p if h >= p
-        //     b = (g4 >> 31) - 1; // mask is either 0 (h >= p) or -1 (h < p)
-        //     var nb = ~b;
-        //     h0 = (h0 & nb) | (g0 & b);
-        //     h1 = (h1 & nb) | (g1 & b);
-        //     h2 = (h2 & nb) | (g2 & b);
-        //     h3 = (h3 & nb) | (g3 & b);
-        //     h4 = (h4 & nb) | (g4 & b);
-        // 
-        //     // h = h % (2^128)
-        //     var f0 = ((h0) | (h1 << 26)) + (ulong)t4;
-        //     var f1 = ((h1 >> 6) | (h2 << 20)) + (ulong)t5;
-        //     var f2 = ((h2 >> 12) | (h3 << 14)) + (ulong)t6;
-        //     var f3 = ((h3 >> 18) | (h4 << 8)) + (ulong)t7;
-        // 
-        //     // mac = (h + pad) % (2^128)            
-        //     f1 += (f0 >> 32);
-        //     f2 += (f1 >> 32);
-        //     f3 += (f2 >> 32);
-        // 
-        //     mac = new Mac((uint)f0, (uint)f1, (uint)f2, (uint)f3);
-        // }
+        }        
 
         public static bool Verify(byte[] buffer, int offset, int length, in Key key, in Mac mac)
         {
@@ -428,7 +245,7 @@ namespace Carambolas.Security.Cryptography.NaCl
         private static uint LoadUInt32LittleEndian(byte[] buf, int offset) => ((uint)buf[offset]) | ((uint)buf[offset + 1] << 8) | ((uint)buf[offset + 2] << 16) | ((uint)buf[offset + 3] << 24);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe uint LoadUInt32LittleEndian(byte* buf, int offset) => ((uint)buf[offset]) | ((uint)buf[offset + 1] << 8) | ((uint)buf[offset + 2] << 16) | ((uint)buf[offset + 3] << 24);
+        private static uint LoadUInt32LittleEndian(in Span<byte> buf, int offset) => ((uint)buf[offset]) | ((uint)buf[offset + 1] << 8) | ((uint)buf[offset + 2] << 16) | ((uint)buf[offset + 3] << 24);
 
         public static class AEAD
         {

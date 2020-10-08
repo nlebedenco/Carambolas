@@ -320,12 +320,12 @@ A packet is any datagram with a valid size (<= `MTU`) formatted according to the
       MSGS ::= MSG [MSG...]
        MSG ::= MSGFLAGS(1) <ACKACC | ACK | DUPACK | GAP | DUPGAP | SEG | FRAG>
     ACKACC ::= ATM(4)
-       ACK ::= ANEXT(2) ATM(4)
-    DUPACK ::= ACNT(2) ANEXT(2) ATM(4)
-       GAP ::= ANEXT(2) ALAST(2) ATM(4)
-    DUPGAP ::= ACNT(2) ANEXT(2) ALAST(2) ATM(4)
-       SEG ::= SEQ(2) RSN(2) SEGLEN(2) PAYLOAD(N)
-      FRAG ::= SEQ(2) RSN(2) SEGLEN(2) FRAGINDEX(1) FRAGLEN(2) PAYLOAD(N)
+       ACK ::= CH(1) ANEXT(2) ATM(4)
+    DUPACK ::= CH(1) ACNT(2) ANEXT(2) ATM(4)
+       GAP ::= CH(1) ANEXT(2) ALAST(2) ATM(4)
+    DUPGAP ::= CH(1) ACNT(2) ANEXT(2) ALAST(2) ATM(4)
+       SEG ::= CH(1) SEQ(2) RSN(2) SEGLEN(2) PAYLOAD(N)
+      FRAG ::= CH(1) SEQ(2) RSN(2) SEGLEN(2) FRAGINDEX(1) FRAGLEN(2) PAYLOAD(N)
 
 The number in parenthesis is the atom size in bytes. Angle brackets indicate multiple possibilities for an element. Square brackets denote an optional element.
 Curly brackets denote an encrypted group.
@@ -346,7 +346,8 @@ Curly brackets denote an encrypted group.
 - `PUBKEY`: Source public key used in the secure session. See [Encryption](#encryption);
 - `N64`: Source nonce used to encrypt/sign. See [Encryption](#encryption);
 - `MAC`: Authentication code. See [Encryption](#encryption);
-- `MFLAGS`: Message type and options including channel (`CH`) when applicable. See [Message Flags](#message-flags);
+- `MFLAGS`: Message type and options when applicable. See [Message Flags](#message-flags);
+- `CH`: Message channel ( 0 <= `CH` <= `MTC`);
 - `ANEXT`: Next sequence number expected by the source;
 - `ALAST`: Last sequence number of a series expected by the source (last of a gap);
 - `ACNT`: Number of accumulated acknowledgements from source. Indicates the number of times (>1) that an equivalent `ACK` would have been repeated with the 
@@ -392,7 +393,7 @@ A host may silently drop `CON` packets that contain either an invalid `MTU` or `
 
 * `SSN` must be initialized as described in [Session Identifiers](#session-identifiers);
 * 345 <= `MTU` <= 65535 bytes;
-* 0 <= `MTC` <= 15 channels;
+* 0 <= `MTC` <= 255 channels;
 * `MBW`, in bits/s, affects flow control as described in [Bandwidth window](#bandwidth-window). In practice this field is clamped between (`MSS` / 0.001) * 8 
   and 524280000 (= 65535 / 0.001 * 8) because a sender must be allowed to transmit at least 1 x `MSS` per `RTT` and cannot have more than 65535 bytes in flight per `RTT` >= 0.001s;
 
@@ -513,7 +514,7 @@ Messages are encoded in the same way regardless of the packet being secure or in
 
 |      Bit   |   7    |     6     |    5    |     4     |  3..0 |
 |-----------:|:------:|:---------:|:-------:|:---------:|:-----:|
-|       Flag |  ACK   |  GAP/REL  |   DATA  |  DUP/FRAG |   CH  |
+|       Flag |  ACK   |  GAP/REL  |   DATA  |  DUP/FRAG |  RFFU |
 
 
 - All control acks are `0b1--0----`;
@@ -521,11 +522,11 @@ Messages are encoded in the same way regardless of the packet being secure or in
 - All data acks are `0b1--1----`;
   - Bit 6 indicates if it has gap information;
   - Bit 4 indicates if it has duplicate information;
-  - Bits 3 to 0 indicate the channel;
+  - Bits 3 are reserved for future use;
 - All user data messages are `0b0--1----`;
   - Bit 6 indicates if it is unreliable(0) or reliable (1);
   - Bit 4 indicates if it is a segment(0) or fragment (1);
-  - Bits 3 to 0 indicate the channel;
+  - Bits 3 are reserved for future use;
 
 ##### ACKACC (0x8A)
 
@@ -536,45 +537,45 @@ Messages are encoded in the same way regardless of the packet being secure or in
 
 ##### ACK (0xA-)
 
-|      Byte |    0   |   0  |    1 2  |   3..6  | 
-|----------:|:------:|:----:|:-------:|:-------:|
-|      Bits |  7..4  | 3..0 |  15..0  |  31..0  |
-|     Field |  1010  |  CH  |   NEXT  |   ATM   |
+|      Byte |    0   |   0  |   1  |    2 3  |   4..7  | 
+|----------:|:------:|:----:|:----:|:-------:|:-------:|
+|      Bits |  7..4  | 3..0 | 7..0 |  15..0  |  31..0  |
+|     Field |  1010  | RFFU |  CH  |   NEXT  |   ATM   |
 
 ##### DUPACK (0xB-)
 
-|      Byte |    0   |   0  |    1 2  |    3 4  |   5..8  | 
-|----------:|:------:|:----:|:-------:|:-------:|:-------:|
-|      Bits |  7..4  | 3..0 |  15..0  |  15..0  |  31..0  |
-|     Field |  1011  |  CH  |   CNT   |   NEXT  |   ATM   |
+|      Byte |    0   |   0  |   1  |    2 3  |    4 5  |   6..9  | 
+|----------:|:------:|:----:|:----:|:-------:|:-------:|:-------:|
+|      Bits |  7..4  | 3..0 | 7..0 |  15..0  |  15..0  |  31..0  |
+|     Field |  1011  | RFFU |  CH  |   CNT   |   NEXT  |   ATM   |
 
 ##### GAP (0xE-)
 
-|      Byte |    0   |   0  |    1 2  |    3 4  |   5..8  | 
-|----------:|:------:|:----:|:-------:|:-------:|:-------:|
-|      Bits |  7..4  | 3..0 |  15..0  |  15..0  |  31..0  |
-|     Field |  1110  |  CH  |   NEXT  |   LAST  |   ATM   |
+|      Byte |    0   |   0  |   1  |    2 3  |    4 5  |   6..9  | 
+|----------:|:------:|:----:|:----:|:-------:|:-------:|:-------:|
+|      Bits |  7..4  | 3..0 | 7..0 |  15..0  |  15..0  |  31..0  |
+|     Field |  1110  | RFFU |  CH  |   NEXT  |   LAST  |   ATM   |
 
 ##### DUPGAP (0xF-)
 
-|      Byte |    0   |   0  |    1 2  |    3 4  |    5 6  |   7..10  | 
-|----------:|:------:|:----:|:-------:|:-------:|:-------:|:--------:|
-|      Bits |  7..4  | 3..0 |  15..0  |  15..0  |  15..0  |   31..0  |
-|     Field |  1111  |  CH  |   CNT   |   NEXT  |   LAST  |    ATM   |
+|      Byte |    0   |   0  |   1  |    2 3  |    4 5  |    6 7  |   8..11  | 
+|----------:|:------:|:----:|:----:|:-------:|:-------:|:-------:|:--------:|
+|      Bits |  7..4  | 3..0 | 7..0 |  15..0  |  15..0  |  15..0  |   31..0  |
+|     Field |  1111  | RFFU |  CH  |   CNT   |   NEXT  |   LAST  |    ATM   |
 
 ##### SEG (0x2- or 0x6-)
  
-|      Byte |        0      |   0  |    1 2  |    3 4  |    5 6  |   7..SEGLEN+7  | 
-|----------:|:-------------:|:----:|:-------:|:-------:|:-------:|:--------------:|
-|      Bits |      7..4     | 3..0 |  15..0  |  15..0  |  15..0  |                |
-|     Field | 0010 or 0110  |  CH  |   SEQ   |   RSN   |  SEGLEN |     PAYLOAD    |
+|      Byte |        0      |   0  |   1  |    2 3  |    4 5  |    6 7  |   8..SEGLEN+8  | 
+|----------:|:-------------:|:----:|:----:|:-------:|:-------:|:-------:|:--------------:|
+|      Bits |      7..4     | 3..0 | 7..0 |  15..0  |  15..0  |  15..0  |                |
+|     Field | 0010 or 0110  | RFFU |  CH  |   SEQ   |   RSN   |  SEGLEN |     PAYLOAD    |
 
 ##### FRAG (0x3- or 0x7-)
  
-|      Byte |        0      |   0  |    1 2  |    3 4  |    5 6  |      7     |   8 9   |  10..SEGLEN+9  | 
-|----------:|:-------------:|:----:|:-------:|:-------:|:-------:|:----------:|:-------:|:--------------:|
-|      Bits |      7..4     | 3..0 |  15..0  |  15..0  |  15..0  |     7..0   |  15..0  |                |
-|     Field | 0011 or 0111  |  CH  |   SEQ   |   RSN   |  SEGLEN |  FRAGINDEX | FRAGLEN |     PAYLOAD    |
+|      Byte |        0      |   0  |   1  |    2 3  |    4 5  |    6 7  |      8     |   9 10  |  11..SEGLEN+11 | 
+|----------:|:-------------:|:----:|:----:|:-------:|:-------:|:-------:|:----------:|:-------:|:--------------:|
+|      Bits |      7..4     | 3..0 | 7..0 |  15..0  |  15..0  |  15..0  |     7..0   |  15..0  |                |
+|     Field | 0011 or 0111  | RFFU |  CH  |   SEQ   |   RSN   |  SEGLEN |  FRAGINDEX | FRAGLEN |     PAYLOAD    |
 
 
 ### Connection

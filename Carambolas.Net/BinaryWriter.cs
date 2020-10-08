@@ -63,10 +63,10 @@ namespace Carambolas.Net
             if (end + value > buffer.Length)
                 throw new ArgumentException(string.Format(SR.BinaryWriter.ExpandOverflow, value), nameof(value));
 
-            UnsafeExpand(value);
+            UncheckedExpand(value);
         }
 
-        internal void UnsafeExpand(int value) => end += value;
+        internal void UncheckedExpand(int value) => end += value;
 
 
         public void Skip(int n)
@@ -74,11 +74,11 @@ namespace Carambolas.Net
             if (n > 0)
             {
                 Ensure(n);
-                UnsafeSkip(n);
+                UncheckedSkip(n);
             }
         }
 
-        internal void UnsafeSkip(int n) => position += n;
+        internal void UncheckedSkip(int n) => position += n;
 
 
         public void Write(char value) => Write((ushort)value);
@@ -86,7 +86,7 @@ namespace Carambolas.Net
         public void Write(byte value)
         {
             Ensure(1);
-            UnsafeWrite(value);
+            UncheckedWrite(value);
         }
 
         public void Write(short value) => Write((ushort)value);
@@ -94,7 +94,7 @@ namespace Carambolas.Net
         public void Write(ushort value)
         {
             Ensure(sizeof(ushort));
-            UnsafeWrite(value);
+            UncheckedWrite(value);
         }
 
         public void Write(int value) => Write((uint)value);
@@ -102,7 +102,7 @@ namespace Carambolas.Net
         public void Write(uint value)
         {
             Ensure(sizeof(uint));
-            UnsafeWrite(value);
+            UncheckedWrite(value);
         }
 
         public void Write(long value) => Write((ulong)value);
@@ -110,7 +110,7 @@ namespace Carambolas.Net
         public void Write(ulong value)
         {
             Ensure(sizeof(ulong));
-            UnsafeWrite(value);            
+            UncheckedWrite(value);            
         }      
 
         public void Write(float value) => Write(new FloatConverter { AsFloat = value }.AsInt32);
@@ -122,7 +122,7 @@ namespace Carambolas.Net
         public void Write(byte[] sourceArray, int sourceIndex, int length)
         {
             Ensure(length);
-            UnsafeWrite(sourceArray, sourceIndex, length);
+            UncheckedWrite(sourceArray, sourceIndex, length);
         }
 
         public void Write(Guid value)
@@ -154,7 +154,7 @@ namespace Carambolas.Net
         internal void Write(Memory source, int sourceIndex, int length)
         {
             Ensure(length);
-            UnsafeWrite(source, sourceIndex, length);
+            UncheckedWrite(source, sourceIndex, length);
         }
 
 
@@ -165,7 +165,7 @@ namespace Carambolas.Net
             if (Available < sizeof(byte))
                 return false;
 
-            UnsafeWrite(value);
+            UncheckedWrite(value);
             return true;
         }
 
@@ -176,7 +176,7 @@ namespace Carambolas.Net
             if (Available < sizeof(ushort))
                 return false;
 
-            UnsafeWrite(value);
+            UncheckedWrite(value);
             return true;
         }
 
@@ -187,7 +187,7 @@ namespace Carambolas.Net
             if (Available < sizeof(uint))
                 return false;
 
-            UnsafeWrite(value);
+            UncheckedWrite(value);
             return true;
         }
 
@@ -198,7 +198,7 @@ namespace Carambolas.Net
             if (Available < sizeof(ulong))
                 return false;
 
-            UnsafeWrite(value);
+            UncheckedWrite(value);
             return true;
         }
       
@@ -213,7 +213,7 @@ namespace Carambolas.Net
             if (Available < length)
                 return false;
 
-            UnsafeWrite(sourceArray, sourceIndex, length);
+            UncheckedWrite(sourceArray, sourceIndex, length);
             return true;
         }       
 
@@ -238,7 +238,7 @@ namespace Carambolas.Net
             if (Available < length)
                 return false;
 
-            UnsafeWrite(source, sourceIndex, length);
+            UncheckedWrite(source, sourceIndex, length);
             return true;
         }
 
@@ -251,13 +251,13 @@ namespace Carambolas.Net
         }
 
 
-        internal void UnsafeWrite(byte value)
+        internal void UncheckedWrite(byte value)
         {
             buffer[position] = value;
             position += 1;
         }
 
-        internal void UnsafeWrite(byte value, int count)
+        internal void UncheckedWrite(byte value, int count)
         {
             var i = position;
             while (count > 0)
@@ -269,7 +269,7 @@ namespace Carambolas.Net
             position = i;
         }
 
-        internal void UnsafeWrite(ushort value)
+        internal void UncheckedWrite(ushort value)
         {
             var i = position;
             buffer[position] = (byte)((value >> 8) & 0xff);
@@ -277,7 +277,7 @@ namespace Carambolas.Net
             position = i + 2;
         }
 
-        internal void UnsafeWrite(uint value)
+        internal void UncheckedWrite(uint value)
         {
             var i = position;
             buffer[i] = (byte)((value >> 24) & 0xff);
@@ -287,7 +287,7 @@ namespace Carambolas.Net
             position = i + 4;
         }
 
-        internal void UnsafeWrite(ulong value)
+        internal void UncheckedWrite(ulong value)
         {
             var i = position;
             buffer[i] = (byte)((value >> 56) & 0xff);
@@ -301,25 +301,25 @@ namespace Carambolas.Net
             position = i + 8;
         }
 
-        internal void UnsafeWrite(byte[] sourceArray, int sourceIndex, int length)
+        internal void UncheckedWrite(byte[] sourceArray, int sourceIndex, int length)
         {
             Array.Copy(sourceArray, sourceIndex, buffer, position, length);
             position += length;
         }
 
-        internal void UnsafeWrite(Memory source, int sourceIndex, int length)
+        internal void UncheckedWrite(Memory source, int sourceIndex, int length)
         {
             source.CopyTo(sourceIndex, buffer, position, length);
             position += length;
         }
 
 
-        internal void UnsafeOverwrite(byte value, int index)
+        internal void UncheckedOverwrite(byte value, int index)
         {
             buffer[index] = (byte)(value & 0xff);
         }
 
-        internal void UnsafeOverwrite(ushort value, int index)
+        internal void UncheckedOverwrite(ushort value, int index)
         {
             buffer[index] = (byte)((value >> 8) & 0xff);
             buffer[index + 1] = (byte)(value & 0xff);

@@ -377,19 +377,19 @@ namespace Carambolas.Net
             }
         }
 
-        #region Unsafe overwrites 
+        #region Unchecked overwrites 
 
         /// <summary>
-        /// Unsafe overwrite used to fix encoded outbound messages on transmission. 
+        /// Unchecked overwrite used to fix encoded outbound messages on transmission. 
         /// Inelegant but effective. Use with caution.
         /// </summary>
-        internal void UnsafeOverwrite(byte value, int index) => blocks[0][index] = value;
+        internal void UncheckedOverwrite(byte value, int index) => blocks[0][index] = value;
 
         /// <summary>
-        /// Unsafe overwrite used to fix encoded outbound messages on transmission. 
+        /// Unchecked overwrite used to fix encoded outbound messages on transmission. 
         /// Inelegant but effective. Use with caution.
         /// </summary>
-        internal void UnsafeOverwrite(ushort value, int index)
+        internal void UncheckedOverwrite(ushort value, int index)
         {
             blocks[0][index] = (byte)((value >> 8) & 0xff);
             blocks[0][index + 1] = (byte)(value & 0xff);

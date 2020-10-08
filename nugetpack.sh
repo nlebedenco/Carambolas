@@ -13,6 +13,9 @@ else
     exit 1 
 fi
 
-dotnet pack Carambolas/Carambolas.csproj -c Release --output "$BASEDIR/Build/NuGet" || exit 1
-dotnet pack Carambolas.Net/Carambolas.Net.csproj -c Release --output "$BASEDIR/Build/NuGet" || exit 1
+# These assemblies are currently compiled for AnyCPU on both x86 and x64. 
+# Passing a platform only to put files in the same output path used by the build scripts and visual studio.
+
+dotnet pack Carambolas/Carambolas.csproj -c Release -p:Platform=x64 --output "$BASEDIR/Build/NuGet" || exit 1
+dotnet pack Carambolas.Net/Carambolas.Net.csproj -c Release -p:Platform=x64 --output "$BASEDIR/Build/NuGet" || exit 1
 

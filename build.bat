@@ -22,7 +22,7 @@ for %%P in (
     "Carambolas.Security.Cryptography.Tests" 
     "Carambolas.Security.Cryptography.NaCl.Tests"
 ) do (
-    dotnet build %%P -c:Release -p:Platform=%PLAT% 
+    dotnet build %%P -c Release -p:Platform=%PLAT% 
     if %errorlevel% neq 0 goto error
 )
 

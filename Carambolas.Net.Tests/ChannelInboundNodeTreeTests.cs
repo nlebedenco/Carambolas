@@ -34,7 +34,7 @@ namespace Carambolas.Net.Tests.Unit
         public void TryGetFromEmptyTree(ushort seq)
         {
             var tree = new Carambolas.Net.Channel.Inbound.Node.Tree<Node>();
-            Assert.False(tree.TryGet(seq, out Node node));
+            Assert.False(tree.TryGet(new Protocol.Ordinal(seq), out Node node));
             Assert.Null(node);
         }
 
@@ -45,7 +45,7 @@ namespace Carambolas.Net.Tests.Unit
         public void TryRemoveFromEmptyTree(ushort seq)
         {
             var tree = new Carambolas.Net.Channel.Inbound.Node.Tree<Node>();
-            Assert.False(tree.TryRemove(seq, out Node node));
+            Assert.False(tree.TryRemove(new Protocol.Ordinal(seq), out Node node));
             Assert.Null(node);
         }
 
@@ -56,7 +56,7 @@ namespace Carambolas.Net.Tests.Unit
         public void RemoveAndDisposeBeforeSequenceNumberFromEmptyTree(ushort seq)
         {
             var tree = new Carambolas.Net.Channel.Inbound.Node.Tree<Node>();
-            tree.RemoveAndDisposeBefore(seq);
+            tree.RemoveAndDisposeBefore(new Protocol.Ordinal(seq));
         }
 
         [Fact]
@@ -73,7 +73,7 @@ namespace Carambolas.Net.Tests.Unit
         public void TryAddOne(ushort seq)
         {
             var tree = new Carambolas.Net.Channel.Inbound.Node.Tree<Node>();
-            Assert.True(tree.TryAdd(new Node() { SequenceNumber = seq }));
+            Assert.True(tree.TryAdd(new Node() { SequenceNumber = new Protocol.Ordinal(seq) }));
             Assert.False(tree.IsEmpty);
         }
 
@@ -84,11 +84,11 @@ namespace Carambolas.Net.Tests.Unit
         public void TryAddOrGetOne(ushort seq)
         {
             var tree = new Carambolas.Net.Channel.Inbound.Node.Tree<Node>();
-            Assert.True(tree.TryAddOrGet(seq, Allocator, out Node node1));
+            Assert.True(tree.TryAddOrGet(new Protocol.Ordinal(seq), Allocator, out Node node1));
             Assert.NotNull(node1);
             Assert.False(tree.IsEmpty);
 
-            Assert.False(tree.TryAddOrGet(seq, Allocator, out Node node2));
+            Assert.False(tree.TryAddOrGet(new Protocol.Ordinal(seq), Allocator, out Node node2));
             Assert.False(tree.IsEmpty);
 
             Assert.Same((object)node1, (object)node2);
@@ -108,14 +108,14 @@ namespace Carambolas.Net.Tests.Unit
                     seq = (ushort)(offset + random.Next(0, Protocol.Ordinal.Window.Size - 1));
                 while (set.Contains(seq));
 
-                Assert.True(tree.TryAdd(new Node() { SequenceNumber = seq }));
+                Assert.True(tree.TryAdd(new Node() { SequenceNumber = new Protocol.Ordinal(seq) }));
                 Assert.False(tree.IsEmpty);
                 set.Add(seq);
             }
 
             foreach (var seq in set)
             {
-                Assert.False(tree.TryAdd(new Node() { SequenceNumber = seq }));
+                Assert.False(tree.TryAdd(new Node() { SequenceNumber = new Protocol.Ordinal(seq) }));
                 Assert.False(tree.IsEmpty);
             }
         }
@@ -143,7 +143,7 @@ namespace Carambolas.Net.Tests.Unit
                         seq = (ushort)(offset + random.Next(0, Protocol.Ordinal.Window.Size - 1));
                     while (dict.ContainsKey(seq));
 
-                    Assert.True(tree.TryAddOrGet(seq, Allocator, out Node node));
+                    Assert.True(tree.TryAddOrGet(new Protocol.Ordinal(seq), Allocator, out Node node));
                     Assert.NotNull(node);
                     Assert.False(tree.IsEmpty);
                     dict.Add(seq, node);
@@ -151,7 +151,7 @@ namespace Carambolas.Net.Tests.Unit
 
                 foreach (var kv in dict)
                 {
-                    Assert.False(tree.TryAddOrGet(kv.Key, Allocator, out Node node));
+                    Assert.False(tree.TryAddOrGet(new Protocol.Ordinal(kv.Key), Allocator, out Node node));
                     Assert.NotNull(node);
                     Assert.False(tree.IsEmpty);
                 }
@@ -181,14 +181,14 @@ namespace Carambolas.Net.Tests.Unit
                         seq = (ushort)(offset + random.Next(0, Protocol.Ordinal.Window.Size - 1));
                     while (set.Contains(seq));
 
-                    Assert.True(tree.TryAdd(new Node() { SequenceNumber = seq }));
+                    Assert.True(tree.TryAdd(new Node() { SequenceNumber = new Protocol.Ordinal(seq) }));
                     Assert.False(tree.IsEmpty);
                     set.Add(seq);
                 }
 
                 foreach (var seq in set)
                 {
-                    Assert.True(tree.TryRemove(seq, out Node node));
+                    Assert.True(tree.TryRemove(new Protocol.Ordinal(seq), out Node node));
                     Assert.NotNull(node);
                     n--;
                     if (n > 0)
@@ -223,7 +223,7 @@ namespace Carambolas.Net.Tests.Unit
             tree.RemoveAndDisposeBefore(keep);
             for (int i = 0; i < n; ++i)
             {
-                var seq = (ushort)(offset + i);
+                var seq = new Protocol.Ordinal((ushort)(offset + i));
                 if (seq < keep)
                     Assert.False(tree.TryGet(seq, out Node node));
                 else
@@ -276,7 +276,7 @@ namespace Carambolas.Net.Tests.Unit
             {
                 var seq = (ushort)(offset + i);
                 list.Add(seq);
-                var node = new Node() { SequenceNumber = seq };
+                var node = new Node() { SequenceNumber = new Protocol.Ordinal(seq) };
                 dict.Add(seq, node);
                 Assert.True(tree.TryAdd(node));
                 Assert.False(tree.IsEmpty);
@@ -285,7 +285,7 @@ namespace Carambolas.Net.Tests.Unit
             int index = 0;
             Assert.True(tree.Traverse((Node node, ref int s) =>
             {
-                Assert.Equal(list[index], node.SequenceNumber);
+                Assert.Equal(list[index], (ushort)node.SequenceNumber);
                 Assert.Same((object)dict[(ushort)node.SequenceNumber], (object)node);
                 index++;
                 return true;
