@@ -26,7 +26,7 @@ multiplayer video games and sensor networks.
 - Support for P2P topologies (the same host can initiate and accept multiple connections concurrently);
 - Message oriented;
 - 4 levels of reliability individually defined per send operation - also referred to as quality-of-service (QoS);
-- Up to 16 independently sequenced channels;
+- Up to 256 independently sequenced channels;
 - Round-trip time estimation;
 - Keep-alive (aka ping);
 - Limited congestion control/avoidance;
