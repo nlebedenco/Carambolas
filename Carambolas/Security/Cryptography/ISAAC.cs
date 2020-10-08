@@ -284,28 +284,25 @@ namespace Carambolas.Security.Cryptography
             try
             {
                 resultLock.Enter(ref locked);
-                unsafe
+                Span<uint> buffer = stackalloc uint[8];
+
+                var n = Size - next;
+                if (n < 8)
                 {
-                    var buffer = stackalloc uint[8];
+                    for (int i = 0; i < n; ++i)
+                        buffer[i] = (uint)result[next++];
 
-                    var n = Size - next;
-                    if (n < 8)
-                    {
-                        for (int i = 0; i < n; ++i)
-                            buffer[i] = (uint)result[next++];
-
-                        Generate();
-                        for (int i = n; i < 8; ++i)
-                            buffer[i] = (uint)result[next++];
-                    }
-                    else
-                    {
-                        for (int i = 0; i < 8; ++i)
-                            buffer[i] = (uint)result[next++];
-                    }
-
-                    return new Key(buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7]);
+                    Generate();
+                    for (int i = n; i < 8; ++i)
+                        buffer[i] = (uint)result[next++];
                 }
+                else
+                {
+                    for (int i = 0; i < 8; ++i)
+                        buffer[i] = (uint)result[next++];
+                }
+
+                return new Key(buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7]);
             }
             finally
             {

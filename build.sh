@@ -26,7 +26,7 @@ for P in \
 "Carambolas.Security.Cryptography.Tests" \
 "Carambolas.Security.Cryptography.NaCl.Tests"
 do 
-    dotnet build $P -c:Release -p:Platform=$PLAT || exit 1
+    dotnet build $P -c Release -p:Platform=$PLAT || exit 1
 done
 
 

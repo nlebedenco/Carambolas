@@ -30,11 +30,11 @@ namespace Carambolas.Security.Cryptography.NaCl
         /// <summary>
         /// Returns <paramref name="f"/> X <paramref name="g"/>
         /// </summary>
-        private static unsafe Key Operate(in Key f, in Key g)
+        private static Key Operate(in Key f, in Key g)
         {
             var (k0, k1, k2, k3, k4, k5, k6, k7) = f;
 
-            var k = stackalloc byte[Key.Size];
+            Span<byte> k = stackalloc byte[Key.Size];
 
             k[0] = (byte)((k0 >> 0) & 248);
             k[1] = (byte)(k0 >> 8);

@@ -8,10 +8,13 @@ if %errorlevel% neq 0 goto error
 dotnet pack Carambolas.Net.Native\nuget\Carambolas.Net.Native.Win.csproj -c Release --output "%~dp0Build\NuGet"
 if %errorlevel% neq 0 goto error 
 
-dotnet pack Carambolas\Carambolas.csproj -c Release --output "%~dp0Build\NuGet"
+REM These assemblies are currently compiled for AnyCPU on both x86 and x64. 
+REM Passing a platform only to put files in the same output path used by the build scripts and visual studio.
+
+dotnet pack Carambolas\Carambolas.csproj -c Release -p:Platform=x64 --output "%~dp0Build\NuGet"
 if %errorlevel% neq 0 goto error 
 
-dotnet pack Carambolas.Net\Carambolas.Net.csproj -c Release --output "%~dp0Build\NuGet"
+dotnet pack Carambolas.Net\Carambolas.Net.csproj -c Release -p:Platform=x64 --output "%~dp0Build\NuGet"
 if %errorlevel% neq 0 goto error 
 
 :done

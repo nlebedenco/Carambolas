@@ -90,6 +90,7 @@
     </CustomBuildAfterTargets>
     <CustomBuildBeforeTargets>
     </CustomBuildBeforeTargets>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -99,6 +100,7 @@
     </CustomBuildAfterTargets>
     <CustomBuildBeforeTargets>
     </CustomBuildBeforeTargets>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -129,14 +131,18 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <AssemblyLinkResource>
       </AssemblyLinkResource>
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <OptimizeReferences>true</OptimizeReferences>
+      <ImportLibrary>
+      </ImportLibrary>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -167,14 +173,18 @@
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <AssemblyLinkResource>
       </AssemblyLinkResource>
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <OptimizeReferences>true</OptimizeReferences>
+      <ImportLibrary>
+      </ImportLibrary>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -206,6 +216,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <OmitFramePointers>true</OmitFramePointers>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -216,6 +227,9 @@
       </AssemblyLinkResource>
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <ImageHasSafeExceptionHandlers />
+      <ImportLibrary>
+      </ImportLibrary>
     </Link>
     <CustomBuildStep>
       <Command>
@@ -244,6 +258,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <OmitFramePointers>true</OmitFramePointers>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -254,6 +269,8 @@
       </AssemblyLinkResource>
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <ImportLibrary>
+      </ImportLibrary>
     </Link>
     <PostBuildEvent>
       <Command>

@@ -239,7 +239,7 @@ namespace Carambolas.Net
             public const byte Default = 0;
 
             public const byte MinValue = 0;
-            public const byte MaxValue = 15;
+            public const byte MaxValue = 255;
 
             public static byte Clamp(byte value) => Math.Max(MinValue, Math.Min(value, MaxValue));
         }
@@ -481,34 +481,57 @@ namespace Carambolas.Net
                 /// <summary>
                 /// Fixed set of static window times. Refer to <see cref="Protocol.Ordinal"/> for more information.
                 /// </summary>
-                internal unsafe struct Times
+                internal struct Times
                 {
                     public const int Size = 4;
-
-                    #pragma warning disable IDE0044
-                    private fixed uint values[Size];
-                    #pragma warning restore IDE0044
+                    
+                    private uint a0;
+                    private uint a1;
+                    private uint a2;
+                    private uint a3;
 
                     public Time this[int index]
                     {
                         get
                         {
-                            if (index < 0 || index >= Size)
-                                throw new ArgumentOutOfRangeException(nameof(index));
-
-                            return new Time(values[index]);
+                            switch (index)
+                            {
+                                case 0:
+                                    return a0;
+                                case 1:
+                                    return a1;
+                                case 2:
+                                    return a2;
+                                case 3:
+                                    return a3;
+                                default:
+                                    throw new ArgumentOutOfRangeException(nameof(index));
+                            }
                         }
 
                         set
                         {
-                            if (index < 0 || index >= Size)
-                                throw new ArgumentOutOfRangeException(nameof(index));
-
-                            values[index] = (uint)value;
+                            switch (index)
+                            {
+                                case 0:
+                                    a0 = (uint)value;
+                                    break;
+                                case 1:
+                                    a1 = (uint)value;
+                                    break;
+                                case 2:
+                                    a2 = (uint)value;
+                                    break;
+                                case 3:
+                                    a3 = (uint)value;
+                                    break;
+                                default:
+                                    throw new ArgumentOutOfRangeException(nameof(index));
+                            }
                         }
                     }
 
-                    public Times(uint value) => values[0] = values[1] = values[2] = values[3] = value;
+                    public Times(uint value) => a0 = a1 = a2 = a3 = value;
                 }
             }
 
@@ -528,7 +551,6 @@ namespace Carambolas.Net
             public int CompareTo(Ordinal other) => Compare(this, other);
 
             public static explicit operator ushort(Ordinal a) => a.value;
-            public static implicit operator Ordinal(ushort value) => new Ordinal(value);
 
             public static bool operator ==(Ordinal a, Ordinal b) => Equals(a, b);
             public static bool operator !=(Ordinal a, Ordinal b) => !Equals(a, b);
@@ -642,8 +664,7 @@ namespace Carambolas.Net
             Segment = 0x00,
             Fragment = 0x10,
             Data = 0x20,
-            Reliable = 0x40,
-            Channel = 0x0F
+            Reliable = 0x40
         }
 
         internal static class Message
@@ -700,14 +721,14 @@ namespace Carambolas.Net
                 /// <summary>
                 /// Size of the message parameters not counting flags and channel.
                 /// </summary>
-                public const int Size = 6; // NEXT(2), ATM(4)
+                public const int Size = 7; // CH(1), NEXT(2), ATM(4)
 
                 internal static class Dup
                 {
                     /// <summary>
                     /// Size of the message parameters not counting flags and channel.
                     /// </summary>
-                    public const int Size = 8;  // CNT(2), NEXT(2), ATM(4)
+                    public const int Size = 9;  // CH(1), CNT(2), NEXT(2), ATM(4)
                 }
 
                 internal static class Gap
@@ -715,14 +736,14 @@ namespace Carambolas.Net
                     /// <summary>
                     /// Size of the message parameters not counting flags and channel.
                     /// </summary>
-                    public const int Size = 8; // NEXT(2), LAST(2), ATM(4)
+                    public const int Size = 9; // CH(1), NEXT(2), LAST(2), ATM(4)
 
                     internal static class Dup
                     {
                         /// <summary>
                         /// Size of the message parameters not counting flags and channel.
                         /// </summary>
-                        public const int Size = 10;  // CNT(2), NEXT(2), LAST(2), ATM(4)
+                        public const int Size = 11;  // CH(1), CNT(2), NEXT(2), LAST(2), ATM(4)
                     }
 
                 }
@@ -754,7 +775,10 @@ namespace Carambolas.Net
                 /// </summary>
                 public readonly Time AcknowledgedTime;
 
-                public Ack(byte channel, ushort count, Ordinal next, Time atm) : this(channel, count, next, next, atm) { }
+                public Ack(byte channel, Ordinal next, Time atm) : this(channel, 1, next, next, atm) { }
+                public Ack(byte channel, Ordinal next, Ordinal last, Time atm) : this(channel, 1, next, last, atm) { }
+
+                public Ack(byte channel, ushort count, Ordinal next, Time atm) : this(channel, count, next, next, atm) { }                
                 public Ack(byte channel, ushort count, Ordinal next, Ordinal last, Time atm) => (Channel, Count, Next, Last, AcknowledgedTime) = (channel, count, next, last, atm);
             }
           
@@ -767,7 +791,7 @@ namespace Carambolas.Net
                 /// <summary>
                 /// Size of the message parameters not counting flags and channel and with no data.
                 /// </summary>
-                public const int MinSize = 6;
+                public const int MinSize = 7; // CH(1), SEQ(2), RSN(2), SEGLEN(2)
 
                 public readonly byte Channel;
 
@@ -796,7 +820,7 @@ namespace Carambolas.Net
                 /// <summary>
                 /// Size of the message parameters not counting flags and channel and with no data.
                 /// </summary>
-                public const int MinSize = 9;
+                public const int MinSize = 10; // CH(1), SEQ(2), RSN(2), SEGLEN(2), FRAGINDEX(1) FRAGLEN(2)
 
                 public readonly byte Channel;
 
@@ -854,19 +878,21 @@ namespace Carambolas.Net
                     if (writer.Available < Protocol.Message.Ack.Dup.Size + 1)
                         return false;
 
-                    writer.UnsafeWrite((Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data | Protocol.MessageFlags.Dup) | ((Protocol.MessageFlags)ack.Channel & Protocol.MessageFlags.Channel));
-                    writer.UnsafeWrite(ack.Count);
+                    writer.UncheckedWrite(Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data | Protocol.MessageFlags.Dup);
+                    writer.UncheckedWrite(ack.Channel);
+                    writer.UncheckedWrite(ack.Count);
                 }
                 else
                 {
                     if (writer.Available < Protocol.Message.Ack.Size + 1)
                         return false;
 
-                    writer.UnsafeWrite((Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data) | ((Protocol.MessageFlags)ack.Channel & Protocol.MessageFlags.Channel));
+                    writer.UncheckedWrite(Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data);
+                    writer.UncheckedWrite(ack.Channel);
                 }
 
-                writer.UnsafeWrite(ack.Next);
-                writer.UnsafeWrite(ack.AcknowledgedTime);
+                writer.UncheckedWrite(ack.Next);
+                writer.UncheckedWrite(ack.AcknowledgedTime);
             }
             else
             {
@@ -875,20 +901,22 @@ namespace Carambolas.Net
                     if (writer.Available < Protocol.Message.Ack.Gap.Dup.Size + 1)
                         return false;
 
-                    writer.UnsafeWrite((Protocol.MessageFlags.Ack | Protocol.MessageFlags.Gap | Protocol.MessageFlags.Data | Protocol.MessageFlags.Dup) | ((Protocol.MessageFlags)ack.Channel & Protocol.MessageFlags.Channel));
-                    writer.UnsafeWrite(ack.Count);
+                    writer.UncheckedWrite(Protocol.MessageFlags.Ack | Protocol.MessageFlags.Gap | Protocol.MessageFlags.Data | Protocol.MessageFlags.Dup);
+                    writer.UncheckedWrite(ack.Channel);
+                    writer.UncheckedWrite(ack.Count);
                 }
                 else
                 {
                     if (writer.Available < Protocol.Message.Ack.Gap.Size + 1)
                         return false;
 
-                    writer.UnsafeWrite((Protocol.MessageFlags.Ack | Protocol.MessageFlags.Gap | Protocol.MessageFlags.Data) | ((Protocol.MessageFlags)ack.Channel & Protocol.MessageFlags.Channel));
+                    writer.UncheckedWrite(Protocol.MessageFlags.Ack | Protocol.MessageFlags.Gap | Protocol.MessageFlags.Data);
+                    writer.UncheckedWrite(ack.Channel);
                 }
 
-                writer.UnsafeWrite(ack.Next);
-                writer.UnsafeWrite(ack.Last);
-                writer.UnsafeWrite(ack.AcknowledgedTime);
+                writer.UncheckedWrite(ack.Next);
+                writer.UncheckedWrite(ack.Last);
+                writer.UncheckedWrite(ack.AcknowledgedTime);
             }
 
             return true;
@@ -905,50 +933,49 @@ namespace Carambolas.Net
         public static void Write(this BinaryWriter writer, in Key value)
         {
             writer.Ensure(Key.Size);
-            writer.UnsafeWrite(in value);
+            writer.UncheckedWrite(in value);
         }
 
         public static void Write(this BinaryWriter writer, in Mac value)
         {
             writer.Ensure(Mac.Size);
-            writer.UnsafeWrite(in value);
+            writer.UncheckedWrite(in value);
         }
 
         public static void Write(this BinaryWriter writer, Crc32C value)
         {
             writer.Ensure(Crc32C.Size);
-            writer.UnsafeWrite(value);
+            writer.UncheckedWrite(value);
         }
 
 
-        public static void UnsafeWrite(this BinaryWriter writer, Protocol.PacketFlags value) => writer.UnsafeWrite((byte)value);
+        public static void UncheckedWrite(this BinaryWriter writer, Protocol.PacketFlags value) => writer.UncheckedWrite((byte)value);
 
-        public static void UnsafeWrite(this BinaryWriter writer, Protocol.MessageFlags value) => writer.UnsafeWrite((byte)value);
+        public static void UncheckedWrite(this BinaryWriter writer, Protocol.MessageFlags value) => writer.UncheckedWrite((byte)value);
 
-        public static void UnsafeWrite(this BinaryWriter writer, Protocol.Time value) => writer.UnsafeWrite((uint)value);
+        public static void UncheckedWrite(this BinaryWriter writer, Protocol.Time value) => writer.UncheckedWrite((uint)value);
 
-        public static void UnsafeWrite(this BinaryWriter writer, Protocol.Ordinal value) => writer.UnsafeWrite((ushort)value);
+        public static void UncheckedWrite(this BinaryWriter writer, Protocol.Ordinal value) => writer.UncheckedWrite((ushort)value);
 
-        public static void UnsafeWrite(this BinaryWriter writer, in Key value)
+        public static void UncheckedWrite(this BinaryWriter writer, in Key value)
         {
             value.CopyTo(writer.Buffer, writer.Position);
-            writer.UnsafeSkip(Key.Size);
+            writer.UncheckedSkip(Key.Size);
         }
 
-        public static void UnsafeWrite(this BinaryWriter writer, in Mac value)
+        public static void UncheckedWrite(this BinaryWriter writer, in Mac value)
         {
             value.CopyTo(writer.Buffer, writer.Position);
-            writer.UnsafeSkip(Mac.Size);
+            writer.UncheckedSkip(Mac.Size);
         }
 
-        public static void UnsafeWrite(this BinaryWriter writer, Crc32C value)
+        public static void UncheckedWrite(this BinaryWriter writer, Crc32C value)
         {
             value.CopyTo(writer.Buffer, writer.Position);
-            writer.UnsafeSkip(Crc32C.Size);
+            writer.UncheckedSkip(Crc32C.Size);
         }
 
-
-        public static void UnsafeOverwrite(this BinaryWriter writer, Protocol.Ordinal value, int index) => writer.UnsafeOverwrite((ushort)value, index);
+        public static void UncheckedOverwrite(this BinaryWriter writer, Protocol.Ordinal value, int index) => writer.UncheckedOverwrite((ushort)value, index);
     }
 
     internal static class BinaryReaderExtensions
@@ -980,50 +1007,50 @@ namespace Carambolas.Net
         public static void Read(this BinaryReader reader, out Key value)
         {
             reader.Ensure(Key.Size);            
-            reader.UnsafeRead(out value);
+            reader.UncheckedRead(out value);
         }
 
         public static void Read(this BinaryReader reader, out Mac value)
         {
             reader.Ensure(Mac.Size);
-            reader.UnsafeRead(out value);
+            reader.UncheckedRead(out value);
         }
 
 
-        public static void UnsafeRead(this BinaryReader reader, out Protocol.PacketFlags value)
+        public static void UncheckedRead(this BinaryReader reader, out Protocol.PacketFlags value)
         {
-            reader.UnsafeRead(out byte opcode);
+            reader.UncheckedRead(out byte opcode);
             value = (Protocol.PacketFlags)opcode;
         }
 
-        public static void UnsafeRead(this BinaryReader reader, out Protocol.MessageFlags value)
+        public static void UncheckedRead(this BinaryReader reader, out Protocol.MessageFlags value)
         {
-            reader.UnsafeRead(out byte opcode);
+            reader.UncheckedRead(out byte opcode);
             value = (Protocol.MessageFlags)opcode;
         }
 
-        public static void UnsafeRead(this BinaryReader reader, out Protocol.Time value)
+        public static void UncheckedRead(this BinaryReader reader, out Protocol.Time value)
         {
-            reader.UnsafeRead(out uint time);
+            reader.UncheckedRead(out uint time);
             value = new Protocol.Time(time);
         }
 
-        public static void UnsafeRead(this BinaryReader reader, out Protocol.Ordinal value)
+        public static void UncheckedRead(this BinaryReader reader, out Protocol.Ordinal value)
         {
-            reader.UnsafeRead(out ushort ordinal);
+            reader.UncheckedRead(out ushort ordinal);
             value = new Protocol.Ordinal(ordinal);
         }
 
-        public static void UnsafeRead(this BinaryReader reader, out Key value)
+        public static void UncheckedRead(this BinaryReader reader, out Key value)
         {
             value = new Key(reader.Buffer, reader.Position);
-            reader.UnsafeSkip(Key.Size);
+            reader.UncheckedSkip(Key.Size);
         }
 
-        public static void UnsafeRead(this BinaryReader reader, out Mac value)
+        public static void UncheckedRead(this BinaryReader reader, out Mac value)
         {
             value = new Mac(reader.Buffer, reader.Position);
-            reader.UnsafeSkip(Mac.Size);
+            reader.UncheckedSkip(Mac.Size);
         }
 
 
@@ -1083,7 +1110,7 @@ namespace Carambolas.Net
                 return false;
             }
 
-            reader.UnsafeRead(out value);
+            reader.UncheckedRead(out value);
             return true;
         }
 
@@ -1095,13 +1122,13 @@ namespace Carambolas.Net
                 return false;
             }
 
-            reader.UnsafeRead(out value);
+            reader.UncheckedRead(out value);
             return true;
         }        
     }
 
     internal static class MemoryExtensions
     {
-        public static void UnsafeOverwrite(this Memory memory, Protocol.Ordinal value, int index) => memory.UnsafeOverwrite((ushort)value, index);
+        public static void UncheckedOverwrite(this Memory memory, Protocol.Ordinal value, int index) => memory.UncheckedOverwrite((ushort)value, index);
     }
 }

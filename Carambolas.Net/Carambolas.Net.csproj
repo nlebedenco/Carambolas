@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
     <BaseOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\bin\</BaseOutputPath>
@@ -16,6 +16,7 @@
     <Product>Carambolas.Net</Product>
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Description>Carambolas is a modular framework for network applications based on a custom reliable UDP protocol specification.</Description>
     <PackageTags>udp reliable-udp modular library</PackageTags>
     <Platforms>AnyCPU;x64;x86</Platforms>
@@ -25,37 +26,37 @@
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <DefineConstants>TRACE;DEBUG;USE_NATIVE_SOCKET</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">    
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <DefineConstants>TRACE;DEBUG;USE_NATIVE_SOCKET</DefineConstants>    
-    <PlatformTarget>AnyCPU</PlatformTarget>    
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <DefineConstants>TRACE;DEBUG;USE_NATIVE_SOCKET</DefineConstants>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">    
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <DefineConstants>TRACE;DEBUG;USE_NATIVE_SOCKET</DefineConstants>
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
     <DefineConstants>TRACE;USE_NATIVE_SOCKET</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
     <DefineConstants>TRACE;USE_NATIVE_SOCKET</DefineConstants>
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
     <DefineConstants>TRACE;USE_NATIVE_SOCKET</DefineConstants>
     <PlatformTarget>AnyCPU</PlatformTarget>

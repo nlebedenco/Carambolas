@@ -650,25 +650,25 @@ namespace Carambolas.Net
 
                         if (Session.Options.Contains(SessionOptions.Secure))
                         {
-                            packet.UnsafeWrite(time);
-                            packet.UnsafeWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Connect);
-                            packet.UnsafeWrite(Session.Local);
-                            packet.UnsafeWrite(Host.MaxTransmissionUnit);
-                            packet.UnsafeWrite(Host.MaxChannel);
-                            packet.UnsafeWrite(Host.MaxBandwidth);
-                            packet.UnsafeWrite(in Host.Keys.Public);
+                            packet.UncheckedWrite(time);
+                            packet.UncheckedWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Connect);
+                            packet.UncheckedWrite(Session.Local);
+                            packet.UncheckedWrite(Host.MaxTransmissionUnit);
+                            packet.UncheckedWrite(Host.MaxChannel);
+                            packet.UncheckedWrite(Host.MaxBandwidth);
+                            packet.UncheckedWrite(in Host.Keys.Public);
                         }
                         else
                         {
-                            packet.UnsafeWrite(time);
-                            packet.UnsafeWrite(Protocol.PacketFlags.Connect);
-                            packet.UnsafeWrite(Session.Local);
-                            packet.UnsafeWrite(Host.MaxTransmissionUnit);
-                            packet.UnsafeWrite(Host.MaxChannel);
-                            packet.UnsafeWrite(Host.MaxBandwidth);
+                            packet.UncheckedWrite(time);
+                            packet.UncheckedWrite(Protocol.PacketFlags.Connect);
+                            packet.UncheckedWrite(Session.Local);
+                            packet.UncheckedWrite(Host.MaxTransmissionUnit);
+                            packet.UncheckedWrite(Host.MaxChannel);
+                            packet.UncheckedWrite(Host.MaxBandwidth);
                         }
 
-                        packet.UnsafeWrite(Protocol.Packet.Insecure.Checksum.Compute(packet.Buffer, packet.Offset, packet.Count));
+                        packet.UncheckedWrite(Protocol.Packet.Insecure.Checksum.Compute(packet.Buffer, packet.Offset, packet.Count));
 
                         if (ackDeadline == null)
                             ackDeadline = time + ackTimeout;
@@ -688,15 +688,15 @@ namespace Carambolas.Net
                         if (Session.Options.Contains(SessionOptions.Secure))
                         {
                             packet.Write(time);
-                            packet.UnsafeWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Accept);
-                            packet.UnsafeWrite(Session.Local);
-                            packet.UnsafeWrite(Host.MaxTransmissionUnit);
-                            packet.UnsafeWrite(Host.MaxChannel);
-                            packet.UnsafeWrite(Host.MaxBandwidth);
-                            packet.UnsafeWrite(control.AcceptanceTime);
+                            packet.UncheckedWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Accept);
+                            packet.UncheckedWrite(Session.Local);
+                            packet.UncheckedWrite(Host.MaxTransmissionUnit);
+                            packet.UncheckedWrite(Host.MaxChannel);
+                            packet.UncheckedWrite(Host.MaxBandwidth);
+                            packet.UncheckedWrite(control.AcceptanceTime);
 
                             var (buffer, offset, position, count) = (packet.Buffer, packet.Offset, packet.Position, sizeof(ushort));
-                            packet.UnsafeWrite(ReceiveWindow);
+                            packet.UncheckedWrite(ReceiveWindow);
 
                             var nonce64 = ++Session.Nonce;
                             var nonce = new Nonce(time, nonce64);
@@ -704,22 +704,22 @@ namespace Carambolas.Net
                             Session.Cipher.EncryptInPlace(buffer, position, count, in nonce);
                             Session.Cipher.Sign(buffer, offset, position - offset, count, in nonce, out Mac mac);
 
-                            packet.UnsafeWrite(in Host.Keys.Public);
-                            packet.UnsafeWrite(nonce64);
-                            packet.UnsafeWrite(in mac);
+                            packet.UncheckedWrite(in Host.Keys.Public);
+                            packet.UncheckedWrite(nonce64);
+                            packet.UncheckedWrite(in mac);
                         }
                         else
                         {
                             packet.Write(time);
-                            packet.UnsafeWrite(Protocol.PacketFlags.Accept);
-                            packet.UnsafeWrite(Session.Local);
-                            packet.UnsafeWrite(Host.MaxTransmissionUnit);
-                            packet.UnsafeWrite(Host.MaxChannel);
-                            packet.UnsafeWrite(Host.MaxBandwidth);
-                            packet.UnsafeWrite(control.AcceptanceTime);
-                            packet.UnsafeWrite(ReceiveWindow);
-                            packet.UnsafeWrite(Session.Remote);
-                            packet.UnsafeWrite(Protocol.Packet.Insecure.Checksum.Compute(packet.Buffer, packet.Offset, packet.Count));
+                            packet.UncheckedWrite(Protocol.PacketFlags.Accept);
+                            packet.UncheckedWrite(Session.Local);
+                            packet.UncheckedWrite(Host.MaxTransmissionUnit);
+                            packet.UncheckedWrite(Host.MaxChannel);
+                            packet.UncheckedWrite(Host.MaxBandwidth);
+                            packet.UncheckedWrite(control.AcceptanceTime);
+                            packet.UncheckedWrite(ReceiveWindow);
+                            packet.UncheckedWrite(Session.Remote);
+                            packet.UncheckedWrite(Protocol.Packet.Insecure.Checksum.Compute(packet.Buffer, packet.Offset, packet.Count));
                         }
 
                         // Start ack timer if not started yet
@@ -745,17 +745,17 @@ namespace Carambolas.Net
                         if (Session.Options.Contains(SessionOptions.Secure))
                         {
                             packet.Reset(MaxTransmissionUnit - (Protocol.Packet.Secure.N64.Size + Protocol.Packet.Secure.Mac.Size));
-                            packet.UnsafeWrite(time);
-                            packet.UnsafeWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Data);
-                            packet.UnsafeWrite(ReceiveWindow);
+                            packet.UncheckedWrite(time);
+                            packet.UncheckedWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Data);
+                            packet.UncheckedWrite(ReceiveWindow);
                         }
                         else
                         {
                             packet.Reset(MaxTransmissionUnit - Protocol.Packet.Insecure.Checksum.Size);
-                            packet.UnsafeWrite(time);
-                            packet.UnsafeWrite(Protocol.PacketFlags.Data);
-                            packet.UnsafeWrite(Session.Local);
-                            packet.UnsafeWrite(ReceiveWindow);
+                            packet.UncheckedWrite(time);
+                            packet.UncheckedWrite(Protocol.PacketFlags.Data);
+                            packet.UncheckedWrite(Session.Local);
+                            packet.UncheckedWrite(ReceiveWindow);
                         }
                     }
                 }
@@ -767,8 +767,8 @@ namespace Carambolas.Net
                         control.ACK = default;
 
                         EnsureDataPacketIsCreated();
-                        packet.UnsafeWrite(Protocol.MessageFlags.Ack | Protocol.MessageFlags.Accept);
-                        packet.UnsafeWrite(control.AcknowledgedTime);
+                        packet.UncheckedWrite(Protocol.MessageFlags.Ack | Protocol.MessageFlags.Accept);
+                        packet.UncheckedWrite(control.AcknowledgedTime);
 
                         break;
                     default:
@@ -844,7 +844,7 @@ namespace Carambolas.Net
                                     if (retransmit.Encoded == null) // This is an unreliable message that cannot be retransmitted
                                     {
                                         // Message is now considered lost (not in flight anymore).
-                                        Debug.Assert(BytesInFlight >= retransmit.Payload, "Incorrect bytes in flight");
+                                        Debug.Assert(BytesInFlight >= retransmit.Payload, "Invalid bytes in flight");
                                         BytesInFlight -= retransmit.Payload;
                                         
                                         // Return space to the transmit backlog.
@@ -977,23 +977,23 @@ namespace Carambolas.Net
                                 switch (transmit.Delivery)
                                 {
                                     case Protocol.Delivery.Unreliable:
-                                        var position = packet.Count + 1;
-                                        packet.UnsafeWrite(transmit.Encoded, 0, length);
-                                        packet.UnsafeOverwrite(seq, position);
-                                        packet.UnsafeOverwrite(channel.TX.NextReliableSequenceNumber, position + 2);
+                                        var position = packet.Count + 2;
+                                        packet.UncheckedWrite(transmit.Encoded, 0, length);
+                                        packet.UncheckedOverwrite(seq, position);
+                                        packet.UncheckedOverwrite(channel.TX.NextReliableSequenceNumber, position + 2);
                                         // Unreliable messages are not retransmitted so the encoded message may now be discarded.
                                         transmit.Encoded.Dispose();
                                         transmit.Encoded = null;
                                         break;
                                     case Protocol.Delivery.Semireliable:
-                                        transmit.Encoded.UnsafeOverwrite(seq, 1);
-                                        transmit.Encoded.UnsafeOverwrite(channel.TX.NextReliableSequenceNumber, 3);
-                                        packet.UnsafeWrite(transmit.Encoded, 0, length);
+                                        transmit.Encoded.UncheckedOverwrite(seq, 2);
+                                        transmit.Encoded.UncheckedOverwrite(channel.TX.NextReliableSequenceNumber, 4);
+                                        packet.UncheckedWrite(transmit.Encoded, 0, length);
                                         break;
                                     case Protocol.Delivery.Reliable:
-                                        transmit.Encoded.UnsafeOverwrite(seq, 1);
-                                        transmit.Encoded.UnsafeOverwrite(++channel.TX.NextReliableSequenceNumber, 3);
-                                        packet.UnsafeWrite(transmit.Encoded, 0, length);
+                                        transmit.Encoded.UncheckedOverwrite(seq, 2);
+                                        transmit.Encoded.UncheckedOverwrite(++channel.TX.NextReliableSequenceNumber, 4);
+                                        packet.UncheckedWrite(transmit.Encoded, 0, length);
                                         break;
                                     default:
                                         throw new NotSupportedException();
@@ -1038,24 +1038,25 @@ namespace Carambolas.Net
 
                                 var encoder = Host.WorkerEncoder;
                                 encoder.Reset();
-                                encoder.Ensure(Protocol.Message.Segment.MinSize + 1);
-                                encoder.UnsafeWrite(Protocol.MessageFlags.Reliable | Protocol.MessageFlags.Data | Protocol.MessageFlags.Segment);
+                                encoder.Ensure(sizeof(Protocol.MessageFlags) + Protocol.Message.Segment.MinSize);
+                                encoder.UncheckedWrite(Protocol.MessageFlags.Reliable | Protocol.MessageFlags.Data | Protocol.MessageFlags.Segment);
+                                encoder.UncheckedWrite((byte)0); // CH
 
                                 Channel.Outbound.Message transmit;
                                 if (packet.Available > Protocol.Message.Segment.MinSize)
                                 {
                                     var seq = channel.TX.NextSequenceNumber++;
                                     var rsn = ++channel.TX.NextReliableSequenceNumber;
-
-                                    encoder.UnsafeWrite(seq);
-                                    encoder.UnsafeWrite(rsn);
-                                    encoder.UnsafeWrite((ushort)0);
+                                    
+                                    encoder.UncheckedWrite(seq);
+                                    encoder.UncheckedWrite(rsn);
+                                    encoder.UncheckedWrite((ushort)0);
 
                                     transmit = CreatePing(encoder, time);
                                     Debug.Assert(channel.TX.Messages.IsEmpty, "Channel TX buffer should be empty");
                                     channel.TX.Messages.AddLast(transmit);
 
-                                    packet.UnsafeWrite(transmit.Encoded, 0, transmit.Encoded.Length);
+                                    packet.UncheckedWrite(transmit.Encoded, 0, transmit.Encoded.Length);
 
                                     transmit.SequenceNumber = seq;
                                     transmit.LatestSendTime = time;
@@ -1072,7 +1073,7 @@ namespace Carambolas.Net
                                     // This is to avoid locking the generators as they would represent a shared resource between 
                                     // the user and worker threads. The worker thread may need to write update the generators to 
                                     // inject a ping in the output queue.
-                                    encoder.UnsafeWrite(0, 2 + 2 + 2); // SEQ:RSN:LEN
+                                    encoder.UncheckedWrite(0, sizeof(ushort) + sizeof(ushort) + sizeof(ushort)); // SEQ:RSN:LEN
 
                                     transmit = CreatePing(encoder, unchecked(Host.Now() + int.MaxValue));
                                     Debug.Assert(channel.TX.Messages.IsEmpty, "Channel TX buffer should be empty");
@@ -1110,15 +1111,15 @@ namespace Carambolas.Net
                         Session.Cipher.EncryptInPlace(buffer, position, count, in nonce);
                         Session.Cipher.Sign(packet.Buffer, packet.Offset, Protocol.Packet.Header.Size, count, in nonce, out Mac mac);
                         packet.Expand(Protocol.Packet.Secure.N64.Size + Protocol.Packet.Secure.Mac.Size);
-                        packet.UnsafeWrite(nonce64);
-                        packet.UnsafeWrite(in mac);
+                        packet.UncheckedWrite(nonce64);
+                        packet.UncheckedWrite(in mac);
                     }
                     else
                     {
                         var (buffer, offset, count) = (packet.Buffer, packet.Offset, packet.Count);
                         var crc = Protocol.Packet.Insecure.Checksum.Compute(buffer, offset, count);
                         packet.Expand(Protocol.Packet.Insecure.Checksum.Size);
-                        packet.UnsafeWrite(crc);
+                        packet.UncheckedWrite(crc);
                     }
                 }
             }
@@ -1129,31 +1130,22 @@ namespace Carambolas.Net
         private Channel.Outbound.Message CreateSegment(BinaryWriter encoder, byte channel, Protocol.Delivery delivery, Protocol.Time expiration, byte[] data, int offset, ushort length)
         {
             encoder.Reset();
-            encoder.Ensure(Protocol.Message.Segment.MinSize + 1);
+            encoder.Ensure(sizeof(Protocol.MessageFlags) + Protocol.Message.Segment.MinSize);
 
-            Protocol.MessageFlags flags;
-                        
-            if (delivery == Protocol.Delivery.Reliable)
-            {
-                flags = Protocol.MessageFlags.Reliable | Protocol.MessageFlags.Data | Protocol.MessageFlags.Segment
-                    | ((Protocol.MessageFlags)channel & Protocol.MessageFlags.Channel);
-            }
-            else
-            {
-                flags = Protocol.MessageFlags.Data | Protocol.MessageFlags.Segment
-                    | ((Protocol.MessageFlags)channel & Protocol.MessageFlags.Channel);
-            }
+            var flags = delivery == Protocol.Delivery.Reliable
+                    ? Protocol.MessageFlags.Reliable | Protocol.MessageFlags.Data | Protocol.MessageFlags.Segment
+                    : Protocol.MessageFlags.Data | Protocol.MessageFlags.Segment;
 
-            encoder.UnsafeWrite(flags);
+            encoder.UncheckedWrite(flags);
+            encoder.UncheckedWrite(channel);
 
             // Actual SEQ and RSN values must be assigned on transmit by the worker thread.
             // This is to avoid locking the generators as they would represent a shared resource between 
             // the user and worker threads. The worker thread may need to write update the generators to 
             // inject a ping in the output queue.
-            encoder.UnsafeWrite(0, 2 + 2); // SEQ:RSN
-
-            encoder.UnsafeWrite(length);
-            encoder.UnsafeWrite(data, offset, length);
+            encoder.UncheckedWrite(0, sizeof(ushort) + sizeof(ushort)); // SEQ:RSN
+            encoder.UncheckedWrite(length);
+            encoder.UncheckedWrite(data, offset, length);
 
             Host.Allocate(out Memory encoded);
             encoded.CopyFrom(encoder.Buffer, encoder.Offset, (ushort)encoder.Count);
@@ -1170,33 +1162,24 @@ namespace Carambolas.Net
         private Channel.Outbound.Message CreateFragment(BinaryWriter encoder, byte channel, Protocol.Delivery delivery, Protocol.Time expiration, byte fragindex, ushort seglen, byte[] data, int offset, ushort length)
         {
             encoder.Reset();
-            encoder.Ensure(Protocol.Message.Fragment.MinSize + 1);
+            encoder.Ensure(sizeof(Protocol.MessageFlags) + Protocol.Message.Fragment.MinSize);
 
-            Protocol.MessageFlags flags;
+            var flags = delivery == Protocol.Delivery.Reliable
+                ? Protocol.MessageFlags.Reliable | Protocol.MessageFlags.Data | Protocol.MessageFlags.Fragment
+                : Protocol.MessageFlags.Data | Protocol.MessageFlags.Fragment;
 
-            if (delivery == Protocol.Delivery.Reliable)
-            {
-                flags = Protocol.MessageFlags.Reliable | Protocol.MessageFlags.Data | Protocol.MessageFlags.Fragment
-                    | ((Protocol.MessageFlags)channel & Protocol.MessageFlags.Channel);
-            }
-            else
-            {
-                flags = Protocol.MessageFlags.Data | Protocol.MessageFlags.Fragment
-                    | ((Protocol.MessageFlags)channel & Protocol.MessageFlags.Channel);
-            }
-
-            encoder.UnsafeWrite(flags);
+            encoder.UncheckedWrite(flags);
+            encoder.UncheckedWrite(channel);
 
             // Note that actual SEQ and RSN values must be assigned on transmit by the worker thread.
             // This is to avoid locking the generators as they would represent a shared resource between 
             // the user and worker threads. The worker thread needs to update (write) the generators to 
             // inject a ping in the output queue.
-            encoder.UnsafeWrite(0, 2 + 2); // SEQ:RSN
-
-            encoder.UnsafeWrite(seglen);
-            encoder.UnsafeWrite(fragindex);            
-            encoder.UnsafeWrite(length);
-            encoder.UnsafeWrite(data, offset, length);
+            encoder.UncheckedWrite(0, sizeof(ushort) + sizeof(ushort)); // SEQ:RSN
+            encoder.UncheckedWrite(seglen);
+            encoder.UncheckedWrite(fragindex);            
+            encoder.UncheckedWrite(length);
+            encoder.UncheckedWrite(data, offset, length);
 
             Host.Allocate(out Memory encoded);
             encoded.CopyFrom(encoder.Buffer, encoder.Offset, (ushort)encoder.Count);

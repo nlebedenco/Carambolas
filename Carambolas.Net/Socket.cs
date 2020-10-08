@@ -181,7 +181,7 @@ namespace Carambolas.Net.Sockets
         public bool Poll(int microSeconds, SelectMode mode) => socket.Poll(microSeconds, mode);
 
         public int Receive(byte[] buffer, out IPEndPoint endPoint) => Receive(buffer, 0, buffer?.Length ?? throw new ArgumentNullException(nameof(buffer)), out endPoint);
-        public int Receive(byte[] buffer, int offset, int size, out IPEndPoint endPoint) => (socket != null) ? UnsafeReceive(buffer, offset, size, out endPoint) : throw new ObjectDisposedException(GetType().FullName);
+        public int Receive(byte[] buffer, int offset, int size, out IPEndPoint endPoint) => (socket != null) ? UncheckedReceive(buffer, offset, size, out endPoint) : throw new ObjectDisposedException(GetType().FullName);
         public int Receive(byte[] buffer, int offset, int size, int millisecondsTimeout, out IPEndPoint endPoint)
         {
             if (millisecondsTimeout > int.MaxValue / 1000)
@@ -193,10 +193,10 @@ namespace Carambolas.Net.Sockets
                 return 0;
             }
 
-            return UnsafeReceive(buffer, offset, size, out endPoint);
+            return UncheckedReceive(buffer, offset, size, out endPoint);
         }
 
-        internal int UnsafeReceive(byte[] buffer, int offset, int size, out IPEndPoint endPoint)
+        internal int UncheckedReceive(byte[] buffer, int offset, int size, out IPEndPoint endPoint)
         {
             try
             {
@@ -219,16 +219,16 @@ namespace Carambolas.Net.Sockets
         }
 
         public int Send(byte[] buffer, in IPEndPoint endPoint) => Send(buffer, 0, buffer.Length, endPoint);
-        public int Send(byte[] buffer, int offset, int size, in IPEndPoint endPoint) => (socket != null) ? UnsafeSend(buffer, offset, size, in endPoint) : throw new ObjectDisposedException(GetType().FullName);
+        public int Send(byte[] buffer, int offset, int size, in IPEndPoint endPoint) => (socket != null) ? UncheckedSend(buffer, offset, size, in endPoint) : throw new ObjectDisposedException(GetType().FullName);
         public int Send(byte[] buffer, int offset, int size, int millisecondsTimeout, in IPEndPoint endPoint)
         {
             if (millisecondsTimeout > int.MaxValue / 1000)
                 throw new ArgumentOutOfRangeException(string.Format(SR.ArgumentIsGreaterThanMaximum, nameof(millisecondsTimeout), int.MaxValue / 1000), nameof(millisecondsTimeout));
 
-            return socket.Poll(millisecondsTimeout * 1000, SelectMode.SelectWrite) ? UnsafeSend(buffer, offset, size, in endPoint) : 0;
+            return socket.Poll(millisecondsTimeout * 1000, SelectMode.SelectWrite) ? UncheckedSend(buffer, offset, size, in endPoint) : 0;
         }
 
-        internal int UnsafeSend(byte[] buffer, int offset, int size, in IPEndPoint endPoint)
+        internal int UncheckedSend(byte[] buffer, int offset, int size, in IPEndPoint endPoint)
         {
             try
             {

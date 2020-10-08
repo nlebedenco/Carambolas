@@ -759,7 +759,7 @@ namespace Carambolas.Net
                         while (sendLimit > 0 && peer.OnSend(time, writer))
                         {
                             var length = writer.Count;
-                            socket.UnsafeSend(buffer, 0, length, in peer.EndPoint);
+                            socket.UncheckedSend(buffer, 0, length, in peer.EndPoint);
                             sendLimit--;
 
                             Interlocked.Increment(ref peer.packetsSent);
@@ -783,7 +783,7 @@ namespace Carambolas.Net
                             var length = encoded.Length;
                             
                             encoded.CopyTo(buffer);
-                            socket.UnsafeSend(buffer, 0, length, in reset.EndPoint);
+                            socket.UncheckedSend(buffer, 0, length, in reset.EndPoint);
                             encoded.Dispose();
                         }
 
@@ -813,7 +813,7 @@ namespace Carambolas.Net
                                 var nbytes = 0;
                                 while (nbytes < available)
                                 {
-                                    var length = socket.UnsafeReceive(buffer, 0, buffer.Length, out IPEndPoint sender);
+                                    var length = socket.UncheckedReceive(buffer, 0, buffer.Length, out IPEndPoint sender);
                                     if (length > 0)
                                     {
                                         nbytes += length;
@@ -853,7 +853,7 @@ namespace Carambolas.Net
                     var length = encoded.Length;
 
                     encoded.CopyTo(buffer);
-                    socket.UnsafeSend(buffer, 0, length, in reset.EndPoint);
+                    socket.UncheckedSend(buffer, 0, length, in reset.EndPoint);
                     encoded.Dispose();
                 }
 
@@ -909,15 +909,15 @@ namespace Carambolas.Net
             //    MSGS ::= MSG [MSG...]
             //     MSG ::= MSGFLAGS(1) <ACKACC | ACK | DUPACK | GAP | DUPGAP | SEG | FRAG>
             //  ACKACC ::= ATM(4)
-            //     ACK ::= NEXT(2) ATM(4)
-            //  DUPACK ::= CNT(2) NEXT(2) ATM(4)
-            //     GAP ::= NEXT(2) LAST(2) ATM(4)
-            //  DUPGAP ::= CNT(2) NEXT(2) LAST(2) ATM(4)
-            //     SEG ::= SEQ(2) RSN(2) SEGLEN(2) PAYLOAD(N)
-            //    FRAG ::= SEQ(2) RSN(2) SEGLEN(2) FRAGINDEX(1) FRAGLEN(2) PAYLOAD(N)
+            //     ACK ::= CH(1) NEXT(2) ATM(4)
+            //  DUPACK ::= CH(1) CNT(2) NEXT(2) ATM(4)
+            //     GAP ::= CH(1) NEXT(2) LAST(2) ATM(4)
+            //  DUPGAP ::= CH(1) CNT(2) NEXT(2) LAST(2) ATM(4)
+            //     SEG ::= CH(1) SEQ(2) RSN(2) SEGLEN(2) PAYLOAD(N)
+            //    FRAG ::= CH(1) SEQ(2) RSN(2) SEGLEN(2) FRAGINDEX(1) FRAGLEN(2) PAYLOAD(N)
 
-            reader.UnsafeRead(out Protocol.Time remoteTime);
-            reader.UnsafeRead(out Protocol.PacketFlags pflags);
+            reader.UncheckedRead(out Protocol.Time remoteTime);
+            reader.UncheckedRead(out Protocol.PacketFlags pflags);
 
             switch (pflags)
             {
@@ -927,10 +927,10 @@ namespace Carambolas.Net
                         if (!Protocol.Packet.Insecure.Checksum.Verify(buffer, offset, length))
                             break;
 
-                        reader.UnsafeRead(out uint remoteSession);
+                        reader.UncheckedRead(out uint remoteSession);
 
                         // CONNECT with an invalid MTU must be silently ignored.
-                        reader.UnsafeRead(out ushort mtu);
+                        reader.UncheckedRead(out ushort mtu);
                         if (!(mtu >= Protocol.MTU.MinValue && mtu <= Protocol.MTU.MaxValue))
                             break;
 
@@ -938,14 +938,14 @@ namespace Carambolas.Net
                             mtu = MaxTransmissionUnit;
 
                         // CONNECT with an invalid MTC must be silently ignored.
-                        reader.UnsafeRead(out byte mtc);
+                        reader.UncheckedRead(out byte mtc);
                         if (!(mtc >= Protocol.MTC.MinValue && mtc <= Protocol.MTC.MaxValue))
                             break;
 
                         if (mtc > MaxChannel)
                             mtc = MaxChannel;
 
-                        reader.UnsafeRead(out uint mbw);
+                        reader.UncheckedRead(out uint mbw);
                         mbw = Protocol.Bandwidth.Clamp(mbw);
 
                         var connect = new Protocol.Message.Connect(mtu, mtc, mbw);
@@ -994,10 +994,10 @@ namespace Carambolas.Net
                         if (!Protocol.Packet.Insecure.Checksum.Verify(buffer, offset, length))
                             break;
 
-                        reader.UnsafeRead(out uint remoteSession);
+                        reader.UncheckedRead(out uint remoteSession);
 
                         // CONNECT with an invalid MTU must be silently ignored.
-                        reader.UnsafeRead(out ushort mtu);
+                        reader.UncheckedRead(out ushort mtu);
                         if (!(mtu >= Protocol.MTU.MinValue && mtu <= Protocol.MTU.MaxValue))
                             break;
 
@@ -1005,17 +1005,17 @@ namespace Carambolas.Net
                             mtu = MaxTransmissionUnit;
 
                         // CONNECT with an invalid MTC must be silently ignored.
-                        reader.UnsafeRead(out byte mtc);
+                        reader.UncheckedRead(out byte mtc);
                         if (!(mtc >= Protocol.MTC.MinValue && mtc <= Protocol.MTC.MaxValue))
                             break;
 
                         if (mtc > MaxChannel)
                             mtc = MaxChannel;
 
-                        reader.UnsafeRead(out uint mbw);
+                        reader.UncheckedRead(out uint mbw);
                         mbw = Protocol.Bandwidth.Clamp(mbw);
 
-                        reader.UnsafeRead(out Key remoteKey);
+                        reader.UncheckedRead(out Key remoteKey);
 
                         var connect = new Protocol.Message.Connect(mtu, mtc, mbw);
 
@@ -1083,7 +1083,7 @@ namespace Carambolas.Net
                         if (!Protocol.Packet.Insecure.Checksum.Verify(buffer, offset, length))
                             break;
 
-                        reader.UnsafeRead(out uint remoteSession);
+                        reader.UncheckedRead(out uint remoteSession);
 
                         // If a peer wasn't found the remote host must be in a half-open insecure session.
                         if (!TryGet(in endPoint, out Peer peer) 
@@ -1104,7 +1104,7 @@ namespace Carambolas.Net
                         Interlocked.Add(ref peer.bytesReceived, length);
 
                         // ACCEPT with an invalid MTU must be silently ignored.
-                        reader.UnsafeRead(out ushort mtu);
+                        reader.UncheckedRead(out ushort mtu);
                         if (!(mtu >= Protocol.MTU.MinValue && mtu <= Protocol.MTU.MaxValue))
                         {
                             Interlocked.Increment(ref peer.packetsDropped);
@@ -1115,7 +1115,7 @@ namespace Carambolas.Net
                             mtu = MaxTransmissionUnit;
 
                         // ACCEPT with an invalid MTC must be silently ignored.
-                        reader.UnsafeRead(out byte mtc);
+                        reader.UncheckedRead(out byte mtc);
                         if (!(mtc >= Protocol.MTC.MinValue && mtc <= Protocol.MTC.MaxValue))
                         {
                             Interlocked.Increment(ref peer.packetsDropped);
@@ -1125,13 +1125,13 @@ namespace Carambolas.Net
                         if (mtc > MaxChannel)
                             mtc = MaxChannel;
 
-                        reader.UnsafeRead(out uint mbw);
+                        reader.UncheckedRead(out uint mbw);
                         mbw = Protocol.Bandwidth.Clamp(mbw);
 
-                        reader.UnsafeRead(out uint atm);
+                        reader.UncheckedRead(out uint atm);
 
-                        reader.UnsafeRead(out ushort remoteWindow);
-                        reader.UnsafeRead(out uint acknowledgedSession);                        
+                        reader.UncheckedRead(out ushort remoteWindow);
+                        reader.UncheckedRead(out uint acknowledgedSession);                        
 
                         var state = peer.Session.State;
                         if (state == Protocol.State.Connecting)
@@ -1198,10 +1198,10 @@ namespace Carambolas.Net
                             break;
                         }
 
-                        reader.UnsafeRead(out uint remoteSession);
+                        reader.UncheckedRead(out uint remoteSession);
 
                         // ACCEPT with an invalid MTU must be silently ignored.
-                        reader.UnsafeRead(out ushort mtu);
+                        reader.UncheckedRead(out ushort mtu);
                         if (!(mtu >= Protocol.MTU.MinValue && mtu <= Protocol.MTU.MaxValue))
                         {
                             Interlocked.Increment(ref peer.packetsDropped);
@@ -1212,7 +1212,7 @@ namespace Carambolas.Net
                             mtu = MaxTransmissionUnit;
 
                         // ACCEPT with an invalid MTC must be silently ignored.
-                        reader.UnsafeRead(out byte mtc);
+                        reader.UncheckedRead(out byte mtc);
                         if (!(mtc >= Protocol.MTC.MinValue && mtc <= Protocol.MTC.MaxValue))
                         {
                             Interlocked.Increment(ref peer.packetsDropped);
@@ -1222,18 +1222,18 @@ namespace Carambolas.Net
                         if (mtc > MaxChannel)
                             mtc = MaxChannel;
 
-                        reader.UnsafeRead(out uint mbw);
+                        reader.UncheckedRead(out uint mbw);
                         mbw = Protocol.Bandwidth.Clamp(mbw);
 
-                        reader.UnsafeRead(out uint atm);
+                        reader.UncheckedRead(out uint atm);
 
                         // Save position and size of the ciphertext
                         var (position, count) = (reader.Position, sizeof(ushort));
 
-                        reader.UnsafeSkip(count);
-                        reader.UnsafeRead(out Key remoteKey);
-                        reader.UnsafeRead(out ulong nonce64);
-                        reader.UnsafeRead(out Mac mac);
+                        reader.UncheckedSkip(count);
+                        reader.UncheckedRead(out Key remoteKey);
+                        reader.UncheckedRead(out ulong nonce64);
+                        reader.UncheckedRead(out Mac mac);
 
                         var state = peer.Session.State;
                         if (state == Protocol.State.Connecting)
@@ -1265,12 +1265,11 @@ namespace Carambolas.Net
                             Interlocked.Increment(ref peer.packetsReceived);
                             Interlocked.Add(ref peer.bytesReceived, length);
 
-                            // There's no need for the remote host to acknowledge the session number in a 
-                            // secure session because a successful decryption already proves the packet 
-                            // belongs to it.
+                            // There's no need for the remote host to acknowledge the session number in a secure session 
+                            // because a successful decryption already proves the packet belongs to it.
 
-                            reader.UnsafeReset(position, sizeof(ushort));
-                            reader.UnsafeRead(out ushort remoteWindow);
+                            reader.UncheckedReset(position, sizeof(ushort));
+                            reader.UncheckedRead(out ushort remoteWindow);
 
                             peer.LatestRemoteTime = remoteTime;
                             peer.RemoteWindow = remoteWindow;
@@ -1291,8 +1290,8 @@ namespace Carambolas.Net
 
                             if (peer.LatestRemoteTime < remoteTime) // this is a re-transmission
                             {
-                                reader.UnsafeReset(position, sizeof(ushort));
-                                reader.UnsafeRead(out ushort remoteWindow);
+                                reader.UncheckedReset(position, sizeof(ushort));
+                                reader.UncheckedRead(out ushort remoteWindow);
 
                                 peer.LatestRemoteTime = remoteTime;
                                 peer.RemoteWindow = remoteWindow;
@@ -1324,7 +1323,7 @@ namespace Carambolas.Net
                         if (!Protocol.Packet.Insecure.Checksum.Verify(buffer, offset, length))
                             break;
                         
-                        reader.UnsafeRead(out uint remoteSession);
+                        reader.UncheckedRead(out uint remoteSession);
 
                         // If a peer wasn't found the remote host must be in a half-open connection.
                         if (!TryGet(in endPoint, out Peer peer) 
@@ -1342,15 +1341,15 @@ namespace Carambolas.Net
                         Interlocked.Add(ref peer.bytesReceived, length);
 
                         if (peer.Session.State == Protocol.State.Connecting                    // If the peer is still connecting (only ACCEPT can be received at this stage) 
-                          || peer.Session.Remote != remoteSession                              // OR packet is from an unknown session
-                          || remoteTime < peer.LatestRemoteTime - Protocol.Packet.LifeTime)    // OR packet lived beyond its lifetime
+                          || peer.Session.Remote != remoteSession                              //   OR packet is from an unknown session
+                          || remoteTime < peer.LatestRemoteTime - Protocol.Packet.LifeTime)    //   OR packet lived beyond its lifetime
                         {
                             Interlocked.Increment(ref peer.packetsDropped);
                             break;
                         }
 
-                        reader.UnsafeTruncate(Protocol.Packet.Insecure.Checksum.Size);
-                        reader.UnsafeRead(out ushort remoteWindow);
+                        reader.UncheckedTruncate(Protocol.Packet.Insecure.Checksum.Size);
+                        reader.UncheckedRead(out ushort remoteWindow);
                         
                         // Update latest remote time and remote window. 
                         if (peer.LatestRemoteTime < remoteTime)
@@ -1376,9 +1375,9 @@ namespace Carambolas.Net
                         // Save position and size of the ciphertext
                         var (position, count) = (reader.Position, reader.Available - (Protocol.Packet.Secure.N64.Size + Protocol.Packet.Secure.Mac.Size));
 
-                        reader.UnsafeSkip(count);
-                        reader.UnsafeRead(out ulong nonce64);
-                        reader.UnsafeRead(out Mac mac);
+                        reader.UncheckedSkip(count);
+                        reader.UncheckedRead(out ulong nonce64);
+                        reader.UncheckedRead(out Mac mac);
 
                         var nonce = new Nonce((uint)remoteTime, nonce64);
 
@@ -1394,14 +1393,14 @@ namespace Carambolas.Net
                         Interlocked.Add(ref peer.bytesReceived, length);
 
                         if (peer.Session.State == Protocol.State.Connecting                    // If the peer is still connecting (only ACCEPT can be received at this stage) 
-                          || remoteTime < peer.LatestRemoteTime - Protocol.Packet.LifeTime)    // OR packet lived beyond its lifetime
+                          || remoteTime < peer.LatestRemoteTime - Protocol.Packet.LifeTime)    //   OR packet lived beyond its lifetime
                         {
                             Interlocked.Increment(ref peer.packetsDropped);
                             break;
                         }
 
-                        reader.UnsafeReset(position, count);
-                        reader.UnsafeRead(out ushort remoteWindow);
+                        reader.UncheckedReset(position, count);
+                        reader.UncheckedRead(out ushort remoteWindow);
 
                         // Update latest remote time and remote window. 
                         if (peer.LatestRemoteTime < remoteTime)
@@ -1420,7 +1419,7 @@ namespace Carambolas.Net
                         if (!Protocol.Packet.Insecure.Checksum.Verify(buffer, offset, length))
                             break;
 
-                        reader.UnsafeRead(out uint session);
+                        reader.UncheckedRead(out uint session);
 
                         if (!TryGet(in endPoint, out Peer peer) 
                             || peer.Session.State == Protocol.State.Disconnected 
@@ -1449,9 +1448,9 @@ namespace Carambolas.Net
                         if (!peer.Session.Options.Contains(SessionOptions.Secure))
                             break;
                        
-                        reader.UnsafeRead(out Key remoteKey);
-                        reader.UnsafeRead(out ulong nonce64);
-                        reader.UnsafeRead(out Mac mac);
+                        reader.UncheckedRead(out Key remoteKey);
+                        reader.UncheckedRead(out ulong nonce64);
+                        reader.UncheckedRead(out Mac mac);
 
                         var state = peer.Session.State;
                         if (state == Protocol.State.Connecting)
@@ -1489,23 +1488,26 @@ namespace Carambolas.Net
 
         private void OnReceive(Peer peer, Protocol.Time time, Protocol.Time remoteTime, BinaryReader reader)
         {
-            // Each bit represents a channel. A bit value of 0 means no message has been 
-            // parsed for this channel yet; 1 means one or more messages have been parsed 
-            // already for this channel.
-            ushort usedChannels = 0;
+
+            // Bitset where each bit represents a channel. A bit value of 0 means no message has been 
+            // parsed for this channel; otherwise one or more messages have been parsed 
+            // for this channel already.
+            Span<uint> channels = stackalloc uint[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
 
             /// <summary>
             /// Return true if the <paramref name="channel"/> flag has not been reset yet for this packet and then reset it.
             /// </summary>
-            bool TrySetUsed(byte channel)
+            bool TrySetUsed(byte channel, in Span<uint> from)
             {
-                var mask = unchecked((ushort)(1u << (channel & 0x0F)));
-                var prev = usedChannels;
-                usedChannels |= mask;
+                var i = channel >> 32;
+                var bit = channel % 32;
+                var mask = 1u << bit;
+                var prev = from[i];
+                from[i] = prev | mask;
                 return (prev & mask) == 0;
             }
 
-            reader.UnsafeRead(out Protocol.MessageFlags mflags);
+            reader.UncheckedRead(out Protocol.MessageFlags mflags);
 
             do
             {
@@ -1513,7 +1515,7 @@ namespace Carambolas.Net
                 {
                     if (reader.Available >= Protocol.Message.Accept.Ack.Size) // ATM(4)
                     {
-                        reader.UnsafeRead(out Protocol.Time atm);
+                        reader.UncheckedRead(out Protocol.Time atm);
                         if (peer.Session.State == Protocol.State.Accepting)
                         {
                             peer.OnAccepted(time, atm);
@@ -1524,20 +1526,18 @@ namespace Carambolas.Net
                     }
                     goto Incomplete;
                 }
-
-                var channel = (byte)(mflags & Protocol.MessageFlags.Channel);
-                mflags &= ~Protocol.MessageFlags.Channel;
-
+                
                 switch (mflags)
                 {
                     case Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data: // NEXT(2) ATM(4)
                         if (reader.Available >= Protocol.Message.Ack.Size) 
                         {
-                            reader.UnsafeRead(out Protocol.Ordinal seq);
-                            reader.UnsafeRead(out Protocol.Time atm);
+                            reader.UncheckedRead(out byte channel);
+                            reader.UncheckedRead(out Protocol.Ordinal seq);
+                            reader.UncheckedRead(out Protocol.Time atm);
 
                             if (peer.Session.State >= Protocol.State.Connected)
-                                peer.OnReceive(time, remoteTime, new Protocol.Message.Ack(channel, 1, seq, seq, atm));
+                                peer.OnReceive(time, remoteTime, new Protocol.Message.Ack(channel, seq, atm));
 
                             continue;
                         }
@@ -1545,9 +1545,10 @@ namespace Carambolas.Net
                     case Protocol.MessageFlags.Dup | Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data: // CNT(2) NEXT(2) ATM(4)
                         if (reader.Available >= Protocol.Message.Ack.Dup.Size) 
                         {
-                            reader.UnsafeRead(out ushort count);
-                            reader.UnsafeRead(out Protocol.Ordinal next);
-                            reader.UnsafeRead(out Protocol.Time atm);
+                            reader.UncheckedRead(out byte channel);
+                            reader.UncheckedRead(out ushort count);
+                            reader.UncheckedRead(out Protocol.Ordinal next);
+                            reader.UncheckedRead(out Protocol.Time atm);
 
                             if (peer.Session.State >= Protocol.State.Connected && count > 0)
                                 peer.OnReceive(time, remoteTime, new Protocol.Message.Ack(channel, count, next, atm));
@@ -1558,12 +1559,13 @@ namespace Carambolas.Net
                     case Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data | Protocol.MessageFlags.Gap: // NEXT(2) LAST(2) ATM(4)
                         if (reader.Available >= Protocol.Message.Ack.Gap.Size) 
                         {
-                            reader.UnsafeRead(out Protocol.Ordinal next);
-                            reader.UnsafeRead(out Protocol.Ordinal last);
-                            reader.UnsafeRead(out Protocol.Time atm);
+                            reader.UncheckedRead(out byte channel);
+                            reader.UncheckedRead(out Protocol.Ordinal next);
+                            reader.UncheckedRead(out Protocol.Ordinal last);
+                            reader.UncheckedRead(out Protocol.Time atm);
 
                             if (peer.Session.State >= Protocol.State.Connected)
-                                peer.OnReceive(time, remoteTime, new Protocol.Message.Ack(channel, 1, next, last, atm));
+                                peer.OnReceive(time, remoteTime, new Protocol.Message.Ack(channel, next, last, atm));
 
                             continue;
                         }
@@ -1571,10 +1573,11 @@ namespace Carambolas.Net
                     case Protocol.MessageFlags.Dup | Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data | Protocol.MessageFlags.Gap: // CNT(2) NEXT(2) LAST(2) ATM(4)
                         if (reader.Available >= Protocol.Message.Ack.Gap.Dup.Size) 
                         {
-                            reader.UnsafeRead(out ushort count);
-                            reader.UnsafeRead(out Protocol.Ordinal next);
-                            reader.UnsafeRead(out Protocol.Ordinal last);
-                            reader.UnsafeRead(out Protocol.Time atm);
+                            reader.UncheckedRead(out byte channel);
+                            reader.UncheckedRead(out ushort count);
+                            reader.UncheckedRead(out Protocol.Ordinal next);
+                            reader.UncheckedRead(out Protocol.Ordinal last);
+                            reader.UncheckedRead(out Protocol.Time atm);
 
                             if (peer.Session.State >= Protocol.State.Connected && count > 0)
                                 peer.OnReceive(time, remoteTime, new Protocol.Message.Ack(channel, count, next, last, atm));
@@ -1586,14 +1589,15 @@ namespace Carambolas.Net
                     case Protocol.MessageFlags.Data | Protocol.MessageFlags.Segment:
                         if (reader.Available >= Protocol.Message.Segment.MinSize)
                         {
-                            reader.UnsafeRead(out Protocol.Ordinal seq);
-                            reader.UnsafeRead(out Protocol.Ordinal rsn);
-                            reader.UnsafeRead(out ushort seglen);
+                            reader.UncheckedRead(out byte channel);
+                            reader.UncheckedRead(out Protocol.Ordinal seq);
+                            reader.UncheckedRead(out Protocol.Ordinal rsn);
+                            reader.UncheckedRead(out ushort seglen);
 
                             if (seglen == 0)
                             {
                                 if (mflags.Contains(Protocol.MessageFlags.Reliable) && peer.Session.State >= Protocol.State.Connected) // this is a ping
-                                    peer.OnReceive(time, remoteTime, true, TrySetUsed(channel), new Protocol.Message.Segment(channel, seq, rsn, default));
+                                    peer.OnReceive(time, remoteTime, true, TrySetUsed(channel, channels), new Protocol.Message.Segment(channel, seq, rsn, default));
 
                                 continue;
                             }
@@ -1603,9 +1607,9 @@ namespace Carambolas.Net
                                 var data = new ArraySegment<byte>(reader.Buffer, reader.Position, seglen);
                                 
                                 if (peer.Session.State >= Protocol.State.Connected)
-                                    peer.OnReceive(time, remoteTime, mflags.Contains(Protocol.MessageFlags.Reliable), TrySetUsed(channel), new Protocol.Message.Segment(channel, seq, rsn, data));
+                                    peer.OnReceive(time, remoteTime, mflags.Contains(Protocol.MessageFlags.Reliable), TrySetUsed(channel, channels), new Protocol.Message.Segment(channel, seq, rsn, data));
 
-                                reader.UnsafeSkip(seglen);
+                                reader.UncheckedSkip(seglen);
                                 continue;
                             }
                         }
@@ -1614,11 +1618,12 @@ namespace Carambolas.Net
                     case Protocol.MessageFlags.Data | Protocol.MessageFlags.Fragment:
                         if (reader.Available > Protocol.Message.Fragment.MinSize) 
                         {
-                            reader.UnsafeRead(out Protocol.Ordinal seq);
-                            reader.UnsafeRead(out Protocol.Ordinal rsn);
-                            reader.UnsafeRead(out ushort seglen);
-                            reader.UnsafeRead(out byte fragindex);
-                            reader.UnsafeRead(out ushort fraglen);
+                            reader.UncheckedRead(out byte channel);
+                            reader.UncheckedRead(out Protocol.Ordinal seq);
+                            reader.UncheckedRead(out Protocol.Ordinal rsn);
+                            reader.UncheckedRead(out ushort seglen);
+                            reader.UncheckedRead(out byte fragindex);
+                            reader.UncheckedRead(out ushort fraglen);
 
                             if (fraglen == 0)
                                 continue;
@@ -1640,11 +1645,11 @@ namespace Carambolas.Net
                                         var data = new ArraySegment<byte>(reader.Buffer, reader.Position, fraglen);
 
                                         if (peer.Session.State >= Protocol.State.Connected)
-                                            peer.OnReceive(time, remoteTime, mflags.Contains(Protocol.MessageFlags.Reliable), TrySetUsed(channel), new Protocol.Message.Fragment(channel, seq, rsn, fragindex, fraglast, seglen, data));
+                                            peer.OnReceive(time, remoteTime, mflags.Contains(Protocol.MessageFlags.Reliable), TrySetUsed(channel, channels), new Protocol.Message.Fragment(channel, seq, rsn, fragindex, fraglast, seglen, data));
                                     }
                                 }
 
-                                reader.UnsafeSkip(fraglen);
+                                reader.UncheckedSkip(fraglen);
                                 continue;
                             }
                         }
@@ -1671,12 +1676,12 @@ namespace Carambolas.Net
         internal Memory EncodeReset(BinaryWriter encoder, Protocol.Time time, uint remoteSession)
         {
             encoder.Reset();
-            encoder.UnsafeWrite(time);
-            encoder.UnsafeWrite(Protocol.PacketFlags.Reset);
-            encoder.UnsafeWrite(remoteSession);
+            encoder.UncheckedWrite(time);
+            encoder.UncheckedWrite(Protocol.PacketFlags.Reset);
+            encoder.UncheckedWrite(remoteSession);
 
             var crc = Protocol.Packet.Insecure.Checksum.Compute(encoder.Buffer, encoder.Offset, encoder.Count);
-            encoder.UnsafeWrite(crc);
+            encoder.UncheckedWrite(crc);
 
             Allocate(out Memory encoded);
             encoded.CopyFrom(encoder.Buffer, encoder.Offset, encoder.Count);
@@ -1686,9 +1691,9 @@ namespace Carambolas.Net
         internal Memory EncodeReset(BinaryWriter encoder, Protocol.Time time, ref Session session)
         {
             encoder.Reset();
-            encoder.UnsafeWrite(time);
-            encoder.UnsafeWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Reset);
-            encoder.UnsafeWrite(in Keys.Public);
+            encoder.UncheckedWrite(time);
+            encoder.UncheckedWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Reset);
+            encoder.UncheckedWrite(in Keys.Public);
 
             // A reset is supposed to be the last packet in a session anyway, so it shouldn't be such a 
             // security risk to use a constant nonce64 (0) here. It saves us from having to lock or perform
@@ -1696,8 +1701,8 @@ namespace Carambolas.Net
             var nonce = new Nonce((uint)time, 0, 0);            
             session.Cipher.Sign(encoder.Buffer, encoder.Offset, Protocol.Packet.Header.Size, 0, in nonce, out Mac mac);
 
-            encoder.UnsafeWrite((ulong)0);
-            encoder.UnsafeWrite(in mac);
+            encoder.UncheckedWrite((ulong)0);
+            encoder.UncheckedWrite(in mac);
 
             Allocate(out Memory encoded);
             encoded.CopyFrom(encoder.Buffer, encoder.Offset, encoder.Count);
@@ -1769,16 +1774,16 @@ namespace Carambolas.Net
             public uint TotalMilliseconds(long ticks) => start + (uint)(ticks * tickFrequency / TimeSpan.TicksPerMillisecond);
         }
 
-        private readonly TimeSource tmsrc = new TimeSource(DateTime.UtcNow);
+        private readonly TimeSource timeSource = new TimeSource(DateTime.UtcNow);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal uint Now() => tmsrc.Now;
+        internal uint Now() => timeSource.Now;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private long ElapsedTicks() => tmsrc.ElapsedTicks;
+        private long ElapsedTicks() => timeSource.ElapsedTicks;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private uint TicksToMilliseconds(long value) => tmsrc.TotalMilliseconds(value);
+        private uint TicksToMilliseconds(long value) => timeSource.TotalMilliseconds(value);
 
         #endregion
 
