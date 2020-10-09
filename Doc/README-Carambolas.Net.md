@@ -3,7 +3,7 @@
 
 ## Disclaimer
 
-This library and its associated protocol definitions are not meant to be ultra-fast, ultra-lightweight, better than *xyz* or any other superlative. Eventhough
+This library and its associated protocol definitions are not meant to be ultra-fast, ultra-lightweight, better than *xyz* or any other superlative. Even though
 performance and a minimum protocol overhead happen to be two major design goals, they're not absolute and several examples of compromises exist throughout the 
 source code. In general, such cases should be highlighted in the documentation or properly commented in the source code. Keep in mind, there's no such thing as
 a definitve network solution. Behind any advertised set of features, there's always a list of pre-conditions, boundaries and assumptions which may or may not 
@@ -873,7 +873,7 @@ In practice only item number 2 requires special consideration:
   - An unsigned 64-bit integer starting from zero could be used to tag 1.8446744 * 10<sup>19</sup> messages before wraping around. This is roughly equivalent to a sender
     transmitting 1 billion messages per second for 584 years. Definitely more than enough. Unfortunately this means 8 extra bytes of overhead per message from which
     the 4 most significant will always be 0 for the first 4 billion messages or so which is starting to look like a waste;
-  - There are relatively simple methods to compress low 64-bit integer values and mitigate the wasted space (i.e. varint) but eventhough they're not as expensive 
+  - There are relatively simple methods to compress low 64-bit integer values and mitigate the wasted space (i.e. varint) but even though they're not as expensive 
     as arbitrarily large integers they're still considerably more expensive than using regular small integers;
 
 *What's the minimum number of bytes required for a sequence number?*
