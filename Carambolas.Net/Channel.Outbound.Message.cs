@@ -22,7 +22,7 @@ namespace Carambolas.Net
                 /// <summary>
                 /// After the message is transmitted at least once, this property contains the source time of the first transmission.
                 /// <para/>
-                /// Before the first transmission, this is used to sore a time limit beyond which the message is considered expired and must be dropped
+                /// Before the first transmission, this is used to store a time limit beyond which the message is considered expired and must be dropped
                 /// (only applicable to <see cref="Protocol.Delivery.Unreliable"/>).
                 /// </summary>
                 public Protocol.Time FirstSendTime;

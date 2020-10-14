@@ -27,16 +27,18 @@ namespace Carambolas.Net
 
     public class Peer
     {
-        internal Peer(Host host, in IPEndPoint endPoint, PeerMode mode)
+        internal Peer(Host host, Protocol.Time time, in IPEndPoint endPoint, PeerMode mode)
         {
             Host = host ?? throw new ArgumentNullException(nameof(host));
             EndPoint = endPoint;
             State = PeerState.Connecting;
             Mode = mode;
+
+            lastOrdinalWindowTimesAdjustment = time;
         }
 
-        internal Peer(Host host, in IPEndPoint endPoint, PeerMode mode, SessionOptions options, in Key remoteKey)
-            : this(host, in endPoint, mode)
+        internal Peer(Host host, Protocol.Time time, in IPEndPoint endPoint, PeerMode mode, SessionOptions options, in Key remoteKey)
+            : this(host, time, in endPoint, mode)
         {            
             Session.Options = options;
             if (options.Contains(SessionOptions.Secure))
@@ -103,8 +105,25 @@ namespace Carambolas.Net
         public ushort MaxFragmentSize { get; private set; }
 
         private Channel[] channels;
+        private Channel.Outbound.Mediator mediator;
 
-        public byte MaxChannel { get; private set; }
+        private void SetChannels(int length)
+        {
+
+        }
+
+        private byte maxChannel;
+        public byte MaxChannel => maxChannel;
+
+        private void SetMaxChannel(byte mtc, Protocol.Time remoteTime)
+        {
+            maxChannel = mtc;
+            var length = mtc + 1;
+            channels = new Channel[length];
+            for (int i = 0; i < length; ++i)
+                channels[i].Initialize((byte)i, remoteTime);
+            mediator = new Channel.Outbound.Mediator(length);
+        }
 
         public override string ToString() => $"{EndPoint}:{Session}";
 
@@ -252,7 +271,7 @@ namespace Carambolas.Net
         /// Number of packets that may be sent to the remote host containing user data.
         /// This is used to limit the number of data packets allowed right after an ack timeout.
         /// </summary>
-        private int capacity = Protocol.Countdown.Infinite;
+        private int sendCapacity = Protocol.Countdown.Infinite;
 
         /// <summary>
         /// Number of channels actively retransmitting
@@ -262,11 +281,13 @@ namespace Carambolas.Net
         #endregion
 
         #region Statistics
-
-        private long startTick;
-
+       
         public DateTime StartTime { get; internal set; }
         public DateTime StopTime { get; internal set; }
+
+        private TickCounter upticks;
+
+        private Protocol.Time lastOrdinalWindowTimesAdjustment;
 
         internal long packetsSent;
         public long PacketsSent => Interlocked.Read(ref packetsSent);
@@ -303,29 +324,73 @@ namespace Carambolas.Net
 
         #endregion
 
-        private (Command CMD, Protocol.Time AcceptanceTime, Acknowledgment ACK, Protocol.Time AcknowledgedTime) control;
+        private (Command Command, Protocol.Time AcceptanceTime, Acknowledgment Ack, Protocol.Time AcknowledgedTime) control;
 
+        /// <summary>
+        /// Asynchronously send a connect packet.
+        /// </summary>
         internal void Connect()
         {
-            if (control.CMD != Command.Connect)
-                control.CMD = Command.Transmit | Command.Connect;
+            if (control.Command != Command.Connect)
+                control.Command = Command.Transmit | Command.Connect;
         }
 
+        /// <summary>
+        /// Asynchronously send accept packet.
+        /// </summary>
         internal void Accept(Protocol.Time time)
         {
-            if (control.CMD != Command.Accept)
+            if (control.Command != Command.Accept)
             {
-                control.CMD = Command.Transmit | Command.Accept;
+                control.Command = Command.Transmit | Command.Accept;
                 control.AcceptanceTime = time;
             }
         }
 
+        /// <summary>
+        /// Asynchronously send acknowledgement for a command.
+        /// </summary>
         internal void Acknowledge(Acknowledgment value, Protocol.Time acknowledgedTime)
         {
-            if (control.ACK != value)
+            if (control.Ack != value)
             {
-                control.ACK = value;
+                control.Ack = value;
                 control.AcknowledgedTime = acknowledgedTime;
+            }
+        }
+
+        /// <summary>
+        /// Asynchronously send a cumulative acknowledgement. Latest remote time is updated to be used 
+        /// as acknowledged send time in the next ack transmitted.
+        /// </summary>
+        private void Acknowledge(ref Channel channel, Protocol.Time remoteTime, bool isFirstInPacket)
+        {
+            if (channel.RX.Ack.Count == 0)
+            {
+                channel.RX.Ack = (channel.RX.NextSequenceNumber, 1, remoteTime);
+
+                // If channel was not ready to send before, add it to the end of the send list (right before the current channel)
+                if ((channel.NextToSend | channel.PreviousToSend) == 0)
+                    channel.AddToSendListBefore(ref channels[currentChannelIndex]);
+            }
+            else
+            {
+                if (channel.RX.Ack.SequenceNumber != channel.RX.NextSequenceNumber)
+                {
+                    channel.RX.Ack.SequenceNumber = channel.RX.NextSequenceNumber;
+                    channel.RX.Ack.Count = 1;
+                }
+                else if (isFirstInPacket)
+                {
+                    // Dup acks must be counted by packet. 
+                    // It makes no sense to count dup acks per message. A packet may contain several messages
+                    // but they all share the same fate as of their containing packet. Counting dup acks by message 
+                    // would only produce distortions and negatively affect fast retransmissions.
+                    channel.RX.Ack.Count++;
+                }
+
+                if (channel.RX.Ack.LatestRemoteTime < remoteTime)
+                    channel.RX.Ack.LatestRemoteTime = remoteTime;
             }
         }
 
@@ -357,7 +422,7 @@ namespace Carambolas.Net
             connDeadline = default;
             idleDeadline = time + Host.IdleTimeout;
 
-            capacity = Protocol.Countdown.Infinite;
+            sendCapacity = Protocol.Countdown.Infinite;
         }
 
         private void OnAckTimeout(Protocol.Time time)
@@ -378,19 +443,42 @@ namespace Carambolas.Net
                 RoundTripTime = 0;
             }
 
-            // If there's a control command waiting for an ack, flag it for retransmission
-            // otherwise set every channel to retransmit. 
-            if (control.CMD != default)
-                control.CMD |= Command.Transmit;
-            else 
+            // If there's a control command waiting for an ack, flag it for retransmission otherwise set every channel to retransmit. 
+            if (control.Command != default)
             {
-                // If a channel has data do retransmit it will increment the counter.
-                for (int i = 0; i < channels.Length; ++i)
-                    channels[i].TX.Timeout(ref retransmittingChannelsCount);
+                control.Command |= Command.Transmit;
+            }
+            else
+            {
+                // Check the channels in the send list and increment the counter if a channel is set to retransmit.
+                ref var channel = ref channels[currentChannelIndex];
+                do
+                {
+                    // If Messages.First is null, Transmit must also be null; otherwise there's something to retransmit only if Transmit 
+                    // is past Messages.First (hence different).
+                    if (channel.TX.Messages.First != channel.TX.Transmit)
+                    {
+                        if (channel.TX.Retransmit == null)
+                        {
+                            retransmittingChannelsCount++;
+                            channel.TX.Ack.Last = channel.TX.NextSequenceNumber - 1;
+                            channel.TX.Ack.Count = 1;
+
+                            // If the channel was not ready to send before, add it to the end of the send list (right before the current channel)
+                            if ((channel.NextToSend | channel.PreviousToSend) == 0)
+                                channel.AddToSendListBefore(ref channels[currentChannelIndex]);
+                        }
+
+                        channel.TX.Retransmit = channel.TX.Messages.First;
+                    }
+
+                    channel = ref channels[channel.NextToSend];
+                }
+                while (channel.Index != currentChannelIndex);
 
                 // This could be a congestion so restrict sending to at most 1 data packet 
                 // (retransmission or not) until either ack is received or another timeout occurs.
-                capacity = 1;
+                sendCapacity = 1;
             }            
 
             // Backoff the ack timeout 
@@ -401,14 +489,12 @@ namespace Carambolas.Net
             idleDeadline = default;
         }
 
-
         internal void OnConnecting(Protocol.Time time)
         {
             Session.State = Protocol.State.Connecting;            
             Session.Local = (uint)time;
 
-            // Don't assign MaxChannel here yet as channels should only be 
-            // allocated after the connection is established to avoid unecessary allocations.
+            // Don't assign MaxChannel here yet. Channels should only be set after the connection is established to avoid unecessary allocations.
 
             CongestionWindow = InitialCongestionWindow;
             RemoteWindow = ushort.MaxValue;
@@ -424,12 +510,7 @@ namespace Carambolas.Net
             Session.Local = (uint)time;
             Session.Remote = remoteSession;
 
-            var mtc = connect.MaximumTransmissionChannel;
-
-            MaxChannel = mtc;
-            channels = new Channel[mtc + 1];
-            for (int i = 0; i <= mtc; ++i)
-                channels[i].Initialize(remoteTime);
+            SetMaxChannel(connect.MaximumTransmissionChannel, remoteTime);
 
             RemoteBandwidth = connect.MaximumBandwidth >> 3;
             CongestionWindow = InitialCongestionWindow;
@@ -438,7 +519,6 @@ namespace Carambolas.Net
 
             Accept(LatestRemoteTime);
         }
-
 
         internal void OnCrossConnecting(Protocol.Time time, Protocol.Time remoteTime, uint remoteSession, in Protocol.Message.Connect connect, in Key remoteKey)
         {
@@ -452,15 +532,10 @@ namespace Carambolas.Net
         {
             Session.State = Protocol.State.Accepting;
             Session.Remote = remoteSession;
-            MaxTransmissionUnit = connect.MaximumTransmissionUnit;
 
-            var mtc = connect.MaximumTransmissionChannel;
+            SetMaxChannel(connect.MaximumTransmissionChannel, remoteTime);
 
-            MaxChannel = mtc;
-            channels = new Channel[mtc + 1];
-            for (int i = 0; i <= mtc; ++i)
-                channels[i].Initialize(remoteTime);
-
+            MaxTransmissionUnit = connect.MaximumTransmissionUnit;            
             RemoteBandwidth = connect.MaximumBandwidth >> 3;
             CongestionWindow = InitialCongestionWindow;
 
@@ -470,38 +545,33 @@ namespace Carambolas.Net
         internal void OnConnected(Protocol.Time time, Protocol.Time remoteTime, uint remoteSession, in Protocol.Message.Accept accept)
         {
             Session.State = Protocol.State.Connected;
-            startTick = Host.TimeSource.Ticks();
-
             Session.Remote = remoteSession;
+
+            upticks = new TickCounter(TickCounter.GetTicks());
+
+            SetMaxChannel(accept.MaximumTransmissionChannel, remoteTime);
+
             MaxTransmissionUnit = accept.MaximumTransmissionUnit;
-
-            var mtc = accept.MaximumTransmissionChannel;
-
-            MaxChannel = mtc;
-            channels = new Channel[mtc + 1];
-            for (int i = 0; i <= mtc; ++i)
-                channels[i].Initialize(remoteTime);
-
             RemoteBandwidth = accept.MaximumBandwidth >> 3;
             CongestionWindow = InitialCongestionWindow;
 
-
             Acknowledge(Acknowledgment.Accept, LatestRemoteTime);
 
-            control.CMD = default;
+            control.Command = default;
             OnAckMatched(time, accept.AcknowledgedTime);
         }
 
         internal void OnAccepted(Protocol.Time time, Protocol.Time acknowledgedTime)
         {
             Session.State = Protocol.State.Connected;
-            startTick = Host.TimeSource.Ticks();
 
-            control.CMD = default;
+            upticks = new TickCounter(TickCounter.GetTicks());
+        
+            control.Command = default;
             OnAckMatched(time, acknowledgedTime);
         }
 
-        internal void OnUpdate(Protocol.Time time)
+        private void OnUpdate(Protocol.Time time)
         {
             if (connDeadline <= time)
             {
@@ -529,36 +599,52 @@ namespace Carambolas.Net
                 idleDeadline = null;
                 ping = true;
             }
+        }
 
-            // The code below is only really useful when Session.State == Protocol.State.Connected but it doesn't affect the peer
-            // in any other state. And having it enclosed in an if (Session.State == Protocol.State.Connected) { } despite technically 
-            // more correct would also be less efficient as a connection is expected to be in a Protocol.State.Connected state for the 
-            // most part of its life time.
+        internal void OnConnectingUpdate(Protocol.Time time) => OnUpdate(time);
+
+        internal void OnConnectedUpdate(Protocol.Time time)
+        {
+            OnUpdate(time);
+
+            // Adjust sequence window times that remained inactive for more than a packet lifetime in all channels.
+            // There's no need to do this very often because any packet older than Protocol.Packet.Lifetime is going to be discarded
+            // before any message gets processed anyway. But it must still be executed at least once every 24 days because in the 
+            // unlikely event a connection is mantained for more than 2147483648ms (aprox 24 days 20 hours and 24 minutes), at least 
+            // one channel may sit unused for the whole duration and the ordinal window times stored could fall behind the current 
+            // remote time by more than the time window resulting in ambiguity.  
+            if (lastOrdinalWindowTimesAdjustment - time > Protocol.Ordinal.Window.Times.MaxAdjustmentTime)
             {
-                var tick = Host.TimeSource.Ticks();
-                var uptime = (long)Host.TimeSource.TicksToMilliseconds(tick - startTick);
-
-                // Bandwidth window is the maximum number of bytes that can be sent in a burst still keep the output rate less than or equal to 
-                // the remote bandwidth. Protocol overhead is disconsidered hence why datatSent is used instead of bytesSent.
-                // There's no need to use Interlocked.Read(ref dataSent) here because this is the same thread where the field is modified.
-                var bwnd = RemoteBandwidth / 1000 * uptime - dataSent;
-
-                // Maximum number of user data bytes that can be in flight this frame.
-                SendWindow = (ushort)Min(bwnd, Max(MaxSegmentSize, Min(Host.Upstream.BufferShare, CongestionWindow, RemoteWindow)));
+                lastOrdinalWindowTimesAdjustment = time;
+                foreach (var channel in channels)
+                    channel.Adjust(LatestRemoteTime - Protocol.Packet.LifeTime);
             }
+
+            // Bandwidth window is the maximum number of bytes that can be sent in a burst and still keep the output rate less than or equal to 
+            // the remote bandwidth. Protocol overhead is disconsidered hence why this.datatSent is used instead of this.bytesSent.
+            // There's no need to use Interlocked.Read(ref dataSent) here because this is the same thread where the field is modified.
+            var bwnd = (RemoteBandwidth * upticks.ElapsedMilliseconds() / 1000) - dataSent;
+
+            // Maximum number of user data bytes that can be in flight this frame.
+            SendWindow = (ushort)Min(bwnd, Max(MaxSegmentSize, Min(Host.Upstream.BufferShare, CongestionWindow, RemoteWindow)));
+
+            // Flush messages sent by the user thread, if any, and updates the list of channels to send.
+            mediator.Flush(channels, ref channels[currentChannelIndex]);
         }
 
         #region Data Sending
 
         /// <summary>
-        /// True if peer must be pinged.
+        /// Current channel to process in <see cref="OnConnectedSend"/>. Only channels linked by <see cref="Channel.NextToSend"/> 
+        /// are considered for transmission. This serves to reduce iteration time when a peer has a large number of channels 
+        /// (> 16) that are sparsely used. Channel 0 serves as fallback in case there's no channel ready to send.
         /// </summary>
-        private bool ping;
+        private byte currentChannelIndex;
 
         /// <summary>
-        /// Next channel to process in <see cref="OnSend"/>
+        /// True if peer must be pinged.
         /// </summary>
-        private byte nextch;
+        private bool ping;        
 
         private void DecrementTransmissionBacklog(ushort value)
         {
@@ -597,7 +683,7 @@ namespace Carambolas.Net
 
             if (length > MaxSegmentSize)
             {
-                var expiration = unchecked(Host.Now() + ((qos.Timelimit - 1) & int.MaxValue));
+                var expiration = unchecked(Host.Timestamp() + ((qos.Timelimit - 1) & int.MaxValue));
                 var seglen = (ushort)length;
                 var fraglen = MaxFragmentSize;
                 var fraglast = (byte)((length - 1) / fraglen);
@@ -618,509 +704,541 @@ namespace Carambolas.Net
                 }
                 while (fragindex <= fraglast);
 
-                channels[channel].TX.Send(first, last);
+                mediator.Send(ref channels[channel], first, last);
             }
             else
             {
-                var message = CreateSegment(Host.UserEncoder, channel, qos.Delivery, unchecked(Host.Now() + ((qos.Timelimit - 1) & int.MaxValue)), data, offset, (ushort)length);
-                channels[channel].TX.Send(message);
+                var message = CreateSegment(Host.UserEncoder, channel, qos.Delivery, unchecked(Host.Timestamp() + ((qos.Timelimit - 1) & int.MaxValue)), data, offset, (ushort)length);
+                mediator.Send(ref channels[channel], message);
             }            
         }
 
         /// <summary>
+        /// Send connection handshake packets. 
         /// Returns true if a packet was written and must be transmitted; otherwise false (yielding to the next peer).
         /// </summary>
-        internal bool OnSend(uint time, BinaryWriter packet)
+        internal bool OnConnectingSend(uint time, BinaryWriter packet)
         {
             var created = false;
 
-            if (Session.State < Protocol.State.Connected) // Connecting / Accepting
+            // Send control commands
+            switch (control.Command)
             {
-                // Send control commands
-                switch (control.CMD)
-                {
-                    case Command.Transmit | Command.Connect:
+                case Command.Transmit | Command.Connect:
 
-                        control.CMD &= ~Command.Transmit;
-                        created = true;
+                    control.Command &= ~Command.Transmit;
+                    created = true;
 
-                        // There's no need to reserve space for the checksum because a CONNECT 
-                        // either secure or insecure must be way below the minimum MTU.
-                        packet.Reset(MaxTransmissionUnit);
+                    // There's no need to reserve space for the checksum because a CONNECT 
+                    // (secure or insecure) must be way below the minimum MTU.
+                    packet.Reset(MaxTransmissionUnit);
 
-                        if (Session.Options.Contains(SessionOptions.Secure))
-                        {
-                            packet.UncheckedWrite(time);
-                            packet.UncheckedWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Connect);
-                            packet.UncheckedWrite(Session.Local);
-                            packet.UncheckedWrite(Host.MaxTransmissionUnit);
-                            packet.UncheckedWrite(Host.MaxChannel);
-                            packet.UncheckedWrite(Host.MaxBandwidth);
-                            packet.UncheckedWrite(in Host.Keys.Public);
-                        }
-                        else
-                        {
-                            packet.UncheckedWrite(time);
-                            packet.UncheckedWrite(Protocol.PacketFlags.Connect);
-                            packet.UncheckedWrite(Session.Local);
-                            packet.UncheckedWrite(Host.MaxTransmissionUnit);
-                            packet.UncheckedWrite(Host.MaxChannel);
-                            packet.UncheckedWrite(Host.MaxBandwidth);
-                        }
-
-                        packet.UncheckedWrite(Protocol.Packet.Insecure.Checksum.Compute(packet.Buffer, packet.Offset, packet.Count));
-
-                        if (ackDeadline == null)
-                            ackDeadline = time + ackTimeout;
-
-                        if (connDeadline == null)
-                            connDeadline = time + connTimeout;
-
-                        break;
-                    case Command.Transmit | Command.Accept:
-                        control.CMD &= ~Command.Transmit;
-                        created = true;
-
-                        // There's no need to reserve space for the checksum (or nonce/mac) because an ACCEPT
-                        // either secure or insecure must be way below the minimum MTU.
-                        packet.Reset(MaxTransmissionUnit);
-
-                        if (Session.Options.Contains(SessionOptions.Secure))
-                        {
-                            packet.Write(time);
-                            packet.UncheckedWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Accept);
-                            packet.UncheckedWrite(Session.Local);
-                            packet.UncheckedWrite(Host.MaxTransmissionUnit);
-                            packet.UncheckedWrite(Host.MaxChannel);
-                            packet.UncheckedWrite(Host.MaxBandwidth);
-                            packet.UncheckedWrite(control.AcceptanceTime);
-
-                            var (buffer, offset, position, count) = (packet.Buffer, packet.Offset, packet.Position, sizeof(ushort));
-                            packet.UncheckedWrite(ReceiveWindow);
-
-                            var nonce64 = ++Session.Nonce;
-                            var nonce = new Nonce(time, nonce64);
-
-                            Session.Cipher.EncryptInPlace(buffer, position, count, in nonce);
-                            Session.Cipher.Sign(buffer, offset, position - offset, count, in nonce, out Mac mac);
-
-                            packet.UncheckedWrite(in Host.Keys.Public);
-                            packet.UncheckedWrite(nonce64);
-                            packet.UncheckedWrite(in mac);
-                        }
-                        else
-                        {
-                            packet.Write(time);
-                            packet.UncheckedWrite(Protocol.PacketFlags.Accept);
-                            packet.UncheckedWrite(Session.Local);
-                            packet.UncheckedWrite(Host.MaxTransmissionUnit);
-                            packet.UncheckedWrite(Host.MaxChannel);
-                            packet.UncheckedWrite(Host.MaxBandwidth);
-                            packet.UncheckedWrite(control.AcceptanceTime);
-                            packet.UncheckedWrite(ReceiveWindow);
-                            packet.UncheckedWrite(Session.Remote);
-                            packet.UncheckedWrite(Protocol.Packet.Insecure.Checksum.Compute(packet.Buffer, packet.Offset, packet.Count));
-                        }
-
-                        // Start ack timer if not started yet
-                        if (ackDeadline == null)
-                            ackDeadline = time + ackTimeout;
-
-                        // Start connection timer if not started yet
-                        if (connDeadline == null)
-                            connDeadline = time + connTimeout;
-                        break;
-                    default:
-                        break;
-                }
-            }
-            else // Connected
-            {
-                void EnsureDataPacketIsCreated()
-                {
-                    if (!created)
-                    {
-                        created = true;
-
-                        if (Session.Options.Contains(SessionOptions.Secure))
-                        {
-                            packet.Reset(MaxTransmissionUnit - (Protocol.Packet.Secure.N64.Size + Protocol.Packet.Secure.Mac.Size));
-                            packet.UncheckedWrite(time);
-                            packet.UncheckedWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Data);
-                            packet.UncheckedWrite(ReceiveWindow);
-                        }
-                        else
-                        {
-                            packet.Reset(MaxTransmissionUnit - Protocol.Packet.Insecure.Checksum.Size);
-                            packet.UncheckedWrite(time);
-                            packet.UncheckedWrite(Protocol.PacketFlags.Data);
-                            packet.UncheckedWrite(Session.Local);
-                            packet.UncheckedWrite(ReceiveWindow);
-                        }
-                    }
-                }
-
-                // Send control acks
-                switch (control.ACK)
-                {
-                    case Acknowledgment.Accept:
-                        control.ACK = default;
-
-                        EnsureDataPacketIsCreated();
-                        packet.UncheckedWrite(Protocol.MessageFlags.Ack | Protocol.MessageFlags.Accept);
-                        packet.UncheckedWrite(control.AcknowledgedTime);
-
-                        break;
-                    default:
-                        break;
-                }
-
-                if (capacity == 0) // No more packets with user data allowed but acks may still need to be transmitted.
-                {
-                    var endch = nextch;
-                    do
-                    {
-                        ref var channel = ref channels[nextch];
-
-                        if (channel.RX.Ack.Count > 0) // Channel must send ACK
-                        {
-                            EnsureDataPacketIsCreated();
-
-                            if (!packet.TryWrite(new Protocol.Message.Ack(nextch, channel.RX.Ack.Count, channel.RX.NextSequenceNumber, channel.RX.LastSequenceNumber, channel.RX.Ack.LatestRemoteTime)))
-                                break;
-
-                            channel.RX.Ack.Count = 0;
-                        }
-
-                        nextch = (byte)((nextch + 1) % channels.Length);
-                    }
-                    while (nextch != endch);
-                }
-                else // Send both data and acks
-                {
-                    var transmitted = 0;
-                    if (retransmittingChannelsCount > 0) // Peer has one or more channels that need to retransmit data
-                    {
-                        // At this point BytesInFlight must be greater than 0 and at least one channel must have the Retransmit pointer not null.
-                        Debug.Assert(BytesInFlight > 0, $"{nameof(BytesInFlight)} must be greater than zero when there are restransmitting channels ({retransmittingChannelsCount})");
-
-                        // Even if in the end all retransmissions are void (only unreliable messages were waiting) 
-                        // an Enquire should still be transmitted so it's safe to ensure a packet header here. 
-                        EnsureDataPacketIsCreated();
-
-                        do
-                        {
-                            ref var channel = ref channels[nextch];
-                            if (channel.RX.Ack.Count > 0) //  Channel must send an ack.      
-                            {
-                                // It's better to spread ACKs over multiple packets ahead of their own channel streams so that we don't 
-                                // always end up with packets full of acks that may compromise several channels at once if lost.
-                                if (!packet.TryWrite(new Protocol.Message.Ack(nextch, channel.RX.Ack.Count, channel.RX.NextSequenceNumber, channel.RX.LastSequenceNumber, channel.RX.Ack.LatestRemoteTime)))
-                                    goto DoneSendingData;
-
-                                channel.RX.Ack.Count = 0;
-                            }
-
-                            var retransmit = channel.TX.Retransmit;
-                            if (retransmit != null) // Channel may have something to retransmit.  
-                            {
-                                var end = channel.TX.Next;
-                                while (true)
-                                {
-                                    if (retransmit == end || retransmit.SequenceNumber > channel.TX.Ack.Last) // No more data to retransnmit in this channel (compare to end first because end can be null)
-                                    {
-                                        // Clear the retransmission pointer 
-                                        channel.TX.Retransmit = null;
-                                        // Decrement counter of channels retransmitting
-                                        retransmittingChannelsCount--;
-
-                                        // There's no need to adjust the sequence interval expected by the remote host.
-                                        // Even if all messages were unreliable and are now presumed lost there's at least 
-                                        // one sequence number left in the window for a ping that is going to be injected
-                                        // after we break out of this loop.
-                                        break;
-                                    }
-
-                                    if (retransmit.Encoded == null) // This is an unreliable message that cannot be retransmitted
-                                    {
-                                        // Message is now considered lost (not in flight anymore).
-                                        Debug.Assert(BytesInFlight >= retransmit.Payload, "Invalid bytes in flight");
-                                        BytesInFlight -= retransmit.Payload;
-                                        
-                                        // Return space to the transmit backlog.
-                                        DecrementTransmissionBacklog(retransmit.Payload);
-
-                                        var next = retransmit.Next;
-                                        // Release message object.
-                                        channel.TX.Messages.Dispose(retransmit);
-                                        retransmit = next;
-                                    }
-                                    else
-                                    {
-                                        var position = packet.Count + 1;
-                                        if (!packet.TryWrite(retransmit.Encoded)) // No more space left in the packet
-                                        {
-                                            // Update the retransmission pointer
-                                            channel.TX.Retransmit = retransmit;
-                                            goto DoneSendingData;
-                                        }
-                                        else // message was retransmitted (fix the packet)
-                                        {
-                                            // Update last send time
-                                            retransmit.LatestSendTime = time;
-                                            // Increment number of data bytes transmitted in this packet.
-                                            transmitted += retransmit.Payload;
-                                            // Move to next message to retransmit                                        
-                                            retransmit = retransmit.Next;
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Select next channel
-                            nextch = (byte)((nextch + 1) % channels.Length);
-                        }
-                        while (retransmittingChannelsCount > 0);// Repeat until no more channels need to retransmit
-
-                        // If all messages have been dropped check that remote host is still alive
-                        if (BytesInFlight == 0)
-                            ping = true;
-                    }
-
-                    // Send new data after all retransmissions have been processed.        
-                    var endch = nextch;
-                    do
-                    {
-                        ref var channel = ref channels[nextch];
-
-                        if (channel.RX.Ack.Count > 0) // channel must send ACK
-                        {
-                            EnsureDataPacketIsCreated();
-
-                            // It's better to spread ACKs over multiple packets ahead of their own channel streams so that we don't 
-                            // always end up with packets full of acks that may compromise several channels at once if lost.
-                            if (!packet.TryWrite(new Protocol.Message.Ack(nextch, channel.RX.Ack.Count, channel.RX.NextSequenceNumber, channel.RX.LastSequenceNumber, channel.RX.Ack.LatestRemoteTime)))
-                                goto DoneSendingData;
-
-                            channel.RX.Ack.Count = 0;
-                        }
-
-                        // Flush the send buffer into the transmit buffer. 
-                        // Using a separate send buffer to reduce lock contention. 
-                        channel.TX.Flush();
-
-                        var transmit = channel.TX.Next;
-                        if (transmit != null) // There's a message to transmit                                                                       
-                        {
-                            do
-                            {
-                                // If either the send window limit or the sequence window limit has been reached then stall (break to next channel).
-                                // Every data message in flight must be consuming at least 1 byte of the send window. In the worst case the number 
-                                // of messages in flight is going to be equal to Protocol.Ordinal.Window.Size (Protocol.Ordinal.Window.Size-1 messages 
-                                // containing a single byte of user data and 1 reliable ping message taking up 1 "virtual" byte). At full occupation 
-                                // there will be Protocol.Ordinal.Window.Size-1 messages taking up 65535 bytes in total and 1 "virtual" byte (extra) 
-                                // for the ping so BytesInFlight may actually reach 65536 in this particular circunstance.
-                                //
-                                // Note that unreliable messages should not be dropped due to the lack of send window or sequence window space. 
-                                // Otherwise all datagrams larger than the send window are going to be ultimately lost (last fragments dropped). 
-                                // And if the user never sends a datagram smaller than the send window *several broken datagrams* will have to be
-                                // partially acknowledged and buffered by the receiver until the send window has grown large enough to accommodate a
-                                // complete datagram. Large datagrams will also be wasted if they go across the upper edge of the sequence window. 
-                                // And even worst in some cases only the last fragment of a datagram (or a short succession of datagrams) would be 
-                                // transmitted because their first fragments would not fit in the send window (SendWindow - BytesInFlight < MaxFragmentSize)
-                                // but the last fragment would. Only after the first complete datagram (or ping) arrives is when the receiver would be 
-                                // able to discard all other partial datagrams previously buffered and deliver some data to the application.                                
-                                if ((SendWindow - BytesInFlight < transmit.Payload)
-                                 || (channel.TX.NextSequenceNumber == channel.TX.Ack.Next + (Protocol.Ordinal.Window.Size - 1))) // dont' continue if next SEQ to transmit is the last one of the window as it's reserved for a ping. 
-                                    break;
-
-                                // Discard message if unreliable and expired. All fragments of a datagram set to expire have the same expirarion time. 
-                                // Once a fragment is discarded so are all the remaining ones. Note that an unreliable fragmented datagram may be 
-                                // dropped if it expires in the middle of the transmission process. That is, some of its fragments were transmitted in
-                                // previous iterations but the remaining ones are now expired. In order to avoid this problem send large datagrams using 
-                                // Protocol.Delivery.Semireliable.
-                                if (transmit.Delivery == Protocol.Delivery.Unreliable && transmit.FirstSendTime < time)
-                                {
-                                    // Even though this message is going to be discarded, a sequence number must be allocated to avoid breaking continuity 
-                                    // for fragmented datagrams. The presumption is that for every message A there must be N other messages prior to A where 
-                                    // N = fragment.Index of A and they're all part of the same datagram (segments are considered a special case of fragment 
-                                    // with Index = Last = 0).
-                                    channel.TX.NextSequenceNumber++;
-
-                                    // Return space to the transmit backlog.
-                                    DecrementTransmissionBacklog(transmit.Payload);
-
-                                    // Release unreliable message and goto next
-                                    var next = transmit.Next;
-                                    channel.TX.Messages.Dispose(transmit);
-                                    transmit = next;
-                                    continue;
-                                }
-
-                                EnsureDataPacketIsCreated();
-
-                                var length = transmit.Encoded.Length;
-                                if (packet.Available < length) // No more space left in the packet. 
-                                {
-                                    // Update transmit pointer
-                                    channel.TX.Next = transmit;
-                                    // Break out to try again with the next packet. 
-                                    // It's cheaper than searching through the channels 
-                                    // for a message that might fit in the space available.
-                                    goto DoneSendingData;
-                                }
-
-                                // Generated SEQ and RSN, setup the message and transmit.
-                                // Unreliable messages are not retransmistted so the encoded 
-                                // message may be disposed immediately.                                
-                                var seq = channel.TX.NextSequenceNumber++;
-                                switch (transmit.Delivery)
-                                {
-                                    case Protocol.Delivery.Unreliable:
-                                        var position = packet.Count + 2;
-                                        packet.UncheckedWrite(transmit.Encoded, 0, length);
-                                        packet.UncheckedOverwrite(seq, position);
-                                        packet.UncheckedOverwrite(channel.TX.NextReliableSequenceNumber, position + 2);
-                                        // Unreliable messages are not retransmitted so the encoded message may now be discarded.
-                                        transmit.Encoded.Dispose();
-                                        transmit.Encoded = null;
-                                        break;
-                                    case Protocol.Delivery.Semireliable:
-                                        transmit.Encoded.UncheckedOverwrite(seq, 2);
-                                        transmit.Encoded.UncheckedOverwrite(channel.TX.NextReliableSequenceNumber, 4);
-                                        packet.UncheckedWrite(transmit.Encoded, 0, length);
-                                        break;
-                                    case Protocol.Delivery.Reliable:
-                                        transmit.Encoded.UncheckedOverwrite(seq, 2);
-                                        transmit.Encoded.UncheckedOverwrite(++channel.TX.NextReliableSequenceNumber, 4);
-                                        packet.UncheckedWrite(transmit.Encoded, 0, length);
-                                        break;
-                                    default:
-                                        throw new NotSupportedException();
-                                }
-
-                                transmit.SequenceNumber = seq;
-                                transmit.FirstSendTime = time;
-                                transmit.LatestSendTime = time;
-
-                                Interlocked.Add(ref dataSent, transmit.Payload);
-
-                                BytesInFlight += transmit.Payload;
-                                transmitted += transmit.Payload;
-
-                                transmit = transmit.Next;
-                            }
-                            while (transmit != null);
-
-                            channel.TX.Next = transmit;
-                        }
-
-                        nextch = (byte)((nextch + 1) % channels.Length);
-                    }
-                    while (nextch != endch);
-
-                    DoneSendingData:
-                    {
-                        // A ping may be required either due to having all retransmissions discarded for being unreliable
-                        // after an ack timeout or because of an idle timeout.
-                        if (ping)
-                        {
-                            ping = false;
-                            // There's no need to send a ping if the transmission backlog is not empty.
-                            // We can't rely on BytesInFlight here because an ack could've been written
-                            // to the packet while every next message of every other channel is too large 
-                            // for the space available in the packet. In such case we end up with 
-                            // BytesInFlight == 0 and yet some messages waiting to be transmitted.
-                            ref var channel = ref channels[0];
-                            if (transmissionBacklog == 0)
-                            {
-                                EnsureDataPacketIsCreated();
-
-                                var encoder = Host.WorkerEncoder;
-                                encoder.Reset();
-                                encoder.Ensure(sizeof(Protocol.MessageFlags) + Protocol.Message.Segment.MinSize);
-                                encoder.UncheckedWrite(Protocol.MessageFlags.Reliable | Protocol.MessageFlags.Data | Protocol.MessageFlags.Segment);
-                                encoder.UncheckedWrite((byte)0); // CH
-
-                                Channel.Outbound.Message transmit;
-                                if (packet.Available > Protocol.Message.Segment.MinSize)
-                                {
-                                    var seq = channel.TX.NextSequenceNumber++;
-                                    var rsn = ++channel.TX.NextReliableSequenceNumber;
-                                    
-                                    encoder.UncheckedWrite(seq);
-                                    encoder.UncheckedWrite(rsn);
-                                    encoder.UncheckedWrite((ushort)0);
-
-                                    transmit = CreatePing(encoder, time);
-                                    Debug.Assert(channel.TX.Messages.IsEmpty, "Channel TX buffer should be empty");
-                                    channel.TX.Messages.AddLast(transmit);
-
-                                    packet.UncheckedWrite(transmit.Encoded, 0, transmit.Encoded.Length);
-
-                                    transmit.SequenceNumber = seq;
-                                    transmit.LatestSendTime = time;
-
-                                    BytesInFlight += 1;
-                                    transmitted += 1;
-                                    Interlocked.Increment(ref transmissionBacklog);
-
-                                    transmit = transmit.Next;
-                                }
-                                else
-                                {
-                                    // Actual SEQ and RSN values must be assigned on transmit by the worker thread.
-                                    // This is to avoid locking the generators as they would represent a shared resource between 
-                                    // the user and worker threads. The worker thread may need to write update the generators to 
-                                    // inject a ping in the output queue.
-                                    encoder.UncheckedWrite(0, sizeof(ushort) + sizeof(ushort) + sizeof(ushort)); // SEQ:RSN:LEN
-
-                                    transmit = CreatePing(encoder, unchecked(Host.Now() + int.MaxValue));
-                                    Debug.Assert(channel.TX.Messages.IsEmpty, "Channel TX buffer should be empty");
-                                    channel.TX.Messages.AddLast(transmit);
-                                }
-
-                                channel.TX.Next = transmit;
-                            }
-                        }
-
-                        if (transmitted > 0) // This packet contains user data (or a ping)
-                        {
-                            // Decrement data packet countdown if neither finished nor infinite.
-                            if (capacity > 0)
-                                capacity--;
-
-                            // Start ack timer if not started yet
-                            if (ackDeadline == null)
-                                ackDeadline = time + ackTimeout;
-
-                            // Start connection timer if not started yet                                                 
-                            if (connDeadline == null)
-                                connDeadline = time + connTimeout;
-                        }
-                    }
-                }
-
-                if (created)
-                {
                     if (Session.Options.Contains(SessionOptions.Secure))
                     {
+                        packet.UncheckedWrite(time);
+                        packet.UncheckedWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Connect);
+                        packet.UncheckedWrite(Session.Local);
+                        packet.UncheckedWrite(Host.MaxTransmissionUnit);
+                        packet.UncheckedWrite(Host.MaxChannel);
+                        packet.UncheckedWrite(Host.MaxBandwidth);
+                        packet.UncheckedWrite(in Host.Keys.Public);
+                    }
+                    else
+                    {
+                        packet.UncheckedWrite(time);
+                        packet.UncheckedWrite(Protocol.PacketFlags.Connect);
+                        packet.UncheckedWrite(Session.Local);
+                        packet.UncheckedWrite(Host.MaxTransmissionUnit);
+                        packet.UncheckedWrite(Host.MaxChannel);
+                        packet.UncheckedWrite(Host.MaxBandwidth);
+                    }
+
+                    packet.UncheckedWrite(Protocol.Packet.Insecure.Checksum.Compute(packet.Buffer, packet.Offset, packet.Count));
+
+                    if (ackDeadline == null)
+                        ackDeadline = time + ackTimeout;
+
+                    if (connDeadline == null)
+                        connDeadline = time + connTimeout;
+
+                    break;
+                case Command.Transmit | Command.Accept:
+                    control.Command &= ~Command.Transmit;
+                    created = true;
+
+                    // There's no need to reserve space for the checksum (or nonce/mac) because an ACCEPT
+                    // (secure or insecure) must be way below the minimum MTU.
+                    packet.Reset(MaxTransmissionUnit);
+
+                    if (Session.Options.Contains(SessionOptions.Secure))
+                    {
+                        packet.Write(time);
+                        packet.UncheckedWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Accept);
+                        packet.UncheckedWrite(Session.Local);
+                        packet.UncheckedWrite(Host.MaxTransmissionUnit);
+                        packet.UncheckedWrite(Host.MaxChannel);
+                        packet.UncheckedWrite(Host.MaxBandwidth);
+                        packet.UncheckedWrite(control.AcceptanceTime);
+
+                        var (buffer, offset, position, count) = (packet.Buffer, packet.Offset, packet.Position, sizeof(ushort));
+                        packet.UncheckedWrite(ReceiveWindow);
+
                         var nonce64 = ++Session.Nonce;
                         var nonce = new Nonce(time, nonce64);
-                        var (buffer, position, count) = (packet.Buffer, packet.Offset + Protocol.Packet.Header.Size, packet.Count - Protocol.Packet.Header.Size);
+
                         Session.Cipher.EncryptInPlace(buffer, position, count, in nonce);
-                        Session.Cipher.Sign(packet.Buffer, packet.Offset, Protocol.Packet.Header.Size, count, in nonce, out Mac mac);
-                        packet.Expand(Protocol.Packet.Secure.N64.Size + Protocol.Packet.Secure.Mac.Size);
+                        Session.Cipher.Sign(buffer, offset, position - offset, count, in nonce, out Mac mac);
+
+                        packet.UncheckedWrite(in Host.Keys.Public);
                         packet.UncheckedWrite(nonce64);
                         packet.UncheckedWrite(in mac);
                     }
                     else
                     {
-                        var (buffer, offset, count) = (packet.Buffer, packet.Offset, packet.Count);
-                        var crc = Protocol.Packet.Insecure.Checksum.Compute(buffer, offset, count);
-                        packet.Expand(Protocol.Packet.Insecure.Checksum.Size);
-                        packet.UncheckedWrite(crc);
+                        packet.Write(time);
+                        packet.UncheckedWrite(Protocol.PacketFlags.Accept);
+                        packet.UncheckedWrite(Session.Local);
+                        packet.UncheckedWrite(Host.MaxTransmissionUnit);
+                        packet.UncheckedWrite(Host.MaxChannel);
+                        packet.UncheckedWrite(Host.MaxBandwidth);
+                        packet.UncheckedWrite(control.AcceptanceTime);
+                        packet.UncheckedWrite(ReceiveWindow);
+                        packet.UncheckedWrite(Session.Remote);
+                        packet.UncheckedWrite(Protocol.Packet.Insecure.Checksum.Compute(packet.Buffer, packet.Offset, packet.Count));
                     }
+
+                    // Start ack timer if not started yet
+                    if (ackDeadline == null)
+                        ackDeadline = time + ackTimeout;
+
+                    // Start connection timer if not started yet
+                    if (connDeadline == null)
+                        connDeadline = time + connTimeout;
+                    break;
+                default:
+                    break;
+            }
+
+            return created;
+        }
+
+        /// <summary>
+        /// Send data packets.
+        /// Returns true if a packet was written and must be transmitted; otherwise false (yielding to the next peer).
+        /// </summary>
+        internal bool OnConnectedSend(uint time, BinaryWriter packet)
+        {
+            var created = false;
+
+            void EnsureDataPacketIsCreated()
+            {
+                if (!created)
+                {
+                    created = true;
+
+                    if (Session.Options.Contains(SessionOptions.Secure))
+                    {
+                        packet.Reset(MaxTransmissionUnit - (Protocol.Packet.Secure.N64.Size + Protocol.Packet.Secure.Mac.Size));
+                        packet.UncheckedWrite(time);
+                        packet.UncheckedWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Data);
+                        packet.UncheckedWrite(ReceiveWindow);
+                    }
+                    else
+                    {
+                        packet.Reset(MaxTransmissionUnit - Protocol.Packet.Insecure.Checksum.Size);
+                        packet.UncheckedWrite(time);
+                        packet.UncheckedWrite(Protocol.PacketFlags.Data);
+                        packet.UncheckedWrite(Session.Local);
+                        packet.UncheckedWrite(ReceiveWindow);
+                    }
+                }
+            }
+
+            // Send control acks
+            switch (control.Ack)
+            {
+                case Acknowledgment.Accept:
+                    control.Ack = default;
+
+                    EnsureDataPacketIsCreated();
+                    packet.UncheckedWrite(Protocol.MessageFlags.Ack | Protocol.MessageFlags.Accept);
+                    packet.UncheckedWrite(control.AcknowledgedTime);
+
+                    break;
+                default:
+                    break;
+            }
+            
+            if((uint)sendCapacity > 0) // Send both data and acks
+            {
+                var transmitted = 0;
+
+                // If peer has one or more channels that need to retransmit data
+                if (retransmittingChannelsCount > 0)
+                {
+                    // At this point BytesInFlight must be greater than 0 and at least one channel must have the Retransmit pointer not null.
+                    Debug.Assert(BytesInFlight > 0, $"{nameof(BytesInFlight)} must be greater than zero when there are restransmitting channels ({retransmittingChannelsCount})");
+
+                    // Even if in the end all retransmissions are void (only unreliable messages were waiting) 
+                    // an Enquire should still be transmitted so it's safe to ensure a packet header here. 
+                    EnsureDataPacketIsCreated();
+
+                    do
+                    {
+                        ref var channel = ref channels[currentChannelIndex];
+
+                        if (channel.RX.Ack.Count > 0) // Channel must send ack first.
+                        {
+                            // It's better to spread ACKs over multiple packets ahead of their own channel streams so that we don't 
+                            // always end up with packets full of acks that may compromise several channels at once if lost.
+                            if (!packet.TryWrite(new Protocol.Message.Ack(currentChannelIndex, channel.RX.Ack.Count, channel.RX.NextSequenceNumber, channel.RX.LastSequenceNumber, channel.RX.Ack.LatestRemoteTime)))
+                                goto DoneSendingData;
+
+                            channel.RX.Ack.Count = 0;
+                        }
+
+                        var retransmit = channel.TX.Retransmit;                        
+                        if (retransmit != null) // Channel has something to retransmit.  
+                        {
+                            var transmit = channel.TX.Transmit; // transmit is always ahead of the retransmit pointer (pointing to the next message that has not been transmitted yet)
+                            while (true)
+                            {
+                                // If no more data to retransmit in this channel (compare to end first because it may be null)
+                                if (retransmit == transmit || retransmit.SequenceNumber > channel.TX.Ack.Last)
+                                {
+                                    // Clear the retransmission pointer 
+                                    channel.TX.Retransmit = null;
+                                    // Decrement counter of channels retransmitting
+                                    retransmittingChannelsCount--;
+
+                                    // There's no need to adjust the sequence interval expected by the remote host.
+                                    // Even if all messages were unreliable and are now presumed lost there's at least 
+                                    // one sequence number left in the window for a ping that is going to be injected
+                                    // after we break out of this loop.
+                                    break;
+                                }
+
+                                if (retransmit.Encoded == null) // This is an unreliable message that cannot be retransmitted
+                                {
+                                    // Message is now considered lost (not in flight anymore).
+                                    Debug.Assert(BytesInFlight >= retransmit.Payload, "Invalid bytes in flight");
+                                    BytesInFlight -= retransmit.Payload;
+
+                                    // Return space to the transmit backlog.
+                                    DecrementTransmissionBacklog(retransmit.Payload);
+
+                                    var next = retransmit.Next;
+                                    // Release message object.
+                                    channel.TX.Messages.Dispose(retransmit);
+                                    retransmit = next;
+                                }
+                                else
+                                {
+                                    var position = packet.Count + 1;
+                                    if (!packet.TryWrite(retransmit.Encoded)) // No more space left in the packet
+                                    {
+                                        // Update the retransmission pointer
+                                        channel.TX.Retransmit = retransmit;
+                                        goto DoneSendingData;
+                                    }
+                                    else // message was retransmitted (fix the packet)
+                                    {
+                                        // Update last send time
+                                        retransmit.LatestSendTime = time;
+                                        // Increment number of data bytes transmitted in this packet.
+                                        transmitted += retransmit.Payload;
+                                        // Move to next message to retransmit                                        
+                                        retransmit = retransmit.Next;
+                                    }
+                                }
+                            }
+                        }
+
+                        var nextChannelIndex = channel.NextToSend;
+                        // Any eventual ack for this channel must have been transmitted by now.
+                        // If there's nothing else to transmit remove the channel.
+                        if (channel.TX.Transmit == null && channel.TX.Retransmit == null)
+                            channel.RemoveFromSendList(ref channels[channel.PreviousToSend], ref channels[channel.NextToSend]);
+
+                        currentChannelIndex = nextChannelIndex;
+                    }
+                    while (retransmittingChannelsCount > 0);// Repeat until no more channels need to retransmit
+
+                    // If all messages have been dropped check that remote host is still alive
+                    if (BytesInFlight == 0)
+                        ping = true;
+                }
+
+                // Send new data after all retransmissions have been processed.        
+                var endChannelIndex = currentChannelIndex;
+                do
+                {
+                    ref var channel = ref channels[currentChannelIndex];
+
+                    if (channel.RX.Ack.Count > 0) // channel must send ACK
+                    {
+                        EnsureDataPacketIsCreated();
+
+                        // It's better to spread ACKs over multiple packets ahead of their own channel streams so that we don't 
+                        // always end up with packets full of acks that may compromise several channels at once if lost.
+                        if (!packet.TryWrite(new Protocol.Message.Ack(currentChannelIndex, channel.RX.Ack.Count, channel.RX.NextSequenceNumber, channel.RX.LastSequenceNumber, channel.RX.Ack.LatestRemoteTime)))
+                            goto DoneSendingData;
+
+                        channel.RX.Ack.Count = 0;
+                    }
+
+                    var transmit = channel.TX.Transmit;
+                    if (transmit != null) // There's a message to transmit                                                                       
+                    {
+                        do
+                        {
+                            // If either the send window limit or the sequence window limit has been reached then stall (break to next channel).
+                            // Every data message in flight must be consuming at least 1 byte of the send window. In the worst case the number 
+                            // of messages in flight is going to be equal to Protocol.Ordinal.Window.Size (Protocol.Ordinal.Window.Size-1 messages 
+                            // containing a single byte of user data and 1 reliable ping message taking up 1 "virtual" byte). At full occupation 
+                            // there will be Protocol.Ordinal.Window.Size-1 messages taking up 65535 bytes in total and 1 "virtual" byte (extra) 
+                            // for the ping so BytesInFlight may actually reach 65536 in this particular circunstance.
+                            //
+                            // Note that unreliable messages should not be dropped due to the lack of send window or sequence window space. 
+                            // Otherwise all datagrams larger than the send window are going to be ultimately lost (last fragments dropped). 
+                            // And if the user never sends a datagram smaller than the send window *several broken datagrams* will have to be
+                            // partially acknowledged and buffered by the receiver until the send window has grown large enough to accommodate a
+                            // complete datagram. Large datagrams will also be wasted if they go across the upper edge of the sequence window. 
+                            // And even worst in some cases only the last fragment of a datagram (or a short succession of datagrams) would be 
+                            // transmitted because their first fragments would not fit in the send window (SendWindow - BytesInFlight < MaxFragmentSize)
+                            // but the last fragment would. Only after the first complete datagram (or ping) arrives is when the receiver would be 
+                            // able to discard all other partial datagrams previously buffered and deliver some data to the application.                                
+                            if ((SendWindow - BytesInFlight < transmit.Payload)
+                             || (channel.TX.NextSequenceNumber == channel.TX.Ack.Next + (Protocol.Ordinal.Window.Size - 1))) // dont' continue if next SEQ to transmit is the last one of the window as it's reserved for a ping. 
+                                break;
+
+                            // Discard message if unreliable and expired. All fragments of a datagram set to expire have the same expirarion time. 
+                            // Once a fragment is discarded so are all the remaining ones. Note that an unreliable fragmented datagram may be 
+                            // dropped if it expires in the middle of the transmission process. That is, some of its fragments were transmitted in
+                            // previous iterations but the remaining ones are now expired. In order to avoid this problem send large datagrams using 
+                            // Protocol.Delivery.Semireliable.
+                            if (transmit.Delivery == Protocol.Delivery.Unreliable && transmit.FirstSendTime < time)
+                            {
+                                // Even though this message is going to be discarded, a sequence number must be allocated to avoid breaking continuity 
+                                // for fragmented datagrams. The presumption is that for every message A there must be N other messages prior to A where 
+                                // N = fragment.Index of A and they're all part of the same datagram (segments are considered a special case of fragment 
+                                // with Index = Last = 0).
+                                channel.TX.NextSequenceNumber++;
+
+                                // Return space to the transmit backlog.
+                                DecrementTransmissionBacklog(transmit.Payload);
+
+                                // Release unreliable message and goto next
+                                var next = transmit.Next;
+                                channel.TX.Messages.Dispose(transmit);
+                                transmit = next;
+                                continue;
+                            }
+
+                            EnsureDataPacketIsCreated();
+
+                            var length = transmit.Encoded.Length;
+                            if (packet.Available < length) // No more space left in the packet. 
+                            {
+                                // Update transmit pointer
+                                channel.TX.Transmit = transmit;
+                                // Break out to try again with the next packet. 
+                                // It's cheaper than searching through the channels 
+                                // for a message that might fit in the space available.
+                                goto DoneSendingData;
+                            }
+
+                            // Generated SEQ and RSN, setup the message and transmit.
+                            // Unreliable messages are not retransmistted so the encoded 
+                            // message may be disposed immediately.                                
+                            var seq = channel.TX.NextSequenceNumber++;
+                            switch (transmit.Delivery)
+                            {
+                                case Protocol.Delivery.Unreliable:
+                                    var position = packet.Count + 2;
+                                    packet.UncheckedWrite(transmit.Encoded, 0, length);
+                                    packet.UncheckedOverwrite(seq, position);
+                                    packet.UncheckedOverwrite(channel.TX.NextReliableSequenceNumber, position + 2);
+                                    // Unreliable messages are not retransmitted so the encoded message may now be discarded.
+                                    transmit.Encoded.Dispose();
+                                    transmit.Encoded = null;
+                                    break;
+                                case Protocol.Delivery.Semireliable:
+                                    transmit.Encoded.UncheckedOverwrite(seq, 2);
+                                    transmit.Encoded.UncheckedOverwrite(channel.TX.NextReliableSequenceNumber, 4);
+                                    packet.UncheckedWrite(transmit.Encoded, 0, length);
+                                    break;
+                                case Protocol.Delivery.Reliable:
+                                    transmit.Encoded.UncheckedOverwrite(seq, 2);
+                                    transmit.Encoded.UncheckedOverwrite(++channel.TX.NextReliableSequenceNumber, 4);
+                                    packet.UncheckedWrite(transmit.Encoded, 0, length);
+                                    break;
+                                default:
+                                    throw new NotSupportedException();
+                            }
+
+                            transmit.SequenceNumber = seq;
+                            transmit.FirstSendTime = time;
+                            transmit.LatestSendTime = time;
+
+                            Interlocked.Add(ref dataSent, transmit.Payload);
+
+                            BytesInFlight += transmit.Payload;
+                            transmitted += transmit.Payload;
+
+                            transmit = transmit.Next;
+                        }
+                        while (transmit != null);
+
+                        channel.TX.Transmit = transmit;
+                    }
+
+                    var nextChannelIndex = channel.NextToSend;
+                    // Any eventual ack for this channel must have been transmitted by now.
+                    // There must be nothing to RETRANSMIT for this channel at this point because retransmissions have priority over new transmissions. 
+                    // If there's nothing else to transmit remove the channel (there may still be something to transmit that didn't fit in the send window for this frame). 
+                    if (channel.TX.Transmit == null)
+                        channel.RemoveFromSendList(ref channels[channel.PreviousToSend], ref channels[channel.NextToSend]);
+
+                    currentChannelIndex = nextChannelIndex;
+                }
+                while (currentChannelIndex != endChannelIndex);
+
+                DoneSendingData:
+                {
+                    // A ping may be required because of an idle timeout or due to having all 
+                    // retransmissions discarded in a row (for being unreliable after an ack timeout).
+                    if (ping)
+                    {
+                        ping = false;
+                        // There's no need to send a ping if the transmission backlog is not empty.
+                        // We can't rely on BytesInFlight here because an ack could've been written
+                        // to the packet while every next message of every other channel is too large 
+                        // for the space available in the packet. In such case we end up with 
+                        // BytesInFlight == 0 and yet some messages waiting to be transmitted.
+                        ref var channel = ref channels[0];
+                        if (transmissionBacklog == 0)
+                        {
+                            EnsureDataPacketIsCreated();
+
+                            var encoder = Host.WorkerEncoder;
+                            encoder.Reset();
+                            encoder.Ensure(sizeof(Protocol.MessageFlags) + Protocol.Message.Segment.MinSize);
+                            encoder.UncheckedWrite(Protocol.MessageFlags.Reliable | Protocol.MessageFlags.Data | Protocol.MessageFlags.Segment);
+                            encoder.UncheckedWrite((byte)0); // CH
+
+                            Channel.Outbound.Message transmit;
+                            if (packet.Available > Protocol.Message.Segment.MinSize)
+                            {
+                                var seq = channel.TX.NextSequenceNumber++;
+                                var rsn = ++channel.TX.NextReliableSequenceNumber;
+
+                                encoder.UncheckedWrite(seq);
+                                encoder.UncheckedWrite(rsn);
+                                encoder.UncheckedWrite((ushort)0);
+
+                                transmit = CreatePing(encoder);
+                                
+                                Debug.Assert(channel.TX.Messages.IsEmpty, "Channel TX buffer should be empty");
+                                channel.TX.Messages.AddLast(transmit);
+
+                                packet.UncheckedWrite(transmit.Encoded, 0, transmit.Encoded.Length);
+
+                                transmit.SequenceNumber = seq;
+                                transmit.FirstSendTime = time;
+                                transmit.LatestSendTime = time;
+
+                                BytesInFlight += 1;
+                                transmitted += 1;
+                                Interlocked.Increment(ref transmissionBacklog);
+
+                                transmit = transmit.Next;
+                            }
+                            else
+                            {
+                                // Actual SEQ and RSN values must be assigned on transmit by the worker thread.
+                                // This is to avoid locking the generators as they would represent a shared resource between 
+                                // the user and worker threads. The worker thread may need to write update the generators to 
+                                // inject a ping in the output queue.
+                                encoder.UncheckedWrite(0, sizeof(ushort) + sizeof(ushort) + sizeof(ushort)); // SEQ:RSN:LEN
+
+                                transmit = CreatePing(encoder);
+
+                                Debug.Assert(channel.TX.Messages.IsEmpty, "Channel TX buffer should be empty");
+                                channel.TX.Messages.AddLast(transmit);
+
+                                transmit.FirstSendTime = unchecked(time + int.MaxValue); // "infinite" time limit to transmit
+                            }
+
+                            channel.TX.Transmit = transmit;
+                            // If channel was not ready to send before, add it to the end of the send list (right before the current channel)
+                            if ((channel.NextToSend | channel.PreviousToSend) == 0)
+                                channel.AddToSendListBefore(ref channels[currentChannelIndex]);
+                        }
+                    }
+
+                    if (transmitted > 0) // This packet contains user data (or a ping)
+                    {
+                        // Decrement data packet countdown if neither finished nor infinite.
+                        if (sendCapacity > 0)
+                            sendCapacity--;
+
+                        // Start ack timer if not started yet
+                        if (ackDeadline == null)
+                            ackDeadline = time + ackTimeout;
+
+                        // Start connection timer if not started yet                                                 
+                        if (connDeadline == null)
+                            connDeadline = time + connTimeout;
+                    }
+                }
+            }
+            else // No more packets with user data allowed but acks may still need to be transmitted.
+            {
+                var endChannelIndex = currentChannelIndex;                
+                do
+                {
+                    ref var channel = ref channels[currentChannelIndex];
+
+                    if (channel.RX.Ack.Count > 0) // Channel must send ACK
+                    {
+                        EnsureDataPacketIsCreated();
+
+                        if (!packet.TryWrite(new Protocol.Message.Ack(currentChannelIndex, channel.RX.Ack.Count, channel.RX.NextSequenceNumber, channel.RX.LastSequenceNumber, channel.RX.Ack.LatestRemoteTime)))
+                            break;
+
+                        channel.RX.Ack.Count = 0;
+                    }
+
+                    var nextChannelIndex = channel.NextToSend;
+                    // If there's nothing else to transmit remove the channel
+                    if (channel.TX.Transmit == null && channel.TX.Retransmit == null)
+                        channel.RemoveFromSendList(ref channels[channel.PreviousToSend], ref channels[channel.NextToSend]);
+
+                    currentChannelIndex = nextChannelIndex;
+                }
+                while (currentChannelIndex != endChannelIndex);                
+            }
+
+            if (created)
+            {
+                if (Session.Options.Contains(SessionOptions.Secure))
+                {
+                    var nonce64 = ++Session.Nonce;
+                    var nonce = new Nonce(time, nonce64);
+                    var (buffer, position, count) = (packet.Buffer, packet.Offset + Protocol.Packet.Header.Size, packet.Count - Protocol.Packet.Header.Size);
+                    Session.Cipher.EncryptInPlace(buffer, position, count, in nonce);
+                    Session.Cipher.Sign(packet.Buffer, packet.Offset, Protocol.Packet.Header.Size, count, in nonce, out Mac mac);
+                    packet.Expand(Protocol.Packet.Secure.N64.Size + Protocol.Packet.Secure.Mac.Size);
+                    packet.UncheckedWrite(nonce64);
+                    packet.UncheckedWrite(in mac);
+                }
+                else
+                {
+                    var (buffer, offset, count) = (packet.Buffer, packet.Offset, packet.Count);
+                    var crc = Protocol.Packet.Insecure.Checksum.Compute(buffer, offset, count);
+                    packet.Expand(Protocol.Packet.Insecure.Checksum.Size);
+                    packet.UncheckedWrite(crc);
                 }
             }
 
@@ -1193,7 +1311,7 @@ namespace Carambolas.Net
             return message;
         }
 
-        private Channel.Outbound.Message CreatePing(BinaryWriter encoder, Protocol.Time firstSendTime)
+        private Channel.Outbound.Message CreatePing(BinaryWriter encoder)
         {
             Host.Allocate(out Memory encoded);
             encoded.CopyFrom(encoder.Buffer, encoder.Offset, (ushort)encoder.Count);
@@ -1205,10 +1323,9 @@ namespace Carambolas.Net
             // handle pings differently from other reliable messages.
             message.Payload = 1;
             message.Encoded = encoded;
-            message.FirstSendTime = firstSendTime;
 
             return message;
-        }
+        }      
 
         #endregion
 
@@ -1219,171 +1336,167 @@ namespace Carambolas.Net
             if (BytesInFlight == 0)
                 return;
 
-            var channel = ack.Channel;
-            if (channel < channels.Length)
-            {
-                ref var outbound = ref channels[channel].TX;
+            ref var channel = ref channels[ack.Channel];
 
-                if ((outbound.Messages.First == outbound.Next)                                                                  // Obsolete ack (there's nothing to ack)
-                 || (ack.AcknowledgedTime < outbound.Messages.First.FirstSendTime)                                              // Old ack
-                 || (ack.Last < ack.Next || ack.Next > outbound.NextSequenceNumber || ack.Last > outbound.NextSequenceNumber)   // Invalid ack
-                 || (ack.Next < outbound.Ack.Next))                                                                             // Obsolete ack
+            if ((channel.TX.Messages.First == channel.TX.Transmit)                                                                  // Obsolete ack (there's nothing to ack)
+                || (ack.AcknowledgedTime < channel.TX.Messages.First.FirstSendTime)                                              // Old ack
+                || (ack.Last < ack.Next || ack.Next > channel.TX.NextSequenceNumber || ack.Last > channel.TX.NextSequenceNumber)   // Invalid ack
+                || (ack.Next < channel.TX.Ack.Next))                                                                             // Obsolete ack
+            {
+                return;
+            }
+
+            if (ack.Next == channel.TX.Ack.Next) // Duplicate ack/gap
+            {
+                // Update RTT and ack timeout
+                OnAckReceived(time, ack.AcknowledgedTime);
+                // Release any artificial send limit imposed by a previous timeout
+                sendCapacity = Protocol.Countdown.Infinite;
+                // Reset ack failures
+                ackFailCounter = 0;
+                // Restart timers
+                ackDeadline = time + ackTimeout;
+                connDeadline = time + connTimeout;
+
+                if (channel.TX.LatestAckRemoteTime < remoteTime) // Latest ack/gap
                 {
-                    return;
+                    // Update send time of the latest ack
+                    channel.TX.LatestAckRemoteTime = remoteTime;
+                    // Update gap information (last message to retransmit)
+                    channel.TX.Ack.Last = ack.Last;
+                    // Increment the dup ack counter used to trigger an early retransmit
+                    channel.TX.Ack.Count += ack.Count;
+                }
+                else if (ack.Next != ack.Last) // Late gap
+                {
+                    // If issued after the last (re)transmission but arrived out of order then
+                    // increment the dup ack counter used to trigger an early retransmit        
+                    if (ack.AcknowledgedTime >= channel.TX.Messages.First.LatestSendTime)
+                        channel.TX.Ack.Count += ack.Count;
+                }
+            }
+            else // New ack
+            {
+                // Update RTT and ack timeout
+                OnAckReceived(time, ack.AcknowledgedTime);
+                // Release any artificial send limit imposed by a previous timeout
+                sendCapacity = Protocol.Countdown.Infinite;
+                // Reset ack failures
+                ackFailCounter = 0;
+
+                // Release acknowledged messages and compute the total acknowleged size
+                var asize = default(ushort);
+                var message = channel.TX.Messages.First;
+                while (message != channel.TX.Transmit && message.SequenceNumber < ack.Next)
+                {
+                    asize += message.Payload;
+
+                    // Calling message.Dispose() directly here instead of channel.TX.BUFFER.Dispose() 
+                    // because we know how channel.TX.First and Last are going to end up.
+                    var next = message.Next;
+                    message.Dispose();
+                    message = next;
                 }
 
-                if (ack.Next == outbound.Ack.Next) // Duplicate ack/gap
+                // Assigning channel.TX.First also fixes channel.TX.Last if needed (side effect)
+                channel.TX.Messages.First = message;
+
+                // Return space to the transmit backlog
+                DecrementTransmissionBacklog(asize);
+
+                // If more than half of the congestion window was used  increase it in either 
+                // slow start or avoidance mode depending on the estimated link capacity
+                if (BytesInFlight > (CongestionWindow >> 1))
+                    CongestionWindow = (ushort)Min(ushort.MaxValue, CongestionWindow + ((CongestionWindow < LinkCapacity) ? asize : 1));
+
+                // Acknowledged bytes are not in flight anymore
+                Debug.Assert(BytesInFlight >= asize, "Incorrect bytes in flight");
+                BytesInFlight -= asize;
+
+                if (BytesInFlight == 0) // all messages have been acknowledged                                                                         
                 {
-                    // Update RTT and ack timeout
-                    OnAckReceived(time, ack.AcknowledgedTime);
-                    // Release any artificial send limit imposed by a previous timeout
-                    capacity = Protocol.Countdown.Infinite;
-                    // Reset ack failures
-                    ackFailCounter = 0;
+                    // Stop timers
+                    ackDeadline = default;
+                    connDeadline = default;
+                    // Start enquire timer
+                    idleDeadline = time + Host.IdleTimeout;
+
+                    // If Channel was retransmitting
+                    if (channel.TX.Retransmit != null)
+                    {
+                        // Reset the retransmission pointer 
+                        channel.TX.Retransmit = null;
+                        // Decrement counter of channels actively retransmitting 
+                        retransmittingChannelsCount--;
+                    }
+                }
+                else // some messages still remain unacknowledged   
+                {
                     // Restart timers
                     ackDeadline = time + ackTimeout;
                     connDeadline = time + connTimeout;
 
-                    if (outbound.LatestAckRemoteTime < remoteTime) // Latest ack/gap
+                    if (channel.TX.Retransmit != null) // Channel was retransmitting
                     {
-                        // Update send time of the latest ack
-                        outbound.LatestAckRemoteTime = remoteTime;
-                        // Update gap information (last message to retransmit)
-                        outbound.Ack.Last = ack.Last;
-                        // Increment the dup ack counter used to trigger an early retransmit
-                        outbound.Ack.Count += ack.Count;
-                    }
-                    else if (ack.Next != ack.Last) // Late gap
-                    {
-                        // If issued after the last (re)transmission but arrived out of order then
-                        // increment the dup ack counter used to trigger an early retransmit        
-                        if (ack.AcknowledgedTime >= outbound.Messages.First.LatestSendTime)
-                            outbound.Ack.Count += ack.Count;
-                    }
-                }
-                else // New ack
-                {
-                    // Update RTT and ack timeout
-                    OnAckReceived(time, ack.AcknowledgedTime);
-                    // Release any artificial send limit imposed by a previous timeout
-                    capacity = Protocol.Countdown.Infinite;
-                    // Reset ack failures
-                    ackFailCounter = 0;
-
-                    // Release acknowledged messages and compute the total acknowleged size
-                    var asize = default(ushort);
-                    var message = outbound.Messages.First;
-                    while (message != outbound.Next && message.SequenceNumber < ack.Next)
-                    {
-                        asize += message.Payload;
-
-                        // Calling message.Dispose() directly here instead of channel.TX.BUFFER.Dispose() 
-                        // because we know how channel.TX.First and Last are going to end up.
-                        var next = message.Next;
-                        message.Dispose();
-                        message = next;
-                    }
-
-                    // Assigning channel.TX.First also fixes channel.TX.Last if needed (side effect)
-                    outbound.Messages.First = message;
-
-                    // Return space to the transmit backlog
-                    DecrementTransmissionBacklog(asize);
-
-                    // If more than half of the congestion window was used 
-                    // increase it in either slow start or avoidance mode depending on the estimated link capacity
-                    if (BytesInFlight > (CongestionWindow >> 1))
-                        CongestionWindow = (ushort)Min(ushort.MaxValue, CongestionWindow + ((CongestionWindow < LinkCapacity) ? asize : 1));
-
-                    // Acknowledged bytes are not in flight anymore
-                    Debug.Assert(BytesInFlight >= asize, "Incorrect bytes in flight");
-                    BytesInFlight -= asize;
-
-                    if (BytesInFlight == 0) // all messages have been acknowledged                                                                         
-                    {
-                        // Stop timers
-                        ackDeadline = default;
-                        connDeadline = default;
-                        // Start enquire timer
-                        idleDeadline = time + Host.IdleTimeout;
-
-                        // If Channel was retransmitting
-                        if (outbound.Retransmit != null)
+                        if (ack.Next > channel.TX.Ack.Last) // Gap has been completely acknowledged 
                         {
                             // Reset the retransmission pointer 
-                            outbound.Retransmit = null;
+                            channel.TX.Retransmit = null;
                             // Decrement counter of channels actively retransmitting 
                             retransmittingChannelsCount--;
                         }
-                    }
-                    else // some messages still remain unacknowledged   
-                    {
-                        // Restart timers
-                        ackDeadline = time + ackTimeout;
-                        connDeadline = time + connTimeout;
-
-                        if (outbound.Retransmit != null) // Channel was retransmitting
+                        else
                         {
-                            if (ack.Next > outbound.Ack.Last) // Gap has been completely acknowledged 
-                            {
-                                // Reset the retransmission pointer 
-                                outbound.Retransmit = null;
-                                // Decrement counter of channels actively retransmitting 
-                                retransmittingChannelsCount--;
-                            }
-                            else
-                            {
-                                // If the gap has been updated past the retransmission pointer
-                                // the message it was pointing to must have been disposed. 
-                                // A message may have a payload of 0 bytes only when disposed.
-                                if (outbound.Retransmit.Payload == 0) 
-                                    outbound.Retransmit = outbound.Messages.First;
-                            }
+                            // If the gap has been updated past the retransmission pointer
+                            // the message it was pointing to must have been disposed. 
+                            // A message may have a payload of 0 bytes only when disposed.
+                            if (channel.TX.Retransmit.Payload == 0)
+                                channel.TX.Retransmit = channel.TX.Messages.First;
                         }
                     }
-
-                    // This is guaranteed the latest ack source time and most up-to-date ack/gap information
-                    outbound.LatestAckRemoteTime = remoteTime;      
-                    outbound.Ack = (ack.Next, ack.Last, ack.Count);
                 }
 
-                // Trigger a fast retransmission if channel is not retransmitting yet 
-                // and there is a gap wtih enough packets received after.
-                if (outbound.Retransmit == null && outbound.Ack.Count >= Protocol.FastRetransmit.Threshold)
-                {
-                    // Increment counter of channels actively retransmmitting
-                    retransmittingChannelsCount++;
+                // This is guaranteed the latest ack source time and most up-to-date ack/gap information
+                channel.TX.LatestAckRemoteTime = remoteTime;
+                channel.TX.Ack = (ack.Next, ack.Last, ack.Count);
+            }
 
-                    // Set retransmit pointer to the first message
-                    outbound.Retransmit = outbound.Messages.First;
+            // Trigger a fast retransmission if channel is not retransmitting yet 
+            // and there is a gap wtih enough packets received after.
+            if (channel.TX.Retransmit == null && channel.TX.Ack.Count >= Protocol.FastRetransmit.Threshold)
+            {
+                // Increment counter of channels actively retransmmitting
+                retransmittingChannelsCount++;
 
-                    // Update statistics
-                    Interlocked.Increment(ref fastRetransmissions);
+                // Set the retransmit pointer to the first message
+                channel.TX.Retransmit = channel.TX.Messages.First;
+                
+                // If channel was not ready to send before, add it to the end of the send list (right before the current channel)
+                if ((channel.NextToSend | channel.PreviousToSend) == 0)
+                    channel.AddToSendListBefore(ref channels[currentChannelIndex]);
 
-                    // If this is the first channel that started retransmitting adjust the estimated link capacity
-                    if (retransmittingChannelsCount == 1)
-                        LinkCapacity = (ushort)Max(CongestionWindow >> 1, InitialCongestionWindow);
-                }
+                // Update statistics
+                Interlocked.Increment(ref fastRetransmissions);
+
+                // If this is the first channel that started retransmitting adjust the estimated link capacity
+                if (retransmittingChannelsCount == 1)
+                    LinkCapacity = (ushort)Max(CongestionWindow >> 1, InitialCongestionWindow);
             }
         }
 
         internal void OnReceive(Protocol.Time time, Protocol.Time remoteTime, bool reliable, bool isFirstInPacket, in Protocol.Message.Segment segment)
         {
-            var channel = segment.Channel;
-            if (channel >= channels.Length)
-                return;
+            ref var channel = ref channels[segment.Channel];
 
-            ref var inbound = ref channels[channel].RX;
-
-            if (segment.SequenceNumber == inbound.NextSequenceNumber) // message is the next expected (either reliable or unreliable)
+            if (segment.SequenceNumber == channel.RX.NextSequenceNumber) // message is the next expected (either reliable or unreliable)
             {
-                var (xseq, window) = GetCrossSequenceNumberAndStaticWindow(inbound.CrossSequenceNumber, 1);
+                var (xseq, window) = GetCrossSequenceNumberAndStaticWindow(channel.RX.CrossSequenceNumber, 1);
 
                 // Discard if message does not belong to this incarnation of the sliding window
-                if (remoteTime <= inbound.NextRemoteTimes[window])
+                if (remoteTime <= channel.RX.NextRemoteTimes[window])
                     return;
 
-                inbound.UpdateNextRemoteTime(window, remoteTime);
+                channel.RX.UpdateNextRemoteTime(window, remoteTime);
                 
                 if (segment.Data.Count > 0)
                 {
@@ -1392,36 +1505,36 @@ namespace Carambolas.Net
                     Host.Allocate(out Memory memory);
                     memory.CopyFrom(in segment.Data);
 
-                    Host.Add(new Event(this, new Data(channel, memory)));
+                    Host.Add(new Event(this, new Data(channel.Index, memory)));
                 }
 
-                inbound.CrossSequenceNumber = xseq;
-                inbound.NextSequenceNumber = segment.SequenceNumber + 1;
+                channel.RX.CrossSequenceNumber = xseq;
+                channel.RX.NextSequenceNumber = segment.SequenceNumber + 1;
 
                 if (reliable)
                 {
-                    inbound.NextReliableSequenceNumber = segment.ReliableSequenceNumber;
+                    channel.RX.NextReliableSequenceNumber = segment.ReliableSequenceNumber;
 
                     // Deliver any messages stalled by this segment
-                    Deliver(ref inbound, channel);
+                    Deliver(ref channel);
                 }
 
-                inbound.UpdateLastSequenceNumber();
-                inbound.UpdateLowestSequenceNumber();
+                channel.RX.UpdateLastSequenceNumber();
+                channel.RX.UpdateLowestSequenceNumber();
 
-                inbound.Acknowledge(remoteTime, isFirstInPacket);
+                Acknowledge(ref channel, remoteTime, isFirstInPacket);
             }
-            else if (segment.SequenceNumber > inbound.NextSequenceNumber) // message is ahead of the next expected
+            else if (segment.SequenceNumber > channel.RX.NextSequenceNumber) // message is ahead of the next expected
             {
-                var (xseq, window) = GetCrossSequenceNumberAndStaticWindow(inbound.CrossSequenceNumber, (ushort)unchecked((ushort)(segment.SequenceNumber - inbound.NextSequenceNumber) + 1));
+                var (xseq, window) = GetCrossSequenceNumberAndStaticWindow(channel.RX.CrossSequenceNumber, (ushort)unchecked((ushort)(segment.SequenceNumber - channel.RX.NextSequenceNumber) + 1));
 
                 // Discard if message does not belong to this incarnation of the sliding window
-                if (remoteTime <= inbound.NextRemoteTimes[window])
+                if (remoteTime <= channel.RX.NextRemoteTimes[window])
                     return;
 
-                if (segment.ReliableSequenceNumber == inbound.NextReliableSequenceNumber) // unreliable message arriving ahead of other unreliable ones (because the ReliableSequenceNumber is still the same)
+                if (segment.ReliableSequenceNumber == channel.RX.NextReliableSequenceNumber) // unreliable message arriving ahead of other unreliable ones (because the ReliableSequenceNumber is still the same)
                 {
-                    inbound.UpdateNextRemoteTime(window, remoteTime);                    
+                    channel.RX.UpdateNextRemoteTime(window, remoteTime);                    
 
                     if (segment.Data.Count > 0)
                     {
@@ -1430,27 +1543,27 @@ namespace Carambolas.Net
                         Host.Allocate(out Memory memory);
                         memory.CopyFrom(in segment.Data);
 
-                        Host.Add(new Event(this, new Data(channel, memory)));
+                        Host.Add(new Event(this, new Data(channel.Index, memory)));
                     }
 
                     // Remove previous unreliable fragments
-                    inbound.Messages.RemoveAndDisposeBefore(segment.SequenceNumber);
+                    channel.RX.Messages.RemoveAndDisposeBefore(segment.SequenceNumber);
 
                     // Remove previous reassemblies
-                    inbound.Reassemblies.RemoveAndDisposeBefore(segment.SequenceNumber);
+                    channel.RX.Reassemblies.RemoveAndDisposeBefore(segment.SequenceNumber);
 
-                    inbound.CrossSequenceNumber = xseq;
-                    inbound.NextSequenceNumber = segment.SequenceNumber + 1;
-                    inbound.NextReliableSequenceNumber = segment.ReliableSequenceNumber;
+                    channel.RX.CrossSequenceNumber = xseq;
+                    channel.RX.NextSequenceNumber = segment.SequenceNumber + 1;
+                    channel.RX.NextReliableSequenceNumber = segment.ReliableSequenceNumber;
 
-                    inbound.UpdateLastSequenceNumber();
-                    inbound.UpdateLowestSequenceNumber();
+                    channel.RX.UpdateLastSequenceNumber();
+                    channel.RX.UpdateLowestSequenceNumber();
 
-                    inbound.Acknowledge(remoteTime, isFirstInPacket);
+                    Acknowledge(ref channel, remoteTime, isFirstInPacket);
                 }
-                else if (reliable && segment.ReliableSequenceNumber == inbound.NextReliableSequenceNumber + 1) // message is the next reliable expected
+                else if (reliable && segment.ReliableSequenceNumber == channel.RX.NextReliableSequenceNumber + 1) // message is the next reliable expected
                 {
-                    inbound.UpdateNextRemoteTime(window, remoteTime);
+                    channel.RX.UpdateNextRemoteTime(window, remoteTime);
 
                     if (segment.Data.Count > 0)
                     {
@@ -1459,32 +1572,32 @@ namespace Carambolas.Net
                         Host.Allocate(out Memory memory);
                         memory.CopyFrom(in segment.Data);
 
-                        Host.Add(new Event(this, new Data(channel, memory)));
+                        Host.Add(new Event(this, new Data(channel.Index, memory)));
                     }
 
                     // Remove previous messages if any
-                    inbound.Messages.RemoveAndDisposeBefore(segment.SequenceNumber);
+                    channel.RX.Messages.RemoveAndDisposeBefore(segment.SequenceNumber);
 
                     // Remove previous reassemblies if any
-                    inbound.Reassemblies.RemoveAndDisposeBefore(segment.SequenceNumber);
+                    channel.RX.Reassemblies.RemoveAndDisposeBefore(segment.SequenceNumber);
 
-                    inbound.CrossSequenceNumber = xseq;
-                    inbound.NextSequenceNumber = segment.SequenceNumber + 1;
-                    inbound.NextReliableSequenceNumber = segment.ReliableSequenceNumber;
+                    channel.RX.CrossSequenceNumber = xseq;
+                    channel.RX.NextSequenceNumber = segment.SequenceNumber + 1;
+                    channel.RX.NextReliableSequenceNumber = segment.ReliableSequenceNumber;
 
                     // Deliver any messages stalled by this segment
-                    Deliver(ref inbound, channel);
+                    Deliver(ref channel);
 
-                    inbound.UpdateLastSequenceNumber();
-                    inbound.UpdateLowestSequenceNumber();
+                    channel.RX.UpdateLastSequenceNumber();
+                    channel.RX.UpdateLowestSequenceNumber();
 
-                    inbound.Acknowledge(remoteTime, isFirstInPacket);
+                    Acknowledge(ref channel, remoteTime, isFirstInPacket);
                 }
-                else if (segment.ReliableSequenceNumber >= inbound.NextReliableSequenceNumber + 1) // message arrived ahead of at least one reliable message that is missing
+                else if (segment.ReliableSequenceNumber >= channel.RX.NextReliableSequenceNumber + 1) // message arrived ahead of at least one reliable message that is missing
                 {
-                    inbound.UpdateNextRemoteTime(window, remoteTime);
+                    channel.RX.UpdateNextRemoteTime(window, remoteTime);
 
-                    if (inbound.Messages.TryAddOrGet(segment.SequenceNumber, Host.Allocate, out Channel.Inbound.Message message)) // message is new
+                    if (channel.RX.Messages.TryAddOrGet(segment.SequenceNumber, Host.Allocate, out Channel.Inbound.Message message)) // message is new
                     {
                         message.ReliableSequenceNumber = segment.ReliableSequenceNumber;
                         message.IsReliable = reliable;
@@ -1498,43 +1611,39 @@ namespace Carambolas.Net
                             message.Data = memory;
                         }
 
-                        inbound.UpdateLastSequenceNumber();
+                        channel.RX.UpdateLastSequenceNumber();
                     }
 
-                    inbound.Acknowledge(remoteTime, isFirstInPacket);
+                    Acknowledge(ref channel, remoteTime, isFirstInPacket);
                 }
             }
-            else if (segment.SequenceNumber >= inbound.LowestSequenceNumber) // message has been delivered already but is still inside the acknowledgement window
+            else if (segment.SequenceNumber >= channel.RX.LowestSequenceNumber) // message has been delivered already but is still inside the acknowledgement window
             {
-                var (xseq, window) = GetCrossSequenceNumberAndStaticWindow(inbound.CrossSequenceNumber, -(ushort)unchecked((ushort)(inbound.NextSequenceNumber - segment.SequenceNumber) - 1));
+                var (xseq, window) = GetCrossSequenceNumberAndStaticWindow(channel.RX.CrossSequenceNumber, -(ushort)unchecked((ushort)(channel.RX.NextSequenceNumber - segment.SequenceNumber) - 1));
 
                 // Discard if message does not belong to this incarnation of the sliding window
-                if (remoteTime <= inbound.NextRemoteTimes[window])
+                if (remoteTime <= channel.RX.NextRemoteTimes[window])
                     return;
 
-                inbound.Acknowledge(remoteTime, isFirstInPacket);
+                Acknowledge(ref channel, remoteTime, isFirstInPacket);
             }
         }
 
         internal void OnReceive(Protocol.Time time, Protocol.Time remoteTime, bool reliable, bool isFirstInPacket, in Protocol.Message.Fragment fragment)
         {
-            var channel = fragment.Channel;
-            if (channel >= channels.Length)
-                return;
+            ref var channel = ref channels[fragment.Channel];
 
-            ref var inbound = ref channels[channel].RX;
-
-            if (fragment.SequenceNumber == inbound.NextSequenceNumber) // message is the next expected (either reliable or unreliable)
+            if (fragment.SequenceNumber == channel.RX.NextSequenceNumber) // message is the next expected (either reliable or unreliable)
             {
-                var (xseq, window) = GetCrossSequenceNumberAndStaticWindow(inbound.CrossSequenceNumber, 1);
+                var (xseq, window) = GetCrossSequenceNumberAndStaticWindow(channel.RX.CrossSequenceNumber, 1);
 
                 // Discard if message does not belong to this incarnation of the sliding window
-                if (remoteTime <= inbound.NextRemoteTimes[window])
+                if (remoteTime <= channel.RX.NextRemoteTimes[window])
                     return;
 
                 // If an assembly can be added then this is also the first fragment that has arrived, otherwise
                 // other fragments have arrived ahead and we're filling a gap.
-                if (inbound.Reassemblies.TryAddOrGet(fragment.SequenceNumber + (byte)(fragment.Last - fragment.Index), Host.Allocate, out Channel.Inbound.Reassembly reassembly))
+                if (channel.RX.Reassemblies.TryAddOrGet(fragment.SequenceNumber + (byte)(fragment.Last - fragment.Index), Host.Allocate, out Channel.Inbound.Reassembly reassembly))
                 {
                     Host.Allocate(out Memory memory);
                     memory.Length = fragment.DatagramLength;
@@ -1553,7 +1662,7 @@ namespace Carambolas.Net
                         return;
                 }
 
-                inbound.UpdateNextRemoteTime(window, remoteTime);
+                channel.RX.UpdateNextRemoteTime(window, remoteTime);
 
                 Interlocked.Add(ref dataReceived, fragment.Data.Count);
                 reassembly.Data.CopyFrom(in fragment.Data, fragment.Index * MaxFragmentSize);
@@ -1561,59 +1670,59 @@ namespace Carambolas.Net
                 if (fragment.Index == fragment.Last) // this is the last fragment so reassembly is complete
                 {
                     // There's no need to create a message node, just deliver.
-                    Host.Add(new Event(this, new Data(channel, reassembly.Data)));
+                    Host.Add(new Event(this, new Data(channel.Index, reassembly.Data)));
                     reassembly.Data = null;
 
                     var next = reassembly.SequenceNumber + 1;
 
                     // Remove all fragment placeholders from the message buffer including the last one.
-                    inbound.Messages.RemoveAndDisposeBefore(next);
+                    channel.RX.Messages.RemoveAndDisposeBefore(next);
 
                     // Remove reassemblies including this one.
-                    inbound.Reassemblies.RemoveAndDisposeBefore(next);
+                    channel.RX.Reassemblies.RemoveAndDisposeBefore(next);
 
-                    inbound.CrossSequenceNumber = GetCrossSequenceNumber(inbound.CrossSequenceNumber, (ushort)unchecked((ushort)(reassembly.SequenceNumber - inbound.NextSequenceNumber) + 1));
-                    inbound.NextSequenceNumber = next;
+                    channel.RX.CrossSequenceNumber = GetCrossSequenceNumber(channel.RX.CrossSequenceNumber, (ushort)unchecked((ushort)(reassembly.SequenceNumber - channel.RX.NextSequenceNumber) + 1));
+                    channel.RX.NextSequenceNumber = next;
 
                     if (reliable)
                     {
                         // If delivery is reliable every fragment has an individual reliable sequence number and this is the latest one.
-                        inbound.NextReliableSequenceNumber = fragment.ReliableSequenceNumber;
+                        channel.RX.NextReliableSequenceNumber = fragment.ReliableSequenceNumber;
 
                         // Deliver messages waiting for this one (if any)
-                        Deliver(ref inbound, channel);
+                        Deliver(ref channel);
                     }
                 }
                 else // reassembly may or may not be complete depending whether other fragments have already arrived.
                 {
                     // There's no need to create a fragment placeholder, because this is the next expected anyway.
-                    inbound.CrossSequenceNumber = GetCrossSequenceNumber(inbound.CrossSequenceNumber, 1);
-                    inbound.NextSequenceNumber = fragment.SequenceNumber + 1;
-                    inbound.NextReliableSequenceNumber = fragment.ReliableSequenceNumber;
+                    channel.RX.CrossSequenceNumber = GetCrossSequenceNumber(channel.RX.CrossSequenceNumber, 1);
+                    channel.RX.NextSequenceNumber = fragment.SequenceNumber + 1;
+                    channel.RX.NextReliableSequenceNumber = fragment.ReliableSequenceNumber;
 
                     // Deliver messages waiting for this one (if any)
-                    Deliver(ref inbound, channel);
+                    Deliver(ref channel);
                 }
 
-                inbound.UpdateLastSequenceNumber();
-                inbound.UpdateLowestSequenceNumber();
+                channel.RX.UpdateLastSequenceNumber();
+                channel.RX.UpdateLowestSequenceNumber();
 
-                inbound.Acknowledge(remoteTime, isFirstInPacket);
+                Acknowledge(ref channel, remoteTime, isFirstInPacket);
             }
-            else if (fragment.SequenceNumber > inbound.NextSequenceNumber) // message is ahead of the next expected
+            else if (fragment.SequenceNumber > channel.RX.NextSequenceNumber) // message is ahead of the next expected
             {
-                var (xseq, window) = GetCrossSequenceNumberAndStaticWindow(inbound.CrossSequenceNumber, (ushort)unchecked((ushort)fragment.SequenceNumber - (ushort)(inbound.NextSequenceNumber + 1)));
+                var (xseq, window) = GetCrossSequenceNumberAndStaticWindow(channel.RX.CrossSequenceNumber, (ushort)unchecked((ushort)fragment.SequenceNumber - (ushort)(channel.RX.NextSequenceNumber + 1)));
 
                 // Discard if message does not belong to this incarnation of the sliding window
-                if (remoteTime <= inbound.NextRemoteTimes[window])
+                if (remoteTime <= channel.RX.NextRemoteTimes[window])
                     return;
 
-                if ((fragment.ReliableSequenceNumber == inbound.NextReliableSequenceNumber)                     // unreliable message arriving ahead of other unreliable ones (because the ReliableSequenceNumber is still the same)
-                  || (reliable && fragment.ReliableSequenceNumber == inbound.NextReliableSequenceNumber + 1))   // OR message is the next reliable expected
+                if ((fragment.ReliableSequenceNumber == channel.RX.NextReliableSequenceNumber)                     // unreliable message arriving ahead of other unreliable ones (because the ReliableSequenceNumber is still the same)
+                  || (reliable && fragment.ReliableSequenceNumber == channel.RX.NextReliableSequenceNumber + 1))   // OR message is the next reliable expected
                 {
                     // If an assembly can be added then this is also the first fragment that has arrived, otherwise
                     // other fragments have arrived ahead and we're filling a gap.
-                    if (inbound.Reassemblies.TryAddOrGet(fragment.SequenceNumber + (byte)(fragment.Last - fragment.Index), Host.Allocate, out Channel.Inbound.Reassembly reassembly))
+                    if (channel.RX.Reassemblies.TryAddOrGet(fragment.SequenceNumber + (byte)(fragment.Last - fragment.Index), Host.Allocate, out Channel.Inbound.Reassembly reassembly))
                     {
                         Host.Allocate(out Memory memory);
                         memory.Length = fragment.DatagramLength;
@@ -1632,9 +1741,9 @@ namespace Carambolas.Net
                             return;
                     }
 
-                    inbound.UpdateNextRemoteTime(window, remoteTime);
+                    channel.RX.UpdateNextRemoteTime(window, remoteTime);
 
-                    if (inbound.Messages.TryAddOrGet(fragment.SequenceNumber, Host.Allocate, out Channel.Inbound.Message message)) // message is new
+                    if (channel.RX.Messages.TryAddOrGet(fragment.SequenceNumber, Host.Allocate, out Channel.Inbound.Message message)) // message is new
                     {
                         Interlocked.Add(ref dataReceived, fragment.Data.Count);
                         reassembly.Data.CopyFrom(in fragment.Data, fragment.Index * MaxFragmentSize);
@@ -1649,36 +1758,36 @@ namespace Carambolas.Net
                         // induce a full buffer to be constantly allocated on the receiver without ever having any data 
                         // actually delivered.
                         var first = fragment.SequenceNumber - fragment.Index;
-                        if (inbound.NextSequenceNumber < first)
+                        if (channel.RX.NextSequenceNumber < first)
                         {
                             // Remove previous datagrams if any
-                            inbound.Messages.RemoveAndDisposeBefore(first);
+                            channel.RX.Messages.RemoveAndDisposeBefore(first);
 
                             // Remove previous reassemblies if any
-                            inbound.Reassemblies.RemoveAndDisposeBefore(first);
+                            channel.RX.Reassemblies.RemoveAndDisposeBefore(first);
 
-                            inbound.CrossSequenceNumber = GetCrossSequenceNumber(inbound.CrossSequenceNumber, (ushort)(first - inbound.NextSequenceNumber));
-                            inbound.NextSequenceNumber = first;
+                            channel.RX.CrossSequenceNumber = GetCrossSequenceNumber(channel.RX.CrossSequenceNumber, (ushort)(first - channel.RX.NextSequenceNumber));
+                            channel.RX.NextSequenceNumber = first;
 
                             // It's safe to assign the reliable sequence number here because this is either 
                             // an unreliable message arriving ahead of other unreliable ones (so the reliable 
                             // sequence number is in fact the same) OR this is the next reliable message expected.
-                            inbound.NextReliableSequenceNumber = fragment.ReliableSequenceNumber;
+                            channel.RX.NextReliableSequenceNumber = fragment.ReliableSequenceNumber;
                         }
 
-                        Deliver(ref inbound, channel);
+                        Deliver(ref channel);
 
-                        inbound.UpdateLastSequenceNumber();
-                        inbound.UpdateLowestSequenceNumber();
+                        channel.RX.UpdateLastSequenceNumber();
+                        channel.RX.UpdateLowestSequenceNumber();
                     }
 
-                    inbound.Acknowledge(remoteTime, isFirstInPacket);
+                    Acknowledge(ref channel, remoteTime, isFirstInPacket);
                 }
-                else if (fragment.ReliableSequenceNumber >= inbound.NextReliableSequenceNumber + 1) // message arrived ahead of at least one reliable message that is missing
+                else if (fragment.ReliableSequenceNumber >= channel.RX.NextReliableSequenceNumber + 1) // message arrived ahead of at least one reliable message that is missing
                 {
                     // If an assembly can be added then this is also the first fragment that has arrived, otherwise
                     // other fragments have arrived ahead and we're filling a gap.
-                    if (inbound.Reassemblies.TryAddOrGet(fragment.SequenceNumber + (byte)(fragment.Last - fragment.Index), Host.Allocate, out Channel.Inbound.Reassembly reassembly))
+                    if (channel.RX.Reassemblies.TryAddOrGet(fragment.SequenceNumber + (byte)(fragment.Last - fragment.Index), Host.Allocate, out Channel.Inbound.Reassembly reassembly))
                     {
                         Host.Allocate(out Memory memory);
                         memory.Length = fragment.DatagramLength;
@@ -1697,9 +1806,9 @@ namespace Carambolas.Net
                             return;
                     }
 
-                    inbound.UpdateNextRemoteTime(window, remoteTime);
+                    channel.RX.UpdateNextRemoteTime(window, remoteTime);
 
-                    if (inbound.Messages.TryAddOrGet(fragment.SequenceNumber, Host.Allocate, out Channel.Inbound.Message message)) // message is new
+                    if (channel.RX.Messages.TryAddOrGet(fragment.SequenceNumber, Host.Allocate, out Channel.Inbound.Message message)) // message is new
                     {
                         Interlocked.Add(ref dataReceived, fragment.Data.Count);
                         reassembly.Data.CopyFrom(in fragment.Data, fragment.Index * MaxFragmentSize);
@@ -1708,21 +1817,21 @@ namespace Carambolas.Net
                         message.IsReliable = reliable;
                         message.Reassembly = reassembly;
 
-                        inbound.UpdateLastSequenceNumber();
+                        channel.RX.UpdateLastSequenceNumber();
                     }
 
-                    inbound.Acknowledge(remoteTime, isFirstInPacket);
+                    Acknowledge(ref channel, remoteTime, isFirstInPacket);
                 }
             }
-            else if (fragment.SequenceNumber >= inbound.LowestSequenceNumber) // message has been delivered already but is still inside the acknowledgement window
+            else if (fragment.SequenceNumber >= channel.RX.LowestSequenceNumber) // message has been delivered already but is still inside the acknowledgement window
             {
-                var (xseq, window) = GetCrossSequenceNumberAndStaticWindow(inbound.CrossSequenceNumber, -(ushort)unchecked((ushort)inbound.NextSequenceNumber - 1 - (ushort)fragment.SequenceNumber));
+                var (xseq, window) = GetCrossSequenceNumberAndStaticWindow(channel.RX.CrossSequenceNumber, -(ushort)unchecked((ushort)channel.RX.NextSequenceNumber - 1 - (ushort)fragment.SequenceNumber));
 
                 // Discard if message does not belong to this incarnation of the sliding window
-                if (remoteTime <= inbound.NextRemoteTimes[window])
+                if (remoteTime <= channel.RX.NextRemoteTimes[window])
                     return;
 
-                inbound.Acknowledge(remoteTime, isFirstInPacket);
+                Acknowledge(ref channel, remoteTime, isFirstInPacket);
             }
         }
 
@@ -1757,27 +1866,27 @@ namespace Carambolas.Net
             public Protocol.Ordinal NextReliableSequenceNumber;
         }
 
-        private void Deliver(ref Channel.Inbound inbound, byte channel)
+        private void Deliver(ref Channel channel)
         {
             var state = new DeliveryState
             {
                 Peer = this,
-                Channel = channel,
-                NextSequenceNumber = inbound.NextSequenceNumber,
-                NextReliableSequenceNumber = inbound.NextReliableSequenceNumber
+                Channel = channel.Index,
+                NextSequenceNumber = channel.RX.NextSequenceNumber,
+                NextReliableSequenceNumber = channel.RX.NextReliableSequenceNumber
             };
 
-            inbound.Messages.Traverse(Deliver, ref state);
+            channel.RX.Messages.Traverse(Deliver, ref state);
 
             // Remove processed messages.
-            inbound.Messages.RemoveAndDisposeBefore(state.NextSequenceNumber);
+            channel.RX.Messages.RemoveAndDisposeBefore(state.NextSequenceNumber);
 
             // Remove obsolete reassemblies.
-            inbound.Reassemblies.RemoveAndDisposeBefore(state.NextSequenceNumber);
+            channel.RX.Reassemblies.RemoveAndDisposeBefore(state.NextSequenceNumber);
 
-            inbound.CrossSequenceNumber += (ushort)((ushort)state.NextSequenceNumber - (ushort)inbound.NextSequenceNumber);
-            inbound.NextSequenceNumber = state.NextSequenceNumber;
-            inbound.NextReliableSequenceNumber = state.NextReliableSequenceNumber;
+            channel.RX.CrossSequenceNumber += (ushort)((ushort)state.NextSequenceNumber - (ushort)channel.RX.NextSequenceNumber);
+            channel.RX.NextSequenceNumber = state.NextSequenceNumber;
+            channel.RX.NextReliableSequenceNumber = state.NextReliableSequenceNumber;
             
         }
 
@@ -1890,8 +1999,8 @@ namespace Carambolas.Net
                 {
                     Host.Add(new Reset(in EndPoint, Session.Remote,
                                 Session.Options.Contains(SessionOptions.Secure) 
-                                    ? Host.EncodeReset(Host.UserEncoder, Host.Now(), ref Session)
-                                    : Host.EncodeReset(Host.UserEncoder, Host.Now(), Session.Remote)));
+                                    ? Host.EncodeReset(Host.UserEncoder, Host.Timestamp(), ref Session)
+                                    : Host.EncodeReset(Host.UserEncoder, Host.Timestamp(), Session.Remote)));
                 }
             }
 
@@ -1919,8 +2028,8 @@ namespace Carambolas.Net
                     {
                         Host.Add(new Reset(in EndPoint, Session.Remote,
                                     Session.Options.Contains(SessionOptions.Secure)
-                                        ? Host.EncodeReset(Host.UserEncoder, Host.Now(), ref Session)
-                                        : Host.EncodeReset(Host.UserEncoder, Host.Now(), Session.Remote)));
+                                        ? Host.EncodeReset(Host.UserEncoder, Host.Timestamp(), ref Session)
+                                        : Host.EncodeReset(Host.UserEncoder, Host.Timestamp(), Session.Remote)));
                     }
                 }
                 else if (previous == Protocol.State.Accepting) // this is a passive peer that was in the accepting state

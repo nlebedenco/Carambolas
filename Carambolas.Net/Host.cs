@@ -280,7 +280,7 @@ namespace Carambolas.Net
         /// <remarks>
         /// A valid connection for internal purposes is one that is not <see cref="Protocol.State.Disconnected"/>
         /// but for the end user there may be a dissociation between the perceived state of a connection 
-        /// (<see cref="Peer.State"/>) and its actual state (<see cref="Peer.SessionState"/>).
+        /// (<see cref="Peer.State"/>) and its actual state (<see cref="Session.State"/>).
         /// This is due to several reasons. In particular, incoming connections that are still in the course 
         /// of being accepted shouldn't be visible at all as they are unable to generate any event except for a 
         /// <see cref="EventType.Connection"/>. It's only by the time the user retrieves the connection
@@ -329,9 +329,6 @@ namespace Carambolas.Net
 
         /// <summary>
         /// Gets an event from the buffer. Returns true if an event could be retrieved; otherwise, false.
-        /// <para/>
-        /// When a valid buffer is provided, data from <see cref="EventType.Data"/> 
-        /// is copied over and <paramref name="bytesReceived"/> will contain the number of bytes received.
         /// </summary>
         public bool TryGetEvent(out Event e)
         {
@@ -452,8 +449,8 @@ namespace Carambolas.Net
         /// is not guaranteed to be connected yet (most often it will not). 
         /// <para/>
         /// The user must call <see cref="TryGetEvent(out Event)"/> in order to determine 
-        /// when the connection is successfully connected. If the connections fails a 
-        /// <see cref="Event.Disconnection"/> is raised with an indication of the reason.
+        /// when the connection is successfully connected. If the connections fails an event with 
+        /// <see cref="EventType.Disconnection"/> is raised with an indication of the reason.
         /// </summary>
         public bool Connect(in IPEndPoint endPoint, out Peer peer) => Connect(in endPoint, default, default, out peer);
         public bool Connect(in IPEndPoint endPoint, in Key remoteKey, out Peer peer) => Connect(in endPoint, SessionOptions.Secure | SessionOptions.ValidateRemoteKey, in remoteKey, out peer);
@@ -474,13 +471,14 @@ namespace Carambolas.Net
                 if (peers.TryGetValue(endPoint, out peer))
                     return false;
 
-                peer = new Peer(this, in endPoint, PeerMode.Active, options, in remoteKey)
+                var time = Timestamp();
+                peer = new Peer(this, time, in endPoint, PeerMode.Active, options, in remoteKey)
                 {
                     MaxTransmissionBacklog = MaxTransmissionBacklog,
                     MaxTransmissionUnit = Protocol.MTU.MinValue
                 };
 
-                peer.OnConnecting(Now());
+                peer.OnConnecting(time);
 
                 AddOrReplace(peer);
                 publicPeers.Add(peer.EndPoint, peer);
@@ -527,7 +525,7 @@ namespace Carambolas.Net
 
                 if (AcceptableConnetionTypes.Contains(ConnectionTypes.Insecure) && accepted < Capacity)
                 {
-                    peer = new Peer(this, in endPoint, PeerMode.Passive)
+                    peer = new Peer(this, time, in endPoint, PeerMode.Passive)
                     {
                         MaxTransmissionBacklog = MaxTransmissionBacklog,
                         MaxTransmissionUnit = connect.MaximumTransmissionUnit,
@@ -570,7 +568,7 @@ namespace Carambolas.Net
 
                 if (AcceptableConnetionTypes.Contains(ConnectionTypes.Secure) && accepted < Capacity)
                 {
-                    peer = new Peer(this, in endPoint, PeerMode.Passive, SessionOptions.Secure | SessionOptions.ValidateRemoteKey, in remoteKey)
+                    peer = new Peer(this, time, in endPoint, PeerMode.Passive, SessionOptions.Secure | SessionOptions.ValidateRemoteKey, in remoteKey)
                     {
                         MaxTransmissionBacklog = MaxTransmissionBacklog,
                         MaxTransmissionUnit = connect.MaximumTransmissionUnit,
@@ -734,36 +732,58 @@ namespace Carambolas.Net
             {
                 while (enabled)
                 {
-                    // Start timestamp in ticks.
-                    var start = ElapsedTicks();
-
-                    // Current timestamp in milliseconds
-                    var time = TicksToMilliseconds(start);    
+                    // Start ticks used to calculate the remaining frame time in the end of the loop.
+                    var start = timeSource.ElapsedTicks();
+                    // Current timestamp
+                    var time = timeSource.ElapsedTicksToTimestamp(start);    
 
                     var receiveLimit = MaxReceivePacketsPerFrame;
                     var sendLimit = MaxSendPacketsPerFrame;
 
                     for (var peer = first; peer != null; peer = peer.Next)
                     {
-                        if (peer.Session.State != Protocol.State.Disconnected)
-                            peer.OnUpdate(time);
-
-                        // If peer has disconnected save it for removal
-                        if (peer.Session.State == Protocol.State.Disconnected)
+                        switch (peer.Session.State)
                         {
-                            disconnected.Add(peer);
-                            continue;
-                        }
+                            case Protocol.State.Connecting:
+                            case Protocol.State.Accepting:
+                                peer.OnConnectingUpdate(time);
+                                if (peer.Session.State == Protocol.State.Disconnected)
+                                {
+                                    disconnected.Add(peer);
+                                    continue;
+                                }
 
-                        // Send as much data as possible
-                        while (sendLimit > 0 && peer.OnSend(time, writer))
-                        {
-                            var length = writer.Count;
-                            socket.UncheckedSend(buffer, 0, length, in peer.EndPoint);
-                            sendLimit--;
+                                if (sendLimit > 0 && peer.OnConnectingSend(time, writer))
+                                {
+                                    var length = writer.Count;
+                                    socket.UncheckedSend(buffer, 0, length, in peer.EndPoint);
+                                    sendLimit--;
 
-                            Interlocked.Increment(ref peer.packetsSent);
-                            Interlocked.Add(ref peer.bytesSent, length);
+                                    Interlocked.Increment(ref peer.packetsSent);
+                                    Interlocked.Add(ref peer.bytesSent, length);
+                                }
+                                break;
+                            case Protocol.State.Connected:
+                                peer.OnConnectedUpdate(time);
+                                if (peer.Session.State == Protocol.State.Disconnected)
+                                {
+                                    disconnected.Add(peer);
+                                    continue;
+                                }
+
+                                // Send as much data as possible
+                                while (sendLimit > 0 && peer.OnConnectedSend(time, writer))
+                                {
+                                    var length = writer.Count;
+                                    socket.UncheckedSend(buffer, 0, length, in peer.EndPoint);
+                                    sendLimit--;
+
+                                    Interlocked.Increment(ref peer.packetsSent);
+                                    Interlocked.Add(ref peer.bytesSent, length);
+                                }
+                                break;
+                            default:
+                                break;
                         }
                     }
 
@@ -791,10 +811,10 @@ namespace Carambolas.Net
                     }
 
                     float elapsed, timeout;
-                    var ticks = ElapsedTicks();
+                    var ticks = timeSource.ElapsedTicks();
 
                     // Read anything that may arrive until there's less than one millisecond remaining for this frame.
-                    if ((timeout = updatePeriod - (elapsed = (float)TimeSource.TicksToSeconds(ticks - start))) > 0.001)
+                    if ((timeout = updatePeriod - (elapsed = (float)TickCounter.TicksToSeconds(ticks - start))) > 0.001)
                     {
                         do
                         {
@@ -809,7 +829,7 @@ namespace Carambolas.Net
                             var available = socket.Available;
                             if (available > 0)
                             {
-                                time = TicksToMilliseconds(ticks);
+                                time = timeSource.ElapsedTicksToTimestamp(ticks);
                                 var nbytes = 0;
                                 while (nbytes < available)
                                 {
@@ -829,7 +849,7 @@ namespace Carambolas.Net
                                     }
                                 }
 
-                                ticks = ElapsedTicks();
+                                ticks = timeSource.ElapsedTicks();
                             }
                             else // if there's no data immediately available wait for more.
                             {
@@ -837,10 +857,10 @@ namespace Carambolas.Net
                                 if (!socket.Poll(microSeconds, SelectMode.SelectRead))
                                     break;
 
-                                ticks = ElapsedTicks();
+                                ticks = timeSource.ElapsedTicks();
                             }
                         }
-                        while ((timeout = updatePeriod - (elapsed = (float)TimeSource.TicksToSeconds(ticks - start))) > 0.001);
+                        while ((timeout = updatePeriod - (elapsed = (float)TickCounter.TicksToSeconds(ticks - start))) > 0.001);
                     }
                 }
 
@@ -1488,15 +1508,12 @@ namespace Carambolas.Net
 
         private void OnReceive(Peer peer, Protocol.Time time, Protocol.Time remoteTime, BinaryReader reader)
         {
-
             // Bitset where each bit represents a channel. A bit value of 0 means no message has been 
             // parsed for this channel; otherwise one or more messages have been parsed 
             // for this channel already.
             Span<uint> channels = stackalloc uint[8] { 0, 0, 0, 0, 0, 0, 0, 0 };
 
-            /// <summary>
-            /// Return true if the <paramref name="channel"/> flag has not been reset yet for this packet and then reset it.
-            /// </summary>
+            // Set and return true if the channel flag has not been set yet for this packet; otherwise return false.
             bool TrySetUsed(byte channel, in Span<uint> from)
             {
                 var i = channel >> 32;
@@ -1529,20 +1546,20 @@ namespace Carambolas.Net
                 
                 switch (mflags)
                 {
-                    case Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data: // NEXT(2) ATM(4)
+                    case Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data: // CH(1) NEXT(2) ATM(4)
                         if (reader.Available >= Protocol.Message.Ack.Size) 
                         {
                             reader.UncheckedRead(out byte channel);
                             reader.UncheckedRead(out Protocol.Ordinal seq);
                             reader.UncheckedRead(out Protocol.Time atm);
 
-                            if (peer.Session.State >= Protocol.State.Connected)
+                            if (peer.Session.State >= Protocol.State.Connected && channel < channels.Length)
                                 peer.OnReceive(time, remoteTime, new Protocol.Message.Ack(channel, seq, atm));
 
                             continue;
                         }
                         goto Incomplete;
-                    case Protocol.MessageFlags.Dup | Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data: // CNT(2) NEXT(2) ATM(4)
+                    case Protocol.MessageFlags.Dup | Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data: // CH(1) CNT(2) NEXT(2) ATM(4)
                         if (reader.Available >= Protocol.Message.Ack.Dup.Size) 
                         {
                             reader.UncheckedRead(out byte channel);
@@ -1550,13 +1567,13 @@ namespace Carambolas.Net
                             reader.UncheckedRead(out Protocol.Ordinal next);
                             reader.UncheckedRead(out Protocol.Time atm);
 
-                            if (peer.Session.State >= Protocol.State.Connected && count > 0)
+                            if (peer.Session.State >= Protocol.State.Connected && count > 0 && channel < channels.Length)
                                 peer.OnReceive(time, remoteTime, new Protocol.Message.Ack(channel, count, next, atm));
 
                             continue;
                         }
                         goto Incomplete;
-                    case Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data | Protocol.MessageFlags.Gap: // NEXT(2) LAST(2) ATM(4)
+                    case Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data | Protocol.MessageFlags.Gap: // CH(1) NEXT(2) LAST(2) ATM(4)
                         if (reader.Available >= Protocol.Message.Ack.Gap.Size) 
                         {
                             reader.UncheckedRead(out byte channel);
@@ -1564,13 +1581,13 @@ namespace Carambolas.Net
                             reader.UncheckedRead(out Protocol.Ordinal last);
                             reader.UncheckedRead(out Protocol.Time atm);
 
-                            if (peer.Session.State >= Protocol.State.Connected)
+                            if (peer.Session.State >= Protocol.State.Connected && channel < channels.Length)
                                 peer.OnReceive(time, remoteTime, new Protocol.Message.Ack(channel, next, last, atm));
 
                             continue;
                         }
                         goto Incomplete;
-                    case Protocol.MessageFlags.Dup | Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data | Protocol.MessageFlags.Gap: // CNT(2) NEXT(2) LAST(2) ATM(4)
+                    case Protocol.MessageFlags.Dup | Protocol.MessageFlags.Ack | Protocol.MessageFlags.Data | Protocol.MessageFlags.Gap: // CH(1) CNT(2) NEXT(2) LAST(2) ATM(4)
                         if (reader.Available >= Protocol.Message.Ack.Gap.Dup.Size) 
                         {
                             reader.UncheckedRead(out byte channel);
@@ -1579,13 +1596,13 @@ namespace Carambolas.Net
                             reader.UncheckedRead(out Protocol.Ordinal last);
                             reader.UncheckedRead(out Protocol.Time atm);
 
-                            if (peer.Session.State >= Protocol.State.Connected && count > 0)
+                            if (peer.Session.State >= Protocol.State.Connected && count > 0 && channel < channels.Length)
                                 peer.OnReceive(time, remoteTime, new Protocol.Message.Ack(channel, count, next, last, atm));
 
                             continue;
                         }
                         goto Incomplete;
-                    case Protocol.MessageFlags.Reliable | Protocol.MessageFlags.Data | Protocol.MessageFlags.Segment:  // SEQ(2) RSN(2) LEN(2) DAT(N)
+                    case Protocol.MessageFlags.Reliable | Protocol.MessageFlags.Data | Protocol.MessageFlags.Segment:  // CH(1) SEQ(2) RSN(2) LEN(2) DAT(N)
                     case Protocol.MessageFlags.Data | Protocol.MessageFlags.Segment:
                         if (reader.Available >= Protocol.Message.Segment.MinSize)
                         {
@@ -1596,7 +1613,7 @@ namespace Carambolas.Net
 
                             if (seglen == 0)
                             {
-                                if (mflags.Contains(Protocol.MessageFlags.Reliable) && peer.Session.State >= Protocol.State.Connected) // this is a ping
+                                if (mflags.Contains(Protocol.MessageFlags.Reliable) && peer.Session.State >= Protocol.State.Connected && channel == 0) // this is a ping
                                     peer.OnReceive(time, remoteTime, true, TrySetUsed(channel, channels), new Protocol.Message.Segment(channel, seq, rsn, default));
 
                                 continue;
@@ -1606,7 +1623,7 @@ namespace Carambolas.Net
                             {
                                 var data = new ArraySegment<byte>(reader.Buffer, reader.Position, seglen);
                                 
-                                if (peer.Session.State >= Protocol.State.Connected)
+                                if (peer.Session.State >= Protocol.State.Connected && channel < channels.Length)
                                     peer.OnReceive(time, remoteTime, mflags.Contains(Protocol.MessageFlags.Reliable), TrySetUsed(channel, channels), new Protocol.Message.Segment(channel, seq, rsn, data));
 
                                 reader.UncheckedSkip(seglen);
@@ -1614,7 +1631,7 @@ namespace Carambolas.Net
                             }
                         }
                         goto Incomplete;
-                    case Protocol.MessageFlags.Reliable | Protocol.MessageFlags.Data | Protocol.MessageFlags.Fragment: // SEQ(2) RSN(2) SEGLEN(2) IDX(1) LEN(2) DAT(N)
+                    case Protocol.MessageFlags.Reliable | Protocol.MessageFlags.Data | Protocol.MessageFlags.Fragment: // CH(1) SEQ(2) RSN(2) SEGLEN(2) IDX(1) LEN(2) DAT(N)
                     case Protocol.MessageFlags.Data | Protocol.MessageFlags.Fragment:
                         if (reader.Available > Protocol.Message.Fragment.MinSize) 
                         {
@@ -1636,7 +1653,7 @@ namespace Carambolas.Net
                                 //      1 <= fraglast <= 255; 
                                 //      0 <= fragindex <= fraglast; 
                                 //      fraglen == { mfs when fragindex < fraglast, (seglen % mfs) when fragindex == fraglast }
-                                if (seglen > peer.MaxSegmentSize)
+                                if (seglen > peer.MaxSegmentSize && channel < channels.Length)
                                 {
                                     var mfs = peer.MaxFragmentSize;
                                     var fraglast = (byte)((seglen - 1) / mfs);
@@ -1717,73 +1734,50 @@ namespace Carambolas.Net
         /// Measures elapsed time using a <see cref="Stopwatch"/>.
         /// </summary>
         /// <remarks>
-        /// Note that the <see cref="Stopwatch"/> is still subject to a measurable drift when compared to the system clock which may accumulate 
-        /// over a short period of time. Some sources like https://www.codeproject.com/articles/792410/high-resolution-clock-in-csharp 
-        /// suggest that this drift must be aproximately 0.02% that is 0.0002s per second (ie. every millisecond actually lasts 1±0.02ms).
-        /// It remains to be verified if CPU throttle may negatively affect time measured by the <see cref="Stopwatch"/>.
+        /// Time source is implemented on top of the <see cref="Stopwatch"/> and relies on the target platform supporting a high resolution timer.
+        /// Note that the <see cref="Stopwatch"/> is still subject to a measurable drift when compared to the system clock which may accumulate over a short period of time. When there
+        /// is a constant clock skew between two clocks, the clock offset between them gradually increases or decreases over time, depending on the sign of the skew. The amount of increase
+        /// or decrease in the clock offset is proportional to the time duration of observation. Some sources like https://www.codeproject.com/articles/792410/high-resolution-clock-in-csharp 
+        /// suggest that this drift must be aproximately 0.02% that is 0.0002s per second (ie. every millisecond actually lasts 1±0.02ms). It remains to be verified however if the 
+        /// <see cref="Stopwatch"/> accuracy may vary at higher rates or if it may be suject to negative effects due to runtime system adjustments such as CPU throttling.
+        /// <para/>
+        /// This should not be a problem since the time source is internally used to calculate relatively small time durations between correlate timestamps (offsets) and never as a source 
+        /// of absolute time references to be used externally or compared to the system clock. 
+        /// <para/>
+        /// In regard to `RTT` estimation, the variability of measured values may be so high, as pointed out by [Sessini and Mahanti](https://pages.cpsc.ucalgary.ca/~mahanti/papers/spects.submission.pdf) 
+        /// that a time source skew of 0.02% is probably going to pass unnoticed.         
         /// </remarks>
-        internal readonly struct TimeSource
+        internal readonly struct TimeSource // internal for testing
         {
-            private const long TicksPerSecond = 10000000;
-
-            private static readonly double tickFrequency = Stopwatch.IsHighResolution ? (double)TicksPerSecond / Stopwatch.Frequency : 1.0;
-
-            /// <summary>
-            /// Gets the current number of ticks from the underlying timer mechanism.
-            /// </summary>
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static long Ticks() => Stopwatch.GetTimestamp();
-
-            /// <summary>
-            /// Converts ticks to seconds.
-            /// </summary>
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static double TicksToSeconds(long ticks) => ticks * tickFrequency / TimeSpan.TicksPerSecond;
-
-            /// <summary>
-            /// Converts ticks to milliseconds.
-            /// </summary>
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static double TicksToMilliseconds(long ticks) => ticks * tickFrequency / TimeSpan.TicksPerMillisecond;
-
-            private readonly Stopwatch stopwatch;
+            private readonly TickCounter counter;
             private readonly uint start;
 
-            public TimeSource(DateTime from) => (start, stopwatch) = (unchecked((uint)(from.Ticks / TimeSpan.TicksPerMillisecond)), Stopwatch.StartNew());
-
-            /// <summary>
-            /// Number of ticks elapsed since that creation of the time source.
-            /// </summary>
-            public long ElapsedTicks => stopwatch.ElapsedTicks;
-
-            /// <summary>
-            /// Number of milliseconds elapsed since that creation of the time source.
-            /// </summary>
-            public long ElapsedMilliseconds => stopwatch.ElapsedMilliseconds;
+            public TimeSource(DateTime from) => (start, counter) = ((uint)(from.Ticks / TimeSpan.TicksPerMillisecond), new TickCounter(TickCounter.GetTicks()));
 
             /// <summary>
             /// Number of milliseconds elapsed since 12:00:00 midnight, January 1, 0001 in the Gregorian calendar mod 2^32. 
             /// May drift in relation to the actual system clock.
             /// </summary>
-            public uint Now => unchecked(start + (uint)stopwatch.ElapsedMilliseconds);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public uint Timestamp() => unchecked(start + (uint)counter.ElapsedMilliseconds());
 
             /// <summary>
-            /// Number of milliseconds since 12:00:00 midnight, January 1, 0001 in the Gregorian calendar mod 2^32 corresponding to the provided elapsed ticks since program start.
+            /// Number of ticks elapsed since creation of the time source.
             /// </summary>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public uint TotalMilliseconds(long ticks) => start + (uint)(ticks * tickFrequency / TimeSpan.TicksPerMillisecond);
+            public long ElapsedTicks() => counter.ElapsedTicks();
+
+            /// <summary>
+            /// Return the time stamp corresponding to the provided <paramref name="ticks"/> elapsed sincce creation of the time source.
+            /// </summary>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public uint ElapsedTicksToTimestamp(long ticks) => unchecked(start + (uint)TickCounter.TicksToMilliseconds(ticks));
         }
 
         private readonly TimeSource timeSource = new TimeSource(DateTime.UtcNow);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal uint Now() => timeSource.Now;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private long ElapsedTicks() => timeSource.ElapsedTicks;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private uint TicksToMilliseconds(long value) => timeSource.TotalMilliseconds(value);
+        internal uint Timestamp() => timeSource.Timestamp();
 
         #endregion
 
@@ -1810,5 +1804,5 @@ namespace Carambolas.Net
         internal void Allocate(out Channel.Inbound.Reassembly instance) => instance = inboundReassemblyPool.Get();
 
         #endregion
-    }   
+    }    
 }
