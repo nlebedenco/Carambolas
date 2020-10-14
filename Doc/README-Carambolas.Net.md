@@ -1093,7 +1093,7 @@ if (m.SEQ >= RX.LASEQ)
 An acknowledgement `ACK` is a control message that can be batched in a data packet but does not carry any user data. Instead, an `ACK` carries the sequence 
 number of the message being acknowledged (i.e. the next sequence number expected by the receiver)
 
-***Cummulative acks are used in 4 alternative forms that carry with extended information.***
+***Cummulative acks are used in 4 alternative forms that can carry extended information.***
 
 The convention of tracking and replying back with the next sequence number **expected** instead of the actual sequence number received/sent may look like a 
 technicality but it is indeed more convenient in many ways. *Mainly by providing an initial state that is equivalent to any other intermediary state in both sender 
