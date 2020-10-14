@@ -20,25 +20,25 @@ set_plugin_info(info)
 -- Packet grammar. The number in parenthesis is the atom size in bytes. Square brackets denote optional elements. Curly brackets denote encrypted elements.
 -- 
 -- STM(4) PFLAGS(1) <CON | SECCON | ACC | SECACC | DAT | SECDAT | RST | SECRST>
--- 
+--
 --    CON ::= SSN(4) MTU(2) MTC(1) MBW(4) CRC(4)
 -- SECCON ::= SSN(4) MTU(2) MTC(1) MBW(4) PUBKEY(32) CRC(4)
 --    ACC ::= SSN(4) MTU(2) MTC(1) MBW(4) ATM(4) RW(2) ASSN(4) CRC(4)
--- SECACC ::= SSN(4) MTU(2) MTC(1) MBW(4) ATM(4) {RW(2)} PUBKEY(32) NONCE(8) MAC(16)
+-- SECACC ::= SSN(4) MTU(2) MTC(1) MBW(4) ATM(4) {RW(2)} PUBKEY(32) N64(8) MAC(16)
 --    DAT ::= SSN(4) RW(2) MSGS CRC(4)
--- SECDAT ::= {RW(2) MSGS} NONCE(8) MAC(16)
+-- SECDAT ::= {RW(2) MSGS} N64(8) MAC(16)
 --    RST ::= SSN(4) CRC(4)
--- SECRST ::= PUBKEY(32) NONCE(8) MAC(16)
+-- SECRST ::= PUBKEY(32) N64(8) MAC(16)
 -- 
 --   MSGS ::= MSG [MSG...]
 --    MSG ::= MSGFLAGS(1) <ACKACC | ACK | DUPACK | GAP | DUPGAP | SEG | FRAG>
 -- ACKACC ::= ATM(4)
---    ACK ::= NEXT(2) ATM(4)
--- DUPACK ::= CNT(2) NEXT(2) ATM(4)
---    GAP ::= NEXT(2) LAST(2) ATM(4)
--- DUPGAP ::= CNT(2) NEXT(2) LAST(2) ATM(4)
---    SEG ::= SEQ(2) RSN(2) SEGLEN(2) PAYLOAD(N)
---   FRAG ::= SEQ(2) RSN(2) SEGLEN(2) FRAGINDEX(1) FRAGLEN(2) PAYLOAD(N)
+--    ACK ::= CH(1) ANEXT(2) ATM(4)
+-- DUPACK ::= CH(1) ACNT(2) ANEXT(2) ATM(4)
+--    GAP ::= CH(1) ANEXT(2) ALAST(2) ATM(4)
+-- DUPGAP ::= CH(1) ACNT(2) ANEXT(2) ALAST(2) ATM(4)
+--    SEG ::= CH(1) SEQ(2) RSN(2) SEGLEN(2) PAYLOAD(N)
+--   FRAG ::= CH(1) SEQ(2) RSN(2) SEGLEN(2) FRAGINDEX(1) FRAGLEN(2) PAYLOAD(N)
 
 -- Packet Flags
 local PacketFlags = {
@@ -76,8 +76,6 @@ Packet.Sizes = {
 
 local MessageFlags = {
     AckAccept = 0x8A,        
-    Channel = 0x0F, -- bitmask for the channel
-    Opcode = 0xF0,  -- bitmask for the opcode
     Ack = 0xA0,    
     DupAck = 0xB0,    
     Gap = 0xE0,
@@ -312,24 +310,24 @@ function p_carambolas.dissector(buf, pinfo, root)
             i = uint(subtree, pf_packet_rwd, buf, i, 2)
             local m = n - i
             while(true) do
-                local mflags = buf(i, 1):uint(); i = i + 1         
+                local mflags = buf(i, 1):uint(); i = i + 1
                 if (mflags == MessageFlags.AckAccept and m > Message.Sizes[MessageFlags.AckAccept]) then
                     table.insert(summary, "ACK(ACC)")
                     local msg = subtree:add(pf_ackacc, buf(i, Message.Sizes[MessageFlags.AckAccept]))
                     i = uint(msg, pf_ack_atm, buf, i, 4)
-                else                    
-                    local channel = bit.band(mflags, MessageFlags.Channel)
-                    mflags = bit.band(mflags, MessageFlags.Opcode)
+                else    
+                    local channel = buf(i, 1):uint(); i = i + 1                    
+                    -- mflags = bit.band(mflags, 0xF0)
                     if (mflags == MessageFlags.Ack and m > Message.Sizes[MessageFlags.Ack]) then
                         add_stat(channels, channel, "Acks")
                         local msg = subtree:add(pf_ack, buf(i-1, Message.Sizes[MessageFlags.Ack]))                        
-                        mask(msg, pf_chn, buf, i-1, 1, MessageFlags.Channel) 
+                        msg:add(pf_chn, buf(i - 1, 1), channel)
                         i = uint(msg, pf_ack_next, buf, i, 2)
                         i = uint(msg, pf_ack_atm, buf, i, 4)
                     elseif (mflags == MessageFlags.DupAck and m > Message.Sizes[MessageFlags.DupAck]) then
                         add_stat(channels, channel, "Dup Acks")
                         local msg = subtree:add(pf_ack, buf(i-1, Message.Sizes[MessageFlags.DupAck]))
-                        mask(msg, pf_chn, buf, i-1, 1, MessageFlags.Channel) 
+                        msg:add(pf_chn, buf(i - 1, 1), channel)
                         i = uint(msg, pf_ack_count, buf, i, 2)
                         i = uint(msg, pf_ack_next, buf, i, 2)
                         i = uint(msg, pf_ack_atm, buf, i, 4)
@@ -337,7 +335,7 @@ function p_carambolas.dissector(buf, pinfo, root)
                         add_stat(channels, channel, "Gaps")
                         has_gaps = true
                         local msg = subtree:add(pf_ack, buf(i-1, Message.Sizes[MessageFlags.Gap]))
-                        mask(msg, pf_chn, buf, i-1, 1, MessageFlags.Channel)                         
+                        msg:add(pf_chn, buf(i - 1, 1), channel)
                         i = uint(msg, pf_ack_next, buf, i, 2)
                         local from = buf(i, 2):uint()
                         i = uint(msg, pf_ack_last, buf, i, 2)
@@ -348,7 +346,7 @@ function p_carambolas.dissector(buf, pinfo, root)
                         add_stat(channels, channel, "Dup Gaps")
                         has_gaps = true
                         local msg = subtree:add(pf_ack, buf(i-1, Message.Sizes[MessageFlags.DupGap]))
-                        mask(msg, pf_chn, buf, i-1, 1, MessageFlags.Channel) 
+                        msg:add(pf_chn, buf(i - 1, 1), channel)
                         i = uint(msg, pf_ack_count, buf, i, 2)
                         i = uint(msg, pf_ack_next, buf, i, 2)
                         local from = buf(i, 2):uint()
@@ -362,8 +360,8 @@ function p_carambolas.dissector(buf, pinfo, root)
                         if (m > length)  then                             
                             local msg = seglen > 0 and subtree:add(pf_segment, buf(i-1, length))
                                                     or subtree:add(pf_ping, buf(i-1, length))
-                            mask(msg, pf_qos, buf, i-1, 1, 0x40)
-                            mask(msg, pf_chn, buf, i-1, 1, 0x0F)
+                            mask(msg, pf_qos, buf, i - 2, 1, 0x40)
+                            msg:add(pf_chn, buf(i - 1, 1), channel)
                             i = uint(msg, pf_seq, buf, i, 2)
                             i = uint(msg, pf_rsn, buf, i, 2)                               
                             i = uint(msg, pf_data_len, buf, i, 2)                            
@@ -383,8 +381,8 @@ function p_carambolas.dissector(buf, pinfo, root)
                         if (m > length)  then 
                             add_stat(channels, channel, "Fragments")
                             local msg = subtree:add(pf_fragment, buf(i-1, length))
-                            mask(msg, pf_qos, buf, i-1, 1, 0x40)
-                            mask(msg, pf_chn, buf, i-1, 1, 0x0F)
+                            mask(msg, pf_qos, buf, i - 2, 1, 0x40)
+                            msg:add(pf_chn, buf(i - 1, 1), channel)
                             i = uint(msg, pf_seq, buf, i, 2)
                             i = uint(msg, pf_rsn, buf, i, 2)                        
                             i = uint(msg, pf_seglen, buf, i, 2)

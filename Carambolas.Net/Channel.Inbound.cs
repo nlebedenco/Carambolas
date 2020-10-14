@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 
 namespace Carambolas.Net
 {
     internal partial struct Channel
     {
+        [StructLayout(LayoutKind.Auto)]
         public partial struct Inbound
         {
             public Node.Tree<Reassembly> Reassemblies;
@@ -50,9 +52,9 @@ namespace Carambolas.Net
             public Protocol.Ordinal.Window.Times NextRemoteTimes;
 
             /// <summary>
-            /// Sequence number to acknowledge, number of times to acknowledge, 
+            /// Sequence number to acknowledge, number of times to acknowledge and
             /// time to acknowledge (latest source time received since transmission of last ack).
-            /// An ack must be transmitted when <see cref="Ack.Count"/> &gt; 0
+            /// An ack must be transmitted when Count &gt; 0.
             /// </summary>
             public (Protocol.Ordinal SequenceNumber, ushort Count, Protocol.Time LatestRemoteTime) Ack;
 
@@ -74,31 +76,7 @@ namespace Carambolas.Net
                 var max = NextRemoteTimes[window];
                 if (max < remoteTime)
                     NextRemoteTimes[window] = remoteTime;
-            }
-
-            /// <summary>
-            /// Update last source time to be used as acknowledged send time in the next ack that is transmitted.
-            /// </summary>
-            public void Acknowledge(Protocol.Time remoteTime, bool isFirstInPacket)
-            {
-                if (Ack.Count == 0)
-                {
-                    Ack = (NextSequenceNumber, 1, remoteTime);
-                }
-                else
-                {                    
-                    if (Ack.SequenceNumber != NextSequenceNumber)
-                    {
-                        Ack.SequenceNumber = NextSequenceNumber;
-                        Ack.Count = 1;
-                    }
-                    else if (isFirstInPacket)
-                        Ack.Count++;
-
-                    if (Ack.LatestRemoteTime < remoteTime)
-                        Ack.LatestRemoteTime = remoteTime;
-                }
-            }
+            }          
 
             public void Dispose()
             {

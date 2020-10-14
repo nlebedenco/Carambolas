@@ -46,9 +46,9 @@ namespace Carambolas
 
         public bool Contains(T value)
         {
-            if (minValue.CompareTo(value) >= 0)
+            if (minValue.CompareTo(value) > 0)
                 return false;
-            if (maxValue.CompareTo(value) <= 0)
+            if (maxValue.CompareTo(value) < 0)
                 return false;
             return true;
         }

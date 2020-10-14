@@ -229,7 +229,7 @@ Sliding Window Protocols encompass all forms of ARQ protocols. From [the wikiped
 address and port (also referred to as IP end point) of the destination. The receiver may identify a sender by IP address and port as well. The need for a more 
 elaborate protocol becomes aparent when this communication needs to be coordinated.
 
-* Network systems are inherently a form of coperative distributed system. Both sender and receiver are expected to cooperate for the communication to be 
+* Network systems are inherently a form of cooperative distributed system. Both sender and receiver are expected to cooperate for the communication to be 
 effective. In principle, a node cannot force data onto another as much as it cannot forcebly retrieve data from another. This cooperation may be abused, however, 
 leading to all sorts of degenerate states and ultimately disrupting the network. Moreover, a network peer must remain aware of other unrelated peers that might 
 be sharing the same network resources despite never actively communicating with it. This situation may be approached as a game where each node wants to maximize
@@ -1883,16 +1883,19 @@ while? How many times? These questions cannot be universally addressed by the pr
 Time source is implemented on top of the [System.Diagnostics.Stopwatch](https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.stopwatch?view=netstandard-2.0)
 and relies on the target platform supporting a high resolution timer.
 
-Note that the Stopwatch will display a measurable drift when compared to the system clock, which may accumulate over a period of time leading to different readings. 
-Some sources like https://www.codeproject.com/articles/792410/high-resolution-clock-in-csharp suggest that this drift must be aproximately 0.02%. That is 0.0002s per 
-second (ie. every millisecond actually lasts 1±0.02ms). This should not be a problem since the time source is internally used to calculate relatively small time 
-durations between correlate timestamps and never as a source of absolute time readings to be used externally or comparable to the system clock. 
+Note that the [Stopwatch](https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.stopwatch?view=netstandard-2.0) is still subject to a measurable 
+drift when compared to the system clock which may accumulate over a short period of time. When there is a constant clock skew between two clocks, the clock offset between them
+gradually increases or decreases over time, depending on the sign of the skew. The amount of increase or decrease in the clock offset is proportional to the time duration of 
+observation. Some sources like https://www.codeproject.com/articles/792410/high-resolution-clock-in-csharp suggest that this drift must be aproximately 0.02% that is 0.0002s 
+per second (ie. every millisecond actually lasts 1±0.02ms). It remains to be verified however if the Stopwatch accuracy may vary at higher rates or if it may be suject to negative effects due to runtime system adjustments such 
+as CPU throttling.
+
+This should not be a problem since the time source is internally used to calculate relatively small time durations between correlate timestamps (offsets) and never as a source 
+of absolute time references to be used externally or compared to the system clock. 
 
 In regard to `RTT` estimation, the variability of measured values may be so high, as pointed out by [Sessini and Mahanti](https://pages.cpsc.ucalgary.ca/~mahanti/papers/spects.submission.pdf) 
 that a time source skew of 0.02% is probably going to pass unnoticed. 
 
-It remains to be verified however if the Stopwatch accuracy may vary at higher rates or if it may be suject to negative effects due to runtime system adjustments such 
-as CPU throttling.
 
 ## Vulnerabilities
 

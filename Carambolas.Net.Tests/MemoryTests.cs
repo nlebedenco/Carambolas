@@ -9,7 +9,7 @@ namespace Carambolas.Net.Tests
     public class MemoryTests
     {       
         [Fact]
-        public void Dispose()
+        public void Disposal()
         {
             var pool = new Carambolas.Net.Memory.Pool();
             var m = pool.Get();

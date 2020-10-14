@@ -10,6 +10,7 @@ namespace Carambolas.Net
 {
     public static class Protocol
     {
+        [StructLayout(LayoutKind.Auto)]
         public readonly struct QoS
         {
             public static readonly QoS Unreliable = new QoS(Delivery.Unreliable);
@@ -483,12 +484,14 @@ namespace Carambolas.Net
                 /// </summary>
                 internal struct Times
                 {
+                    public const uint MaxAdjustmentTime = 24 * 24 * 3600 * 1000; // = 24 days in milliseconds
+
                     public const int Size = 4;
                     
-                    private uint a0;
-                    private uint a1;
-                    private uint a2;
-                    private uint a3;
+                    private Time a0;
+                    private Time a1;
+                    private Time a2;
+                    private Time a3;
 
                     public Time this[int index]
                     {
@@ -531,7 +534,22 @@ namespace Carambolas.Net
                         }
                     }
 
-                    public Times(uint value) => a0 = a1 = a2 = a3 = value;
+                    public Times(Protocol.Time time) => a0 = a1 = a2 = a3 = time;
+
+                    /// <summary>
+                    /// If an ordinal window time is less than <paramref name="time"/> set it to <paramref name="time"/>.
+                    /// </summary>
+                    public void Adjust(Protocol.Time time)
+                    {
+                        if (a0 < time)
+                            a0 = time;
+                        if (a1 < time)
+                            a1 = time;
+                        if (a2 < time)
+                            a2 = time;
+                        if (a3 < time)
+                            a3 = time;
+                    }
                 }
             }
 
