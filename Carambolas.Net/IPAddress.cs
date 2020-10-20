@@ -9,7 +9,7 @@ using SystemIPAddress = System.Net.IPAddress;
 namespace Carambolas.Net
 {
     [StructLayout(LayoutKind.Explicit, Pack = 1)]
-    public readonly struct IPAddress: IEquatable<IPAddress>, IComparable<IPAddress>
+    public readonly struct IPAddress: IEquatable<IPAddress>, IComparable<IPAddress>, IComparable
     {
         public static readonly IPAddress Any = new IPAddress(AddressFamily.InterNetwork);
 
@@ -139,9 +139,13 @@ namespace Carambolas.Net
             }
         }
 
+        public int CompareTo(IPAddress other) => Compare(this, other);
+
+        public int CompareTo(object obj) => obj is IPAddress other ? Compare(in this, in other) : throw new ArgumentException(string.Format(SR.ArgumentMustBeOfType, GetType().FullName), nameof(obj));
+
         public bool Equals(IPAddress other) => Compare(this, other) == 0;
 
-        public int CompareTo(IPAddress other) => Compare(this, other);
+        public override bool Equals(object obj) => obj is IPAddress address && Compare(this, address) == 0;
 
         public override int GetHashCode()
         {
@@ -149,8 +153,6 @@ namespace Carambolas.Net
             var h2 = (int)(ipv6PackedAddress1 ^ (ipv6PackedAddress1 >> 32));
             return (int)((uint)(h1 << 5) | (uint)h1 >> 27) + h1 ^ h2;
         }
-
-        public override bool Equals(object obj) => obj is IPAddress address && Compare(this, address) == 0;
 
         public override string ToString()
         {

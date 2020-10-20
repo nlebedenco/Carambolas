@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace Carambolas
 {
@@ -30,6 +31,7 @@ namespace Carambolas
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string ToHex(byte[] b, int index, int length) => BitConverter.ToString(b, index, length).Replace("-", string.Empty);
     }
 }

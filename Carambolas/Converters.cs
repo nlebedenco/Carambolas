@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace Carambolas.Net
+namespace Carambolas
 {
     [StructLayout(LayoutKind.Explicit)]
     internal struct FloatConverter
@@ -23,11 +23,14 @@ namespace Carambolas.Net
         public long AsInt64;
     }
 
+    /// <summary>
+    /// Relies on <see cref="System.Guid"/> having an internal representation of 11 fields: 1 int, 2 shorts and 8 bytes.
+    /// </summary>
     [StructLayout(LayoutKind.Explicit)]
-    public struct GuidConverter
+    internal struct GuidConverter
     {
         [FieldOffset(0)]
-        public Guid Guid;
+        public System.Guid Guid;
 
         [FieldOffset(0)]
         public ulong MSB;

@@ -11,7 +11,7 @@ using SystemIPEndPoint = System.Net.IPEndPoint;
 namespace Carambolas.Net
 {
     [StructLayout(LayoutKind.Sequential)]
-    public readonly struct IPEndPoint: IEquatable<IPEndPoint>, IComparable<IPEndPoint>
+    public readonly struct IPEndPoint: IEquatable<IPEndPoint>, IComparable<IPEndPoint>, IComparable
     {
         public static readonly IPEndPoint Any = new IPEndPoint(IPAddress.Any, 0);
         public static readonly IPEndPoint IPv6Any = new IPEndPoint(IPAddress.IPv6Any, 0);
@@ -28,11 +28,13 @@ namespace Carambolas.Net
             this.Address = address;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int CompareTo(IPEndPoint other) => Compare(this, other);
+        public int CompareTo(IPEndPoint other) => Compare(in this, in other);
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Equals(IPEndPoint other) => Compare(this, other) == 0;
+        public int CompareTo(object obj) => obj is IPEndPoint other ? Compare(in this, in other) : throw new ArgumentException(string.Format(SR.ArgumentMustBeOfType, GetType().FullName), nameof(obj));
+
+        public bool Equals(IPEndPoint other) => Compare(in this, in other) == 0;
+
+        public override bool Equals(object obj) => obj is IPEndPoint y && Compare(in this, in y) == 0;
 
         public override int GetHashCode()
         {
@@ -41,13 +43,11 @@ namespace Carambolas.Net
             return (int)((uint)(h1 << 5) | (uint)h1 >> 27) + h1 ^ h2;            
         }
 
-        public override bool Equals(object obj) => obj is IPEndPoint y && IPEndPoint.Compare(this, y) == 0;
-
         public override string ToString() => Address.AddressFamily == AddressFamily.InterNetworkV6 ? $"[{Address}]:{Port}" : $"{Address}:{Port}";
 
-        public static bool operator ==(IPEndPoint x, IPEndPoint y) => Compare(x, y) == 0;
+        public static bool operator ==(IPEndPoint x, IPEndPoint y) => Compare(in x, in y) == 0;
 
-        public static bool operator !=(IPEndPoint x, IPEndPoint y) => Compare(x, y) != 0;
+        public static bool operator !=(IPEndPoint x, IPEndPoint y) => Compare(in x, in y) != 0;
 
         public static IPEndPoint Parse(string value)
         {

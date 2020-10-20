@@ -14,8 +14,8 @@ namespace Carambolas.Tests
         public void Creation(int a, int b, int min, int max)
         {
             var range = new Range<int>(a, b);
-            Assert.Equal(min, range.MinValue);
-            Assert.Equal(max, range.MaxValue);
+            Assert.Equal(min, range.Min);
+            Assert.Equal(max, range.Max);
         }
 
         [Theory]

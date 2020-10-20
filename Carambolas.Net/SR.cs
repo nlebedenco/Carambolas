@@ -21,7 +21,7 @@ namespace Carambolas.Net
             public const string ThreadException = "An exception has forced the host to stop.";
             public const string NotOpen = "Not open.";
             public const string AlreadyOpen = "Already open.";
-        }
+        }        
 
         public static class IPAddress
         {
