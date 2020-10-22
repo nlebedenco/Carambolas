@@ -1,4 +1,4 @@
-﻿<Project>
+<Project>
   <PropertyGroup>
     <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
     <BaseOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\bin\</BaseOutputPath>
@@ -11,13 +11,13 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.3</LangVersion>
-    <RootNamespace>Carambolas.UnityEngine.Replication</RootNamespace>
-    <PackageId>Carambolas.UnityEngine.Replication</PackageId>
-    <Product>Carambolas.UnityEngine.Replication</Product>
+    <RootNamespace>Carambolas.UnityEditor</RootNamespace>
+    <PackageId>Carambolas.UnityEditor</PackageId>
+    <Product>Carambolas.UnityEditor</Product>
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Description>Carambolas is a modular framework for network applications based on a custom reliable UDP protocol specification.</Description>
+    <Description>Carambolas is a modular framework for network applications based on a custom reliable UDP protocol specification. This assembly provides support for development using the unity editor.</Description>
     <PackageTags>unity3d modular library</PackageTags>
     <Platforms>AnyCPU;x64;x86</Platforms>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
@@ -58,10 +58,14 @@
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <NoWarn>1701;1702;CS1591</NoWarn>
   </PropertyGroup>
-
+  
   <ItemGroup>
-    <ProjectReference Include="..\Carambolas.Net\Carambolas.Net.csproj" />
+    <ProjectReference Include="..\Carambolas\Carambolas.csproj" />
     <ProjectReference Include="..\Carambolas.UnityEngine\Carambolas.UnityEngine.csproj" />
   </ItemGroup>
   
+  <ItemGroup>
+    <PackageReference Include="Unity3D" Version="1.5.0" />    
+  </ItemGroup>
+
 </Project>

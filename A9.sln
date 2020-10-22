@@ -35,6 +35,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Carambolas.UnityEngine", "C
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Carambolas.UnityEngine.Replication", "Carambolas.UnityEngine.Replication\Carambolas.UnityEngine.Replication.csproj", "{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Carambolas.UnityEditor", "Carambolas.UnityEditor\Carambolas.UnityEditor.csproj", "{4CFB9740-FB17-4177-8198-142110CFE617}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -131,6 +133,14 @@ Global
 		{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}.Release|x64.Build.0 = Release|x64
 		{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}.Release|x86.ActiveCfg = Release|x86
 		{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}.Release|x86.Build.0 = Release|x86
+		{4CFB9740-FB17-4177-8198-142110CFE617}.Debug|x64.ActiveCfg = Debug|x64
+		{4CFB9740-FB17-4177-8198-142110CFE617}.Debug|x64.Build.0 = Debug|x64
+		{4CFB9740-FB17-4177-8198-142110CFE617}.Debug|x86.ActiveCfg = Debug|x86
+		{4CFB9740-FB17-4177-8198-142110CFE617}.Debug|x86.Build.0 = Debug|x86
+		{4CFB9740-FB17-4177-8198-142110CFE617}.Release|x64.ActiveCfg = Release|x64
+		{4CFB9740-FB17-4177-8198-142110CFE617}.Release|x64.Build.0 = Release|x64
+		{4CFB9740-FB17-4177-8198-142110CFE617}.Release|x86.ActiveCfg = Release|x86
+		{4CFB9740-FB17-4177-8198-142110CFE617}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
