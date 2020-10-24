@@ -32,7 +32,8 @@ namespace Carambolas
 
         public int CompareTo(Luid other) => value.CompareTo(other.value);
 
-        public int CompareTo(object obj) => obj is Luid other ? value.CompareTo(other.value) : throw new ArgumentException(string.Format(SR.ArgumentMustBeOfType, GetType().FullName), nameof(obj));
+        public int CompareTo(object obj) => obj is Luid other ? value.CompareTo(other.value) 
+            : throw new ArgumentException(string.Format(Resources.GetString(Strings.ArgumentMustBeOfType), GetType().FullName), nameof(obj));
 
         public override bool Equals(object obj) => (obj is Luid s) && Equals(s);
 

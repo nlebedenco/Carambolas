@@ -13,7 +13,7 @@
     <LangVersion>7.3</LangVersion>
     <RootNamespace>Carambolas.Net</RootNamespace>
     <PackageId>Carambolas.Net</PackageId>
-    <Product>Carambolas.Net</Product>
+    <Product>Carambolas</Product>
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

@@ -20,29 +20,28 @@ namespace Carambolas.UnityEngine
         public static Guid NewGuid() => new Guid(System.Guid.NewGuid());
 
         [HideInInspector, SerializeField]
-        [DebuggerBrowsable(DebuggerBrowsableState.Never)]        
-        private ulong msb;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint a;
 
         [HideInInspector, SerializeField]
-        [DebuggerBrowsable(DebuggerBrowsableState.Never)]        
-        private ulong lsb;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private ushort b;
 
-        public bool IsEmpty => (msb | lsb ) == 0;
+        [HideInInspector, SerializeField]
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private ushort c;
 
-        public Guid(in System.Guid guid)
-        {
-            var converter = new GuidConverter { Guid = guid };
-            this.msb = converter.MSB;
-            this.lsb = converter.LSB;
-        }
+        [HideInInspector, SerializeField]
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private ulong d;
 
-        public Guid(uint a, ushort b, ushort c, ulong d)
-        {
-            this.msb = (ulong)a << 32 | (ulong)b << 16 | c;
-            this.lsb = d;
-        }
+        public bool IsEmpty => (a | b | c | d) == 0;
 
-        public Guid(int a, short b, short c, long d) : this((uint)a, (ushort)b, (ushort)c, (ulong)d) { }
+        public Guid(uint a, ushort b, ushort c, ulong d) => (this.a, this.b, this.c, this.d) = (a, b, c, d);
+
+        public Guid(int a, short b, short c, long d) => (this.a, this.b, this.c, this.d) = ((uint)a, (ushort)b, (ushort)c, (ushort)d);
+
+        public Guid(in System.Guid guid) => (a, b, c, d) = new Converter.Guid { AsGuid = guid }.AsTuple;
 
         public Guid(byte[] b) : this(new System.Guid(b)) { }
 
@@ -51,7 +50,7 @@ namespace Carambolas.UnityEngine
         public Guid(int a, short b, short c, byte[] d) : this(new System.Guid(a, b, c, d)) { }
 
         public Guid(int a, short b, short c, byte d, byte e, byte f, byte g, byte h, byte i, byte j, byte k) : this(new System.Guid(a, b, c, d, e, f, g, h, i, j, k)) { }
-
+       
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Guid Parse(string input) => new Guid(System.Guid.Parse(input));
 
@@ -84,25 +83,29 @@ namespace Carambolas.UnityEngine
 
         #region Operators
 
-        public static bool operator ==(Guid x, Guid y) => x.msb == y.msb && x.lsb == y.lsb;
+        public static bool operator ==(Guid x, Guid y) => ((x.a ^ y.a) | (ushort)(x.b ^ y.b) | (ushort)(x.c ^ y.c) | (x.d ^ y.d)) == 0;
         public static bool operator !=(Guid x, Guid y) => !(x == y);
-        public static bool operator <(Guid x, Guid y) => x.msb < y.msb || (x.msb == y.msb && x.lsb < y.lsb);
-        public static bool operator >(Guid x, Guid y) => x.msb > y.msb || (x.msb == y.msb && x.lsb > y.lsb);
+        public static bool operator <(Guid x, Guid y) => Compare(in x, in y) < 0;
+        public static bool operator >(Guid x, Guid y) => Compare(in x, in y) > 0;
 
-        public static implicit operator System.Guid(Guid x) => new GuidConverter { MSB = x.msb, LSB = x.lsb }.Guid;
+        public static explicit operator System.Guid(in Guid guid) => new Converter.Guid { AsTuple = (guid.a, guid.b, guid.c, guid.d) }.AsGuid;
 
         #endregion
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int Compare(in Guid a, in Guid b)
+        private static int Compare(in Guid x, in Guid y)
         {
-            var value = a.msb.CompareTo(b.msb);
-            return value == 0 ? a.lsb.CompareTo(b.lsb) : value;
+            var msbx = ((ulong)x.a << 32) | ((uint)(x.b << 16) | x.c);
+            var msby = ((ulong)y.a << 32) | ((uint)(y.b << 16) | y.c);
+
+            var value = msbx.CompareTo(msby);
+            return value == 0 ? x.d.CompareTo(y.d) : value;
         }
 
         public int CompareTo(Guid other) => Compare(in this, in other);
 
-        public int CompareTo(object obj) => obj is Guid other ? Compare(in this, in other) : throw new ArgumentException(string.Format(SR.ArgumentMustBeOfType, GetType().FullName), nameof(obj));
+        public int CompareTo(object obj) => obj is Guid other ? Compare(in this, in other) 
+            : throw new ArgumentException(string.Format(Resources.GetString(Strings.ArgumentMustBeOfType), GetType().FullName), nameof(obj));
 
         public override bool Equals(object obj) => obj is Guid other && Compare(in this, in other) == 0;
 
@@ -117,6 +120,8 @@ namespace Carambolas.UnityEngine
         public string ToString(string format, IFormatProvider provider) => ((System.Guid)this).ToString(format, provider);
 
         public byte[] ToByteArray() => ((System.Guid)this).ToByteArray();
+
+        public void Deconstruct(out uint a, out ushort b, out ushort c, out ulong d) => (a, b, c, d) = (this.a, this.b, this.c, this.d);
 
         public sealed class Comparer: IEqualityComparer<Guid>
         {

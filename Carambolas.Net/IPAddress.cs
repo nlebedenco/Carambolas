@@ -86,7 +86,7 @@ namespace Carambolas.Net
             }
             else
             {
-                throw new ArgumentException(string.Format(SR.IPAddress.LengthMustBe4Or16, nameof(address)), nameof(address));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.Net.IPAddress.LengthMustBe4Or16), nameof(address)), nameof(address));
             }
         }
 
@@ -141,7 +141,8 @@ namespace Carambolas.Net
 
         public int CompareTo(IPAddress other) => Compare(this, other);
 
-        public int CompareTo(object obj) => obj is IPAddress other ? Compare(in this, in other) : throw new ArgumentException(string.Format(SR.ArgumentMustBeOfType, GetType().FullName), nameof(obj));
+        public int CompareTo(object obj) => obj is IPAddress other ? Compare(in this, in other) 
+            : throw new ArgumentException(string.Format(Resources.GetString(Strings.ArgumentMustBeOfType), GetType().FullName), nameof(obj));
 
         public bool Equals(IPAddress other) => Compare(this, other) == 0;
 

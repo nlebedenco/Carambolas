@@ -4,6 +4,9 @@ using UnityEngine;
 
 namespace Carambolas.UnityEngine
 {
+    /// <summary>
+    /// Finite line segment defined by a start point and an end point.
+    /// </summary>
     [Serializable]
     public struct Segment: IFormattable
     {

@@ -41,7 +41,7 @@ namespace Carambolas.Net
                 throw new ArgumentOutOfRangeException(nameof(length));
             
             if (offset > buffer.Length - length)
-                throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrLengthIsGreaterThanBuffer, nameof(offset), nameof(length)), nameof(length));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanBuffer), nameof(offset), nameof(length)), nameof(length));
 
             this.begin = offset;
             this.end = offset + length;
@@ -61,7 +61,7 @@ namespace Carambolas.Net
                 throw new ArgumentOutOfRangeException(nameof(value));
 
             if (end + value > buffer.Length)
-                throw new ArgumentException(string.Format(SR.BinaryWriter.ExpandOverflow, value), nameof(value));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.Net.BinaryWriter.ExpandWouldOverflow), value), nameof(value));
 
             UncheckedExpand(value);
         }
@@ -113,9 +113,9 @@ namespace Carambolas.Net
             UncheckedWrite(value);            
         }      
 
-        public void Write(float value) => Write(new FloatConverter { AsFloat = value }.AsInt32);
+        public void Write(float value) => Write(new Converter.Single { AsFloat = value }.AsInt32);
 
-        public void Write(double value) => Write(new DoubleConverter { AsDouble = value }.AsInt64);
+        public void Write(double value) => Write(new Converter.Double { AsDouble = value }.AsInt64);
 
         public void Write(byte[] sourceArray, int length) => Write(sourceArray, 0, length);
 
@@ -125,26 +125,10 @@ namespace Carambolas.Net
             UncheckedWrite(sourceArray, sourceIndex, length);
         }
 
-        public void Write(Guid value)
+        public void Write(in Guid value)
         {
-            var union = new GuidConverter { Guid = value };
-            Write(union.MSB);
-            Write(union.LSB);
-        }
-
-        public void Write(in IPEndPoint endPoint)
-        {
-            Write(endPoint.Port);
-            Write((byte)endPoint.Address.AddressFamily);
-            if (endPoint.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
-            {
-                Write(endPoint.Address.IPv6PackedAddress0);
-                Write(endPoint.Address.IPv6PackedAddress1);
-            }
-            else
-            {
-                Write(endPoint.Address.IPv4PackedAddress);
-            }
+            Ensure(16);
+            UncheckedWrite(in value);
         }
 
         internal void Write(Memory source) => Write(source, 0, source.Length);
@@ -202,9 +186,9 @@ namespace Carambolas.Net
             return true;
         }
       
-        public bool TryWrite(float value) => TryWrite(new FloatConverter { AsFloat = value }.AsInt32);
+        public bool TryWrite(float value) => TryWrite(new Converter.Single { AsFloat = value }.AsInt32);
 
-        public bool TryWrite(double value) => TryWrite(new DoubleConverter { AsDouble = value }.AsInt64);
+        public bool TryWrite(double value) => TryWrite(new Converter.Double { AsDouble = value }.AsInt64);
 
         public bool TryWrite(byte[] sourceArray, int length) => TryWrite(sourceArray, 0, length);
 
@@ -217,17 +201,14 @@ namespace Carambolas.Net
             return true;
         }       
 
-        public bool TryWrite(Guid value)
+        public bool TryWrite(in Guid value)
         {
-            var union = new GuidConverter { Guid = value };
-            return TryWrite(union.MSB) && TryWrite(union.LSB);
-        }
+            if (Available < 16)
+                return false;
 
-        public bool TryWrite(in IPEndPoint endPoint) => TryWrite(endPoint.Port) 
-            && TryWrite((byte)endPoint.Address.AddressFamily)
-            && (endPoint.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
-                ? (TryWrite(endPoint.Address.IPv6PackedAddress0) && TryWrite(endPoint.Address.IPv6PackedAddress1))
-                : TryWrite(endPoint.Address.IPv4PackedAddress);
+            UncheckedWrite(in value);
+            return true;
+        }
 
         internal bool TryWrite(Memory source) => TryWrite(source, 0, source.Length);
 
@@ -247,7 +228,7 @@ namespace Carambolas.Net
         internal void Ensure(int n)
         {
             if (Available < n)
-                throw new InvalidOperationException(string.Format(SR.BinaryWriter.InsuficientSpace, Available, n));
+                throw new InvalidOperationException(string.Format(Resources.GetString(Strings.Net.BinaryWriter.InsuficientSpace), Available, n));
         }
 
 
@@ -305,6 +286,16 @@ namespace Carambolas.Net
         {
             Array.Copy(sourceArray, sourceIndex, buffer, position, length);
             position += length;
+        }
+
+        internal void UncheckedWrite(in Guid value)
+        {
+            var (a, b, c, d) = new Converter.Guid { AsGuid = value }.AsTuple;
+
+            UncheckedWrite(a);
+            UncheckedWrite(b);
+            UncheckedWrite(c);
+            UncheckedWrite(d);
         }
 
         internal void UncheckedWrite(Memory source, int sourceIndex, int length)

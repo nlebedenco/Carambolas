@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
+// TODO: define a public static BitConverter and merge with Converter classes to over conversion and serialization?
+
 namespace Carambolas.Net
 {
     internal class BinaryReader
@@ -38,7 +40,7 @@ namespace Carambolas.Net
                 throw new ArgumentOutOfRangeException(nameof(length));
 
             if (offset > buffer.Length - length)
-                throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrLengthIsGreaterThanBuffer, nameof(offset), nameof(length)), nameof(length));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanBuffer), nameof(offset), nameof(length)), nameof(length));
 
             UncheckedReset(offset, length);
         }
@@ -63,7 +65,7 @@ namespace Carambolas.Net
                 throw new ArgumentOutOfRangeException(nameof(value));
 
             if (end - value < 0)
-                throw new ArgumentException(string.Format(SR.BinaryReader.TruncateUnderflow, value), nameof(value));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.Net.BinaryReader.TruncateWouldUnderflow), value), nameof(value));
 
             UncheckedTruncate(value);
         }
@@ -134,13 +136,13 @@ namespace Carambolas.Net
         public void Read(out float value)
         {
             Read(out int v);
-            value = new FloatConverter { AsInt32 = v }.AsFloat;
+            value = new Converter.Single { AsInt32 = v }.AsFloat;
         }
 
         public void Read(out double value)
         {
             Read(out long v);
-            value = new DoubleConverter { AsInt64 = v }.AsDouble;
+            value = new Converter.Double { AsInt64 = v }.AsDouble;
         }
 
         public void Read(byte[] destinationArray, int length) => Read(destinationArray, 0, length);        
@@ -153,27 +155,8 @@ namespace Carambolas.Net
 
         public void Read(out Guid value)
         {
-            var union = default(GuidConverter);
-            Read(out union.MSB);
-            Read(out union.LSB);
-            value = union.Guid;
-        }
-
-        public void Read(out IPEndPoint value)
-        {
-            Read(out ushort port);
-            Read(out byte addressFamily);
-            if (addressFamily == (byte)System.Net.Sockets.AddressFamily.InterNetworkV6)
-            {
-                Read(out ulong a);
-                Read(out ulong b);
-                value = new IPEndPoint(new IPAddress(a, b), port);
-            }
-            else
-            {
-                Read(out uint a);
-                value = new IPEndPoint(new IPAddress(a), port);
-            }
+            Ensure(16);
+            UncheckedRead(out value);
         }
 
         internal void Read(Memory destination, int destinationIndex, int length)
@@ -283,7 +266,7 @@ namespace Carambolas.Net
         {
             if (TryRead(out int v))
             {
-                value = new FloatConverter { AsInt32 = v }.AsFloat;
+                value = new Converter.Single { AsInt32 = v }.AsFloat;
                 return true;
             }
 
@@ -295,7 +278,7 @@ namespace Carambolas.Net
         {
             if (TryRead(out long v))
             {
-                value = new DoubleConverter { AsInt64 = v }.AsDouble;
+                value = new Converter.Double { AsInt64 = v }.AsDouble;
                 return true;
             }
 
@@ -316,42 +299,10 @@ namespace Carambolas.Net
             
         public bool TryRead(out Guid value)
         {
-            var context = position;
-            var union = default(GuidConverter);            
-            if (TryRead(out union.MSB) && TryRead(out union.LSB))
-            {
-                value = union.Guid;
-                return true;
-            }
+            if (Available < 16)
+                return false;
 
-            (value, position) = (default, context);
-            return false;
-        }
-
-        public bool TryRead(out IPEndPoint value)
-        {
-            var context = position;
-            if (TryRead(out ushort port) && TryRead(out byte addressFamily))
-            {
-                if (addressFamily == (byte)System.Net.Sockets.AddressFamily.InterNetworkV6)
-                {
-                    if (TryRead(out ulong a) && TryRead(out ulong b))
-                    {
-                        value = new IPEndPoint(new IPAddress(a, b), port);
-                        return true;
-                    }
-                }
-                else
-                {
-                    if (TryRead(out uint a))
-                    { 
-                        value = new IPEndPoint(new IPAddress(a), port);
-                        return true;
-                    }
-                }
-            }
-
-            (value, position) = (default, context);
+            UncheckedRead(out value);
             return false;
         }
 
@@ -368,7 +319,7 @@ namespace Carambolas.Net
         internal void Ensure(int n)
         {
             if (Available < n)
-                throw new InvalidOperationException(string.Format(SR.BinaryReader.InsuficientData, Available, n));
+                throw new InvalidOperationException(string.Format(Resources.GetString(Strings.Net.BinaryReader.InsuficientData), Available, n));
         }
 
 
@@ -402,6 +353,15 @@ namespace Carambolas.Net
         {
             Array.Copy(buffer, position, destinationArray, destinationIndex, length);
             position += length;
+        }
+
+        internal void UncheckedRead(out Guid value)
+        {
+            UncheckedRead(out uint a);
+            UncheckedRead(out ushort b);
+            UncheckedRead(out ushort c);
+            UncheckedRead(out ulong d);
+            value = new Converter.Guid { AsTuple = (a, b, c, d) }.AsGuid;
         }
 
         internal void UncheckedRead(Memory destination, int destinationIndex, int length)

@@ -34,8 +34,8 @@ namespace Carambolas.UnityEngine
                 return true;
             }
 
-            closestPointOnSelf = default(Vector3);
-            closestPointOnOther = default(Vector3);
+            closestPointOnSelf = default;
+            closestPointOnOther = default;
 
             return false;
         }

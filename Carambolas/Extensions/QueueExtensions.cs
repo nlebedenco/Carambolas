@@ -8,16 +8,28 @@ namespace Carambolas
 {
     public static class QueueExtensions
     {
-        public static bool TryDequeue<T>(this Queue<T> q, out T value)
+        public static bool TryDequeue<T>(this Queue<T> queue, out T value)
         {
-            if (q.Count > 0)
+            if (queue.Count > 0)
             {
-                value = q.Dequeue();
+                value = queue.Dequeue();
                 return true;
             }
 
             value = default;
             return false;
+        }
+
+        public static bool TryPeek<T>(this Queue<T> queue, out T value)
+        {
+            if (queue.Count == 0)
+            {
+                value = default;
+                return false;
+            }
+
+            value = queue.Peek();
+            return true;
         }
     }
 }

@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
     <BaseOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\bin\</BaseOutputPath>
@@ -65,7 +65,8 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Unity3D" Version="1.5.0" />    
+    <PackageReference Include="Unity3D" Version="1.5.0" />
+    <Reference Include="$(UnityInstallRoot)\$(UnityVersion)\$(UnityEditorPath)" Private="false" />
   </ItemGroup>
 
 </Project>

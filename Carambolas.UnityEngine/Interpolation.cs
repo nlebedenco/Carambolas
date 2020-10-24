@@ -125,7 +125,7 @@ namespace Carambolas.UnityEngine
                     case Function.Bounce:
                         return Bounce;
                     default:
-                        throw new ArgumentException(string.Format(SR.InvalidValue, function), nameof(function));
+                        throw new ArgumentException(string.Format(Resources.GetString(Strings.InvalidValue), function), nameof(function));
                 }
             }
 

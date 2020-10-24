@@ -49,7 +49,7 @@ namespace Carambolas.Security.Cryptography
                 throw new ArgumentNullException(nameof(array));
 
             if (index > (array.Length - Size))
-                throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrNumberOfElementsIsLessThanMinimum, nameof(index), Size, nameof(array)), nameof(array));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrNumberOfElementsIsLessThanMinimum), nameof(index), Size, nameof(array)), nameof(array));
 
             k0 = ((uint)array[index +  0]) | ((uint)array[index  + 1] << 8) | ((uint)array[index +  2] << 16) | ((uint)array[index +  3] << 24);
             k1 = ((uint)array[index +  4]) | ((uint)array[index  + 5] << 8) | ((uint)array[index +  6] << 16) | ((uint)array[index +  7] << 24);
@@ -70,7 +70,7 @@ namespace Carambolas.Security.Cryptography
                 throw new ArgumentNullException(nameof(index));
 
             if (index > (array.Length - Size))
-                throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrNumberOfElementsIsLessThanMinimum, nameof(index), Size, nameof(array)), nameof(array));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrNumberOfElementsIsLessThanMinimum), nameof(index), Size, nameof(array)), nameof(array));
 
             array[index + 0]  = (byte)(k0 >> 0);
             array[index + 1]  = (byte)(k0 >> 8);
@@ -115,7 +115,7 @@ namespace Carambolas.Security.Cryptography
                 throw new ArgumentNullException(nameof(index));
 
             if (index > (array.Length - (Size / sizeof(uint))))
-                throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrNumberOfElementsIsLessThanMinimum, nameof(index), (Size / sizeof(uint)), nameof(array)), nameof(array));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrNumberOfElementsIsLessThanMinimum), nameof(index), (Size / sizeof(uint)), nameof(array)), nameof(array));
 
             array[index + 0] = k0;
             array[index + 1] = k1;

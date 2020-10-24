@@ -45,7 +45,7 @@ namespace Carambolas.Security.Cryptography
                 throw new ArgumentNullException(nameof(array));
 
             if (index > (array.Length - Size))
-                throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements, nameof(index), $"{nameof(Crc32C)}.{nameof(Size)} ({Size})", nameof(array)), nameof(array));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements), nameof(index), $"{nameof(Crc32C)}.{nameof(Size)} ({Size})", nameof(array)), nameof(array));
 
             value = ((uint)array[index + 3] << 24) | ((uint)array[index + 2] << 16) | ((uint)array[index + 1] << 8) | ((uint)array[index]);
         }
@@ -96,7 +96,7 @@ namespace Carambolas.Security.Cryptography
                 throw new ArgumentNullException(nameof(index));
 
             if (index > (array.Length - Size))
-                throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements, nameof(index), $"{nameof(Crc32C)}.{nameof(Size)} ({Size})", nameof(array)), nameof(array));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements), nameof(index), $"{nameof(Crc32C)}.{nameof(Size)} ({Size})", nameof(array)), nameof(array));
 
             array[index + 0] = (byte)(value);
             array[index + 1] = (byte)(value >> 8);
@@ -141,7 +141,7 @@ namespace Carambolas.Security.Cryptography
                 throw new ArgumentOutOfRangeException(nameof(length));
 
             if (offset > (buffer.Length - length))
-                throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements, nameof(offset), nameof(length), nameof(buffer)), nameof(buffer));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements), nameof(offset), nameof(length), nameof(buffer)), nameof(buffer));
 
             return new Crc32C(buffer, offset, length);
         }
@@ -158,7 +158,7 @@ namespace Carambolas.Security.Cryptography
                 throw new ArgumentOutOfRangeException(nameof(length));
 
             if (offset > (buffer.Length - length - Size))
-                throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements, nameof(offset), $"{nameof(length)} + {nameof(Crc32C)}.{nameof(Size)} ({Size})", nameof(buffer)), nameof(buffer));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements), nameof(offset), $"{nameof(length)} + {nameof(Crc32C)}.{nameof(Size)} ({Size})", nameof(buffer)), nameof(buffer));
 
             var crc = new Crc32C(buffer, offset, length);
             crc.CopyTo(buffer, length);            

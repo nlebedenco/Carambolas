@@ -4,13 +4,13 @@
  *
  * Use cases:
  *
- * Argument: –flag 
+ * Argument: -flag 
  * Usage: args.Contains("flag"); 
  * Result: true
  * Usage: args.HasValues("flag"); 
  * Result: false 
  * 
- * Argument: –arg "My Value" 
+ * Argument: -arg "My Value" 
  * Usage: args.TryGetValue("arg", out string result); 
  * Result: "My Value"
  * 
@@ -82,7 +82,9 @@ namespace Carambolas
         private readonly Dictionary<string, StringCollection> dictionary;
         private string waitingArgument;
 
-        public CommandLineArguments() : this(CommandLineArguments.SplitCommandLine(Environment.CommandLine)) { }
+        public CommandLineArguments() : this(Environment.CommandLine) { }
+
+        public CommandLineArguments(string commandLine) : this(SplitCommandLine(commandLine)) { }
 
         public CommandLineArguments(IEnumerable<string> arguments)
         {

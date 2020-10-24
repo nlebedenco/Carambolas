@@ -48,9 +48,6 @@ namespace Carambolas.Net.Sockets
 
         public int Available => socket.Available;
 
-        public Socket(in IPEndPoint endPoint) : this(in endPoint, in Settings.Default, Log.Default) { }
-        public Socket(in IPEndPoint endPoint, in Settings settings) : this(in endPoint, in settings, Log.Default) { }
-
 #if USE_NATIVE_SOCKET
         /// <summary>
         /// Zero if a log message has not been issued yet indicating that the native library is in use.
@@ -58,13 +55,13 @@ namespace Carambolas.Net.Sockets
         private static int logged;
 #endif
 
-        public Socket(in IPEndPoint endPoint, ILog log) : this(in endPoint, in Settings.Default, log) { }        
-        public Socket(in IPEndPoint endPoint, in Settings settings, ILog log)
+        public Socket(in IPEndPoint endPoint) : this(in endPoint, in Settings.Default) { }        
+        public Socket(in IPEndPoint endPoint, in Settings settings)
         {
             var addressFamily = endPoint.Address.AddressFamily;
             if ((addressFamily == AddressFamily.InterNetwork && !OSSupportsIPv4)
              || (addressFamily == AddressFamily.InterNetworkV6 && !OSSupportsIPv6))
-                throw new NotSupportedException(string.Format(SR.Socket.AddressFamilyNotSupported, addressFamily));
+                throw new NotSupportedException(string.Format(Resources.GetString(Strings.Net.Socket.AddressFamilyNotSupported), addressFamily));
 
             if (socket != null)
                 throw new SocketException((int)SocketError.IsConnected);
@@ -74,7 +71,7 @@ namespace Carambolas.Net.Sockets
             {
                 socket = new Native.Socket(addressFamily);
                 if (logged == 0 && Interlocked.Exchange(ref logged, 1) == 0)
-                    log.Info($"Using {typeof(Native.Socket).FullName}");
+                    Log.Info($"Using {typeof(Native.Socket).FullName}");
             }
             catch (DllNotFoundException)
             {
@@ -185,7 +182,7 @@ namespace Carambolas.Net.Sockets
         public int Receive(byte[] buffer, int offset, int size, int millisecondsTimeout, out IPEndPoint endPoint)
         {
             if (millisecondsTimeout > int.MaxValue / 1000)
-                throw new ArgumentOutOfRangeException(string.Format(SR.ArgumentIsGreaterThanMaximum, nameof(millisecondsTimeout), int.MaxValue / 1000), nameof(millisecondsTimeout));
+                throw new ArgumentOutOfRangeException(string.Format(Resources.GetString(Strings.ArgumentIsGreaterThanMaximum), nameof(millisecondsTimeout), int.MaxValue / 1000), nameof(millisecondsTimeout));
 
             if (socket.Available == 0 && !socket.Poll(millisecondsTimeout * 1000, SelectMode.SelectRead))
             {
@@ -223,7 +220,7 @@ namespace Carambolas.Net.Sockets
         public int Send(byte[] buffer, int offset, int size, int millisecondsTimeout, in IPEndPoint endPoint)
         {
             if (millisecondsTimeout > int.MaxValue / 1000)
-                throw new ArgumentOutOfRangeException(string.Format(SR.ArgumentIsGreaterThanMaximum, nameof(millisecondsTimeout), int.MaxValue / 1000), nameof(millisecondsTimeout));
+                throw new ArgumentOutOfRangeException(string.Format(Resources.GetString(Strings.ArgumentIsGreaterThanMaximum), nameof(millisecondsTimeout), int.MaxValue / 1000), nameof(millisecondsTimeout));
 
             return socket.Poll(millisecondsTimeout * 1000, SelectMode.SelectWrite) ? UncheckedSend(buffer, offset, size, in endPoint) : 0;
         }
@@ -386,7 +383,7 @@ namespace Carambolas.Net.Sockets
                 set
                 {
                     if (IsBound)
-                        throw new InvalidOperationException(SR.Socket.AlreadyBound);
+                        throw new InvalidOperationException(Resources.GetString(Strings.Net.Socket.AlreadyBound));
 
                     SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, value ? 1 : 0);
                 }
@@ -459,7 +456,7 @@ namespace Carambolas.Net.Sockets
                     if (addressFamily == AddressFamily.InterNetworkV6)
                         return (short)GetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IpTimeToLive);
 
-                    throw new NotSupportedException(string.Format(SR.Socket.AddressFamilyNotSupported, addressFamily));
+                    throw new NotSupportedException(string.Format(Resources.GetString(Strings.Net.Socket.AddressFamilyNotSupported), addressFamily));
                 }
 
                 set
@@ -472,7 +469,7 @@ namespace Carambolas.Net.Sockets
                     else if (addressFamily == AddressFamily.InterNetworkV6)
                         SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IpTimeToLive, (int)value);
                     else
-                        throw new NotSupportedException(string.Format(SR.Socket.AddressFamilyNotSupported, addressFamily));
+                        throw new NotSupportedException(string.Format(Resources.GetString(Strings.Net.Socket.AddressFamilyNotSupported), addressFamily));
                 }
             }
 
@@ -483,7 +480,7 @@ namespace Carambolas.Net.Sockets
                 set
                 {
                     if (addressFamily != AddressFamily.InterNetwork)
-                        throw new NotSupportedException(string.Format(SR.Socket.AddressFamilyNotSupported, addressFamily));
+                        throw new NotSupportedException(string.Format(Resources.GetString(Strings.Net.Socket.AddressFamilyNotSupported), addressFamily));
 
                     SetSocketOption(SocketOptionLevel.IP, SocketOptionName.DontFragment, value ? 1 : 0);
                 }
@@ -496,7 +493,7 @@ namespace Carambolas.Net.Sockets
                 set
                 {
                     if (addressFamily != AddressFamily.InterNetworkV6)
-                        throw new NotSupportedException(string.Format(SR.Socket.AddressFamilyNotSupported, addressFamily));
+                        throw new NotSupportedException(string.Format(Resources.GetString(Strings.Net.Socket.AddressFamilyNotSupported), addressFamily));
 
                     SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPv6Only, value ? 0 : 1);
                 }
@@ -505,14 +502,14 @@ namespace Carambolas.Net.Sockets
             public void SetIPProtectionLevel(IPProtectionLevel level)
             {
                 if (level == IPProtectionLevel.Unspecified)
-                    throw new ArgumentException("Invalid value", nameof(level));
+                    throw new ArgumentException(string.Format(Resources.GetString(Strings.InvalidValue), level), nameof(level));
 
                 if (addressFamily == AddressFamily.InterNetwork)
                     SetSocketOption(SocketOptionLevel.IP, SocketOptionName.IPProtectionLevel, (int)level);
                 else if (addressFamily == AddressFamily.InterNetworkV6)
                     SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.IPProtectionLevel, (int)level);
 
-                throw new NotSupportedException(string.Format(SR.Socket.AddressFamilyNotSupported, addressFamily));
+                throw new NotSupportedException(string.Format(Resources.GetString(Strings.Net.Socket.AddressFamilyNotSupported), addressFamily));
             }
 
             public void SetSocketOption(SocketOptionLevel optionLevel, SocketOptionName optionName, bool optionValue) => SetSocketOption(optionLevel, optionName, optionValue ? 1 : 0);
@@ -621,11 +618,7 @@ namespace Carambolas.Net.Sockets
             }
         }
 
-#if __IOS__ || UNITY_IOS && !UNITY_EDITOR
-        private const string nativeLibrary = "__Internal";
-#else
         private const string nativeLibrary = "Carambolas.Net.Native.dll";
-#endif
 
         [DllImport(nativeLibrary, EntryPoint = "carambolas_net_initialize", CallingConvention = CallingConvention.Cdecl)]
         public static extern int Initialize();

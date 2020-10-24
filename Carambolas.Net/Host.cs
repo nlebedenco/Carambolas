@@ -32,18 +32,14 @@ namespace Carambolas.Net
 
     public sealed partial class Host: IDisposable
     {
-        public Host(string name = "") : this(name, default, default, default) { }
-        public Host(string name, ILog log) : this(name, default, log, default) { }
-        public Host(string name, IRandomNumberGenerator random) : this(name, random, default, default) { }
-        public Host(string name, ICipherFactory cipherFactory) : this(name, default, default, cipherFactory) { }
-        public Host(string name, ILog log, ICipherFactory cipherFactory) : this(name, default, log, cipherFactory) { }
-        public Host(string name, IRandomNumberGenerator random, ICipherFactory cipherFactory) : this(name, random, default, cipherFactory) { }
-        public Host(string name, IRandomNumberGenerator random, ILog log, ICipherFactory cipherFactory, IKeychain keyChain = default)
+        public Host(string name = "") : this(name, default, default) { }
+        public Host(string name, IRandomNumberGenerator random) : this(name, random, default) { }
+        public Host(string name, ICipherFactory cipherFactory) : this(name, default, cipherFactory) { }
+        public Host(string name, IRandomNumberGenerator random, ICipherFactory cipherFactory, IKeychain keyChain = default)
         {
             Name = name ?? "";            
             Random = random ?? new ISAAC(DateTime.UtcNow.Ticks);
 
-            Log = log ?? Net.Log.Default;
             CipherFactory = cipherFactory ?? Net.CipherFactory.Default;
             Keychain = keyChain ?? Net.Keychain.Default;
         }
@@ -51,7 +47,6 @@ namespace Carambolas.Net
         public readonly string Name;
 
         internal readonly IRandomNumberGenerator Random;
-        internal readonly ILog Log;
         internal readonly ICipherFactory CipherFactory;
         internal readonly IKeychain Keychain;
 
@@ -159,10 +154,10 @@ namespace Carambolas.Net
         public void Open(in IPEndPoint localEndPoint, in Host.Settings settings, ConnectionTypes acceptableConnectionTypes, in Key privateKey)
         {
             if (socket != null)
-                throw new InvalidOperationException(SR.Host.AlreadyOpen);
+                throw new InvalidOperationException(Resources.GetString(Strings.Net.Host.AlreadyOpen));
 
             settings.CreateSocketSettings(out Socket.Settings socketopts);
-            socket = new Socket(in localEndPoint, in socketopts, Log);
+            socket = new Socket(in localEndPoint, in socketopts);
 
             Keys = (privateKey, Keychain.CreatePublicKey(in privateKey));
 
@@ -333,10 +328,10 @@ namespace Carambolas.Net
         public bool TryGetEvent(out Event e)
         {
             if (exception != null)
-                throw new ThreadException(SR.Host.ThreadException,  exception);
+                throw new ThreadException(Resources.GetString(Strings.Net.Host.ThreadException),  exception);
 
             if (socket == null)
-                throw new InvalidOperationException(SR.Host.NotOpen);
+                throw new InvalidOperationException(Resources.GetString(Strings.Net.Host.NotOpen));
 
             Peer peer;
 

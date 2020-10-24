@@ -30,7 +30,8 @@ namespace Carambolas.Net
 
         public int CompareTo(IPEndPoint other) => Compare(in this, in other);
 
-        public int CompareTo(object obj) => obj is IPEndPoint other ? Compare(in this, in other) : throw new ArgumentException(string.Format(SR.ArgumentMustBeOfType, GetType().FullName), nameof(obj));
+        public int CompareTo(object obj) => obj is IPEndPoint other ? Compare(in this, in other) 
+            : throw new ArgumentException(string.Format(Resources.GetString(Strings.ArgumentMustBeOfType), GetType().FullName), nameof(obj));
 
         public bool Equals(IPEndPoint other) => Compare(in this, in other) == 0;
 

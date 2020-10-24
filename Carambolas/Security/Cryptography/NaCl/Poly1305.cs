@@ -220,15 +220,16 @@ namespace Carambolas.Security.Cryptography.NaCl
                 throw new ArgumentOutOfRangeException(nameof(offset));
 
             if (offset > buffer.Length - length)
-                throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements, nameof(offset), nameof(length), nameof(buffer)), nameof(buffer));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements), nameof(offset), nameof(length), nameof(buffer)), nameof(buffer));
 
             var accumulator = new Accumulator(in key);
             for (var i = 0; i < length; i += Mac.Size)
                 accumulator.Push(buffer, offset + i, length - i);
 
             mac = accumulator.Calculate();
-        }        
+        }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Verify(byte[] buffer, int offset, int length, in Key key, in Mac mac)
         {
             Sign(buffer, offset, length, in key, out Mac calculated);
@@ -265,6 +266,7 @@ namespace Carambolas.Security.Cryptography.NaCl
                 mac = accumulator.Calculate();
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static bool Verify(in ArraySegment<byte> authdata, in ArraySegment<byte> ciphertext, in Key key, in Mac mac)
             {
                 Sign(in authdata, in ciphertext, in key, out Mac calculated);

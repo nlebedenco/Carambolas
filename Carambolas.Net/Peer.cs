@@ -659,7 +659,7 @@ namespace Carambolas.Net
         public void Send(byte[] data, int offset, int length, in Protocol.QoS qos, byte channel = 0)
         {
             if (State != PeerState.Connected)
-                throw new InvalidOperationException(SR.Peer.NotConnected);
+                throw new InvalidOperationException(Resources.GetString(Strings.Net.Peer.NotConnected));
 
             if (channel >= channels.Length)
                 throw new ArgumentOutOfRangeException(nameof(channel));
@@ -677,7 +677,7 @@ namespace Carambolas.Net
             // close to max backlog in which case it should run with a larger max backlog that can 
             // handle variations in the throughput more nicely.
             if (MaxTransmissionBacklog - transmissionBacklog < length)
-                throw new System.IO.InternalBufferOverflowException(SR.Peer.TransmissionBacklogLimitExceeded);
+                throw new System.IO.InternalBufferOverflowException(Resources.GetString(Strings.Net.Peer.TransmissionBacklogLimitExceeded));
 
             Interlocked.Add(ref transmissionBacklog, length);
 

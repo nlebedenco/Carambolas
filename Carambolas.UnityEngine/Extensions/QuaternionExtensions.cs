@@ -20,23 +20,6 @@ namespace Carambolas.UnityEngine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsIdentity(this in Quaternion self) => Mathf.Approximately(self.x, 0f) && Mathf.Approximately(self.y, 0f) && Mathf.Approximately(self.z, 0f) && Mathf.Approximately(Mathf.Abs(self.w), 1f);
 
-#if (UNITY_5 || UNITY_2017 || UNITY_2018_1)
-
-        // Unity has added this function in Unity 2018.2. So, we don't need this any more.
-
-        /// <summary>
-        /// Returns a normalized form of the quaternion
-        /// </summary>
-        public static Quaternion Normalize(this Quaternion self)
-        {
-            float num = Mathf.Sqrt(Quaternion.Dot(self, self));
-            if ((double) num < (double) Mathf.Epsilon)
-                return Quaternion.identity;
-            return new Quaternion(self.x / num, self.y / num, self.z / num, self.w / num);
-        }
-
-#endif
-
         /// <summary>
         /// Quaternions have two values that represent the same rotation.
         /// One is the axis with the base angle. The other is the -axis with

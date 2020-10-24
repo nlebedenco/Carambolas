@@ -1,10 +1,7 @@
 using System;
-using System.Runtime.CompilerServices;
-using UnityEngine;
+using System.Linq;
 
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
+using UnityEngine;
 
 namespace Carambolas.UnityEngine
 {
@@ -14,15 +11,23 @@ namespace Carambolas.UnityEngine
         /// Get a component from this GameObject; if the component does not exist it will be
         /// immediately added and returned.
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T GetOrAddComponent<T>(this GameObject self) where T : Component => self.GetComponent<T>() ?? self.AddComponent<T>();
+        public static T GetOrAddComponent<T>(this GameObject self) where T : Component => self.GetComponent<T>().OrNull() ?? self.AddComponent<T>();
 
         /// <summary>
         /// Get a component from this GameObject; if the component does not exist it will be
         /// immediately added and returned.
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Component GetOrAddComponent(this GameObject self, Type type) => self.GetComponent(type) ?? self.AddComponent(type);
+        public static Component GetOrAddComponent(this GameObject self, Type type) => self.GetComponent(type).OrNull() ?? self.AddComponent(type);
+
+        public static T[] GetComponentsInImmediateChildren<T>(this GameObject self, bool includeInactive = false) where T : class => self.transform.Cast<Transform>().Select(t => t.GetComponent<T>()).ToArray();
+
+        public static T FindComponent<T>(this GameObject self, string name) where T : class => self.transform.Find(name).OrNull()?.GetComponent<T>();
+
+        public static bool TryGetComponent<T>(this GameObject self, out T value) where T : class => (value = self.GetComponent<T>()) != null;
+
+        public static bool HasComponent<T>(this GameObject self) where T : class => self.GetComponent<T>() != null;
+
+        public static bool HasComponent(this GameObject self, Type componentType) => self.GetComponent(componentType);
 
         /// <summary>
         /// Determines if this game object is a child of a given game object. 
@@ -30,50 +35,8 @@ namespace Carambolas.UnityEngine
         /// <returns>
         /// true if this transform is a child, deep child (child of a child) or identical to this game object, otherwise false.
         /// </returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsChildOf(this GameObject self, GameObject other) => other == null ? false : self.transform.IsChildOf(other.transform);
+        public static bool IsChildOf(this GameObject self, GameObject other) => other ? self.transform.IsChildOf(other.transform) : false;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool HasComponent<T>(this GameObject self) where T: Component => self.GetComponent<T>() != null;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool HasComponent(this GameObject self, Type componentType) => self.GetComponent(componentType) != null;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsRuntimePrefab(this GameObject self)
-        {
-            return
-#if UNITY_EDITOR
-            Application.isPlaying &&
-#endif
-            !self.scene.IsValid();
-        }
-
-#if UNITY_EDITOR
-        public static GameObject GetPrefab(this GameObject self)
-        {
-            if (PrefabUtility.IsPartOfNonAssetPrefabInstance(self))
-                return PrefabUtility.GetCorrespondingObjectFromSource(self);
-
-            if (PrefabUtility.IsPartOfPrefabAsset(self))             
-                return self;
-
-            return null;
-        }
-
-        public static string GetPrefabPath(this GameObject self)
-        {
-            var prefab = self.GetPrefab();
-            return (prefab == null)
-                ? ((self.transform.parent == null) ? UnityEditor.Experimental.SceneManagement.PrefabStageUtility.GetPrefabStage(self)?.prefabAssetPath : null)
-                : AssetDatabase.GetAssetPath(prefab);
-        }
-
-        public static string GetPrefabGuid(this GameObject self)
-        {
-            var assetPath = GetPrefabPath(self);
-            return (string.IsNullOrEmpty(assetPath)) ? null : AssetDatabase.AssetPathToGUID(assetPath);
-        }
-#endif
+        public static bool IsRuntimePrefab(this GameObject self) => Application.isPlaying && !self.scene.IsValid();
     }
 }

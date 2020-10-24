@@ -45,9 +45,7 @@ namespace Carambolas.Net.Tests.Host
 
         private static Random random = new Random();
 
-        private static ILog Log = new Logger();
-
-        private class Logger: ILog
+        private class ConsoleLogHandler: ILogHandler
         {
             private static string timestamp => DateTime.Now.ToString("yyyy-MM-dd'T'HH:mm:ss.fffK", CultureInfo.InvariantCulture);
 
@@ -244,8 +242,10 @@ namespace Carambolas.Net.Tests.Host
                 data[0][i] = (byte)unchecked(0xFF - (byte)i);
                 data[1][i] = (byte)i;
             }
-            
-            using (var host = new Host(client ? "CLIENT" : "SERVER", Log))
+
+            Carambolas.Log.Handler = new ConsoleLogHandler();
+
+            using (var host = new Host(client ? "CLIENT" : "SERVER"))
             {
                 if (client)
                     Client(host);

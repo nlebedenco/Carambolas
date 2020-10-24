@@ -15,7 +15,9 @@ namespace Carambolas.UnityEngine
         public static Transform FindTransform(this Transform self, HumanBodyBones humanBoneId)
         {
             var animator = self.gameObject.GetComponent<Animator>();
+            #pragma warning disable IDE0031
             return animator == null ? null : animator.GetBoneTransform(humanBoneId);
+            #pragma warning restore IDE0031
         }
 
         /// <summary>

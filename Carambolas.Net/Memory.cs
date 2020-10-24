@@ -301,7 +301,7 @@ namespace Carambolas.Net
             if (length > 0)
             {
                 if (sourceIndex > (sourceArray.Length - length))                    
-                    throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements, nameof(sourceIndex), nameof(length), nameof(sourceArray)), nameof(length));
+                    throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements), nameof(sourceIndex), nameof(length), nameof(sourceArray)), nameof(length));
 
                 var firstIndex = destinationIndex;
                 var lastIndex = firstIndex + length - 1;
@@ -350,10 +350,10 @@ namespace Carambolas.Net
             if (length > 0)
             {
                 if (destinationIndex > (destinationArray.Length - length))
-                    throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements, nameof(destinationIndex), nameof(length), nameof(destinationArray)), nameof(destinationArray));
+                    throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements), nameof(destinationIndex), nameof(length), nameof(destinationArray)), nameof(destinationArray));
 
                 if (sourceIndex > (Length - length))
-                    throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrLengthIsGreaterThanBuffer, nameof(sourceIndex), nameof(length)), nameof(length));
+                    throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanBuffer), nameof(sourceIndex), nameof(length)), nameof(length));
 
                 var firstIndex = sourceIndex;
                 var lastIndex = firstIndex + length - 1;

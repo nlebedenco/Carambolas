@@ -172,10 +172,10 @@ namespace Carambolas.Security.Cryptography.NaCl
                 throw new ArgumentOutOfRangeException(nameof(destinationIndex));
 
             if (sourceIndex > source.Length - length)
-                throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements, nameof(sourceIndex), nameof(length), nameof(source)), nameof(length));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements), nameof(sourceIndex), nameof(length), nameof(source)), nameof(length));
 
             if (destinationIndex > destination.Length - length)
-                throw new ArgumentException(string.Format(SR.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements, nameof(destinationIndex), nameof(length), nameof(destination)), nameof(length));
+                throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements), nameof(destinationIndex), nameof(length), nameof(destination)), nameof(length));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

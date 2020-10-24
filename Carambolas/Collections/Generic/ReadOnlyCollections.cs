@@ -36,7 +36,7 @@ namespace Carambolas.Collections.Generic
 
         public bool IsSubsetOf(IEnumerable<T> other) => set.IsSubsetOf(other);
         public bool IsSupersetOf(IEnumerable<T> other) => set.IsSupersetOf(other);
-        public bool IsProperSupersetOf(IEnumerable<T> other) => set.IsProperSupersetOf(other);      
+        public bool IsProperSupersetOf(IEnumerable<T> other) => set.IsProperSupersetOf(other);
         public bool IsProperSubsetOf(IEnumerable<T> other) => set.IsProperSubsetOf(other);
         public bool Overlaps(IEnumerable<T> other) => set.Overlaps(other);
         public bool SetEquals(IEnumerable<T> other) => set.SetEquals(other);
@@ -44,7 +44,12 @@ namespace Carambolas.Collections.Generic
 
     public class ReadOnlyList<T>: IReadOnlyList<T>, IList<T>
     {
-        private readonly List<T> list = new List<T>();
+        private readonly List<T> list;
+
+        public ReadOnlyList()
+        {
+            list = new List<T>();
+        }
 
         public ReadOnlyList(List<T> list)
         {
@@ -52,7 +57,11 @@ namespace Carambolas.Collections.Generic
         }
 
         public T this[int index] => list[index];
-        T IList<T>.this[int index] { get => list[index]; set => throw new NotSupportedException(); }
+        T IList<T>.this[int index]
+        {
+            get => list[index];
+            set => throw new NotSupportedException();
+        }
 
         public int Count => list.Count;
         public bool IsReadOnly => true;
@@ -67,7 +76,7 @@ namespace Carambolas.Collections.Generic
         public int IndexOf(T item) => list.IndexOf(item);
         public bool Contains(T item) => list.Contains(item);
         public void CopyTo(T[] array, int arrayIndex) => list.CopyTo(array, arrayIndex);
-        
+
         public List<T>.Enumerator GetEnumerator() => list.GetEnumerator();
         IEnumerator<T> IEnumerable<T>.GetEnumerator() => (list as IEnumerable<T>).GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => (list as IEnumerable<T>).GetEnumerator();
@@ -97,7 +106,11 @@ namespace Carambolas.Collections.Generic
         ICollection<TKey> IDictionary<TKey, TValue>.Keys => Keys;
         ICollection<TValue> IDictionary<TKey, TValue>.Values => Values;
 
-        TValue IDictionary<TKey, TValue>.this[TKey key] { get => dictionary[key]; set => dictionary[key] = value; }
+        TValue IDictionary<TKey, TValue>.this[TKey key]
+        {
+            get => dictionary[key];
+            set => throw new NotSupportedException();
+        }
 
         void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => throw new NotSupportedException();
         bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item) => throw new NotSupportedException();
@@ -142,7 +155,11 @@ namespace Carambolas.Collections.Generic
         ICollection<TKey> IDictionary<TKey, TValue>.Keys => Keys;
         ICollection<TValue> IDictionary<TKey, TValue>.Values => Values;
 
-        TValue IDictionary<TKey, TValue>.this[TKey key] { get => dictionary[key]; set => dictionary[key] = value; }
+        TValue IDictionary<TKey, TValue>.this[TKey key]
+        {
+            get => dictionary[key];
+            set => throw new NotSupportedException();
+        }
 
         void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => throw new NotSupportedException();
         bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item) => throw new NotSupportedException();
@@ -162,5 +179,68 @@ namespace Carambolas.Collections.Generic
 
         bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item) => (dictionary as ICollection<KeyValuePair<TKey, TValue>>).Contains(item);
         public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => dictionary.CopyTo(array, arrayIndex);
+    }
+
+    public class ReadOnlyOrderedDictionary<TKey, TValue>: IReadOnlyDictionary<TKey, TValue>, IDictionary<TKey, TValue>, IReadOnlyList<KeyValuePair<TKey, TValue>>, IList<KeyValuePair<TKey, TValue>>
+    {
+        private readonly OrderedDictionary<TKey, TValue> dictionary = new OrderedDictionary<TKey, TValue>();
+
+        public ReadOnlyOrderedDictionary(OrderedDictionary<TKey, TValue> dictionary)
+        {
+            this.dictionary = dictionary ?? throw new ArgumentNullException(nameof(dictionary));
+        }
+
+        public TValue this[int index] => dictionary[index];
+        KeyValuePair<TKey, TValue> IReadOnlyList<KeyValuePair<TKey, TValue>>.this[int index] => new KeyValuePair<TKey, TValue>(dictionary.GetKey(index), dictionary[index]);
+        KeyValuePair<TKey, TValue> IList<KeyValuePair<TKey, TValue>>.this[int index]
+        {
+            get => new KeyValuePair<TKey, TValue>(dictionary.GetKey(index), dictionary[index]);
+            set => throw new NotSupportedException();
+        }
+
+        public TValue this[TKey key] => dictionary[key];
+        TValue IDictionary<TKey, TValue>.this[TKey key]
+        {
+            get => dictionary[key];
+            set => throw new NotSupportedException();
+        }
+
+        public int Count => dictionary.Count;
+        public bool IsReadOnly => true;
+
+        public OrderedDictionary<TKey, TValue>.KeyCollection Keys => dictionary.Keys;
+        public OrderedDictionary<TKey, TValue>.ValueCollection Values => dictionary.Values;
+
+        IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => Keys;
+        IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => Values;
+
+        ICollection<TKey> IDictionary<TKey, TValue>.Keys => Keys;
+        ICollection<TValue> IDictionary<TKey, TValue>.Values => Values;
+
+        void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => throw new NotSupportedException();
+        bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item) => throw new NotSupportedException();
+        void ICollection<KeyValuePair<TKey, TValue>>.Clear() => throw new NotSupportedException();
+
+        public bool ContainsKey(TKey key) => dictionary.ContainsKey(key);
+        public bool ContainsValue(TValue value) => dictionary.ContainsValue(value);
+
+        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => dictionary.GetEnumerator();
+        IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => (dictionary as IEnumerable<KeyValuePair<TKey, TValue>>).GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable<KeyValuePair<TKey, TValue>>)dictionary).GetEnumerator();
+
+        public bool TryGetValue(TKey key, out TValue value) => dictionary.TryGetValue(key, out value);
+
+        void IDictionary<TKey, TValue>.Add(TKey key, TValue value) => throw new NotSupportedException();
+        bool IDictionary<TKey, TValue>.Remove(TKey key) => throw new NotSupportedException();
+
+        bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item) => (dictionary as ICollection<KeyValuePair<TKey, TValue>>).Contains(item);
+        public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => dictionary.CopyTo(array, arrayIndex);
+
+        public TKey GetKey(int index) => dictionary.GetKey(index);
+        public int IndexOf(TKey key) => dictionary.IndexOf(key);
+        int IList<KeyValuePair<TKey, TValue>>.IndexOf(KeyValuePair<TKey, TValue> item) => (dictionary as IList<KeyValuePair<TKey, TValue>>).IndexOf(item);
+
+        void IList<KeyValuePair<TKey, TValue>>.Insert(int index, KeyValuePair<TKey, TValue> item) => throw new NotImplementedException();
+        void IList<KeyValuePair<TKey, TValue>>.RemoveAt(int index) => throw new NotSupportedException();
     }
 }
