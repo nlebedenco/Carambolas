@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 
+using Carambolas.Internal;
+
 namespace Carambolas.Net
 {
     /// <summary>

@@ -6,6 +6,9 @@ using System.Runtime.InteropServices;
 
 using UnityEngine;
 
+using Resources = Carambolas.Internal.Resources;
+using Strings = Carambolas.Internal.Strings;
+
 namespace Carambolas.UnityEngine
 {
     /// <summary>

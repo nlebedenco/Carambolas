@@ -3,7 +3,7 @@ using System.ComponentModel;
 
 // TODO: define string constants for log messages as well.
 
-namespace Carambolas
+namespace Carambolas.Internal
 {
     [Browsable(false)]
     [EditorBrowsable(EditorBrowsableState.Never)]

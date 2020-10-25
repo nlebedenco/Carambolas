@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Text;
+
 using SystemIPAddress = System.Net.IPAddress;
+
+using Carambolas.Internal;
 
 namespace Carambolas.Net
 {

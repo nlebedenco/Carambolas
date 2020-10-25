@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
+
+using Carambolas.Internal;
 
 namespace Carambolas.Security.Cryptography
 {

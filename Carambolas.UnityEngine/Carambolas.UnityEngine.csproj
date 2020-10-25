@@ -13,12 +13,12 @@
     <LangVersion>7.3</LangVersion>
     <RootNamespace>Carambolas.UnityEngine</RootNamespace>
     <PackageId>Carambolas.UnityEngine</PackageId>
-    <Product>Carambolas.UnityEngine</Product>
+    <Product>Carambolas</Product>
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Description>Carambolas is a modular framework for network applications based on a custom reliable UDP protocol specification.</Description>
-    <PackageTags>unity3d modular library</PackageTags>
+    <Description>Carambolas is a modular framework for network applications based on a custom reliable UDP protocol specification. This assembly provides extensions and helper classes for the Unity Engine in deployed applications.</Description>
+    <PackageTags>carambolas udp reliable-udp modular library unity3d game framework</PackageTags>
     <Platforms>AnyCPU;x64;x86</Platforms>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
@@ -65,6 +65,12 @@
   
   <ItemGroup>
     <PackageReference Include="Unity3D" Version="1.5.0" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Update="Carambolas.UnityEngine.dll.meta">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

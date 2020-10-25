@@ -83,7 +83,7 @@ namespace Carambolas.UnityEngine
                             Debug.unityLogger.filterLogType = LogType.Log;
                             break;
                         default:
-                            Debug.LogErrorFormat("Ignored invalid value assigned to {0}: {1}{2}", nameof(Debug), nameof(Debug.logLevel), value);
+                            Debug.LogError($"Ignored invalid value assigned to {nameof(Debug)}: {nameof(Debug.logLevel)}{value}");
                             break;
                     }
 

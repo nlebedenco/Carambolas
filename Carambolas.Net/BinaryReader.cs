@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Text;
+
+using Carambolas.Internal;
 
 // TODO: define a public static BitConverter and merge with Converter classes to over conversion and serialization?
 

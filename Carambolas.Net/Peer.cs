@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
+using Carambolas.Internal;
 using Carambolas.Security.Cryptography;
 
 namespace Carambolas.Net

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 
+using Carambolas.Internal;
+
 namespace Carambolas.Security.Cryptography
 {
     public readonly struct Key: IEquatable<Key>

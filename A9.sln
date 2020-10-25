@@ -35,9 +35,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Carambolas.UnityEngine", "C
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Carambolas.UnityEngine.Replication", "Carambolas.UnityEngine.Replication\Carambolas.UnityEngine.Replication.csproj", "{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Carambolas.UnityEditor", "Carambolas.UnityEditor\Carambolas.UnityEditor.csproj", "{4CFB9740-FB17-4177-8198-142110CFE617}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Carambolas.Strings", "Carambolas.Strings\Carambolas.Strings.csproj", "{BEF6F995-BF94-4D4F-A45B-52BFF6E10AD9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Carambolas.UnityEngine-Editor", "Carambolas.UnityEngine-Editor\Carambolas.UnityEngine-Editor.csproj", "{0D29AB73-6B92-4402-8CD0-639539F34008}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Carambolas.UnityEngine.Replication-Editor", "Carambolas.UnityEngine.Replication-Editor\Carambolas.UnityEngine.Replication-Editor.csproj", "{D658D80C-212A-4751-9B58-7ADBC94C22BE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -135,14 +137,6 @@ Global
 		{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}.Release|x64.Build.0 = Release|x64
 		{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}.Release|x86.ActiveCfg = Release|x86
 		{3B2DAA61-087D-4CC6-90B4-FEAB4AA6A912}.Release|x86.Build.0 = Release|x86
-		{4CFB9740-FB17-4177-8198-142110CFE617}.Debug|x64.ActiveCfg = Debug|x64
-		{4CFB9740-FB17-4177-8198-142110CFE617}.Debug|x64.Build.0 = Debug|x64
-		{4CFB9740-FB17-4177-8198-142110CFE617}.Debug|x86.ActiveCfg = Debug|x86
-		{4CFB9740-FB17-4177-8198-142110CFE617}.Debug|x86.Build.0 = Debug|x86
-		{4CFB9740-FB17-4177-8198-142110CFE617}.Release|x64.ActiveCfg = Release|x64
-		{4CFB9740-FB17-4177-8198-142110CFE617}.Release|x64.Build.0 = Release|x64
-		{4CFB9740-FB17-4177-8198-142110CFE617}.Release|x86.ActiveCfg = Release|x86
-		{4CFB9740-FB17-4177-8198-142110CFE617}.Release|x86.Build.0 = Release|x86
 		{BEF6F995-BF94-4D4F-A45B-52BFF6E10AD9}.Debug|x64.ActiveCfg = Debug|x64
 		{BEF6F995-BF94-4D4F-A45B-52BFF6E10AD9}.Debug|x64.Build.0 = Debug|x64
 		{BEF6F995-BF94-4D4F-A45B-52BFF6E10AD9}.Debug|x86.ActiveCfg = Debug|x86
@@ -151,6 +145,22 @@ Global
 		{BEF6F995-BF94-4D4F-A45B-52BFF6E10AD9}.Release|x64.Build.0 = Release|x64
 		{BEF6F995-BF94-4D4F-A45B-52BFF6E10AD9}.Release|x86.ActiveCfg = Release|x86
 		{BEF6F995-BF94-4D4F-A45B-52BFF6E10AD9}.Release|x86.Build.0 = Release|x86
+		{0D29AB73-6B92-4402-8CD0-639539F34008}.Debug|x64.ActiveCfg = Debug|x64
+		{0D29AB73-6B92-4402-8CD0-639539F34008}.Debug|x64.Build.0 = Debug|x64
+		{0D29AB73-6B92-4402-8CD0-639539F34008}.Debug|x86.ActiveCfg = Debug|x86
+		{0D29AB73-6B92-4402-8CD0-639539F34008}.Debug|x86.Build.0 = Debug|x86
+		{0D29AB73-6B92-4402-8CD0-639539F34008}.Release|x64.ActiveCfg = Release|x64
+		{0D29AB73-6B92-4402-8CD0-639539F34008}.Release|x64.Build.0 = Release|x64
+		{0D29AB73-6B92-4402-8CD0-639539F34008}.Release|x86.ActiveCfg = Release|x86
+		{0D29AB73-6B92-4402-8CD0-639539F34008}.Release|x86.Build.0 = Release|x86
+		{D658D80C-212A-4751-9B58-7ADBC94C22BE}.Debug|x64.ActiveCfg = Debug|x64
+		{D658D80C-212A-4751-9B58-7ADBC94C22BE}.Debug|x64.Build.0 = Debug|x64
+		{D658D80C-212A-4751-9B58-7ADBC94C22BE}.Debug|x86.ActiveCfg = Debug|x86
+		{D658D80C-212A-4751-9B58-7ADBC94C22BE}.Debug|x86.Build.0 = Debug|x86
+		{D658D80C-212A-4751-9B58-7ADBC94C22BE}.Release|x64.ActiveCfg = Release|x64
+		{D658D80C-212A-4751-9B58-7ADBC94C22BE}.Release|x64.Build.0 = Release|x64
+		{D658D80C-212A-4751-9B58-7ADBC94C22BE}.Release|x86.ActiveCfg = Release|x86
+		{D658D80C-212A-4751-9B58-7ADBC94C22BE}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

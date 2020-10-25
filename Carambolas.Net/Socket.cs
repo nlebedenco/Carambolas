@@ -8,6 +8,8 @@ using SystemSocket = System.Net.Sockets.Socket;
 using SystemIPAddress = System.Net.IPAddress;
 using SystemIPEndPoint = System.Net.IPEndPoint;
 
+using Carambolas.Internal;
+
 namespace Carambolas.Net.Sockets
 {
     public enum SocketMode

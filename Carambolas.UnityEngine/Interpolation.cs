@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 
+using Resources = Carambolas.Internal.Resources;
+using Strings = Carambolas.Internal.Strings;
+
 namespace Carambolas.UnityEngine
 {
     public static partial class Scalar

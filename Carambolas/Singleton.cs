@@ -1,5 +1,7 @@
 using System;
 
+using Carambolas.Internal;
+
 namespace Carambolas
 {
     public abstract class Singleton { }

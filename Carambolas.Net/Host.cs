@@ -6,8 +6,7 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-// TODO: export naming styles to .editorconfig using VS2019 maybe?
-
+using Carambolas.Internal;
 using Carambolas.Security.Cryptography;
 
 using Socket = Carambolas.Net.Sockets.Socket;

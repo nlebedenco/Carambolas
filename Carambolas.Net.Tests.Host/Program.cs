@@ -7,6 +7,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Log = Carambolas.Internal.Log;
+using ILogHandler = Carambolas.Internal.ILogHandler;
+
 namespace Carambolas.Net.Tests.Host
 {
     using Host = Carambolas.Net.Host;
@@ -243,7 +246,7 @@ namespace Carambolas.Net.Tests.Host
                 data[1][i] = (byte)i;
             }
 
-            Carambolas.Log.Handler = new ConsoleLogHandler();
+            Log.Handler = new ConsoleLogHandler();
 
             using (var host = new Host(client ? "CLIENT" : "SERVER"))
             {

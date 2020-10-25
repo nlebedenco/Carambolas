@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 
+using Carambolas.Internal;
+
 namespace Carambolas
 {
     public static class StreamExtensions

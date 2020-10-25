@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 
+using Carambolas.Internal;
+
 namespace Carambolas
 {
     /// <summary>

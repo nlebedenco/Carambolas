@@ -18,7 +18,7 @@
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Description>Carambolas is a modular framework for network applications based on a custom reliable UDP protocol specification. This assembly provides string constants with basic support for localization.</Description>
-    <PackageTags>udp reliable-udp modular library</PackageTags>
+    <PackageTags>carambolas udp reliable-udp modular library</PackageTags>
     <Platforms>AnyCPU;x64;x86</Platforms>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>

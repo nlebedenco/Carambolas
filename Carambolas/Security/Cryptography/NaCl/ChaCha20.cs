@@ -1,11 +1,22 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
 
-// Based on https://github.com/daviddesmet/NaCl.Core
+using Carambolas.Internal;
 
 namespace Carambolas.Security.Cryptography.NaCl
 {
+    /// <summary>
+    /// ChaCha20 is a stream cipher designed by D. J. Bernstein.  It is a
+    /// refinement of the Salsa20 algorithm that uses a 256-bit key.
+    /// </summary>
+    /// <remarks>
+    /// ChaCha20 successively calls the ChaCha20 block function, with the
+    /// same key and nonce, and with successively increasing block counter
+    /// parameters. It then serializes the resulting state by writing
+    /// the numbers in little-endian order, creating a keystream block.
+    /// See https://tools.ietf.org/html/rfc7539 for more info.
+    /// This implementation is based on https://github.com/daviddesmet/NaCl.Core.
+    /// </remarks>
     public class ChaCha20
     {
         public const int BlockSize = 64;

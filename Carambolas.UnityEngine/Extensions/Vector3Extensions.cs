@@ -79,7 +79,7 @@ namespace Carambolas.UnityEngine
         /// </summary>
         public static float HorizontalSignedAngleTo(this in Vector3 from, in Vector3 to, in Vector3 upwards)
         {
-            Debug.AssertFormat(upwards.IsNormalized(), "Up vector must be normalized.");
+            Debug.Assert(upwards.IsNormalized(), "Up vector must be normalized.");
 
             from.Normalize();
             to.Normalize();
@@ -97,7 +97,7 @@ namespace Carambolas.UnityEngine
         /// </summary>
         public static Vector3 HorizontalDeltaTo(this in Vector3 from, in Vector3 to, in Vector3 upwards)
         {
-            Debug.AssertFormat(upwards.IsNormalized(), "Up vector must be normalized.");
+            Debug.Assert(upwards.IsNormalized(), "Up vector must be normalized.");
 
             from.Normalize();
             to.Normalize();

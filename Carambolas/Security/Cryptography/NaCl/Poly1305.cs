@@ -1,17 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Text;
 
-// Based on https://github.com/daviddesmet/NaCl.Core
+using Carambolas.Internal;
 
 namespace Carambolas.Security.Cryptography.NaCl
 {
     /// <summary>
     /// Poly1305 one-time MAC based on RFC 7539.
-    /// Based on a Poly1305 implementation from NaCl.Core released under the MIT license 
-    /// which in turn was based on a poly1305 implementation by Andrew Moon 
-    /// (https://github.com/floodyberry/poly1305-donna) released as public domain.
+    /// Based on an implementation from https://github.com/daviddesmet/NaCl.Core
+    /// released under the MIT license which in turn was based on a poly1305 implementation by 
+    /// Andrew Moon (https://github.com/floodyberry/poly1305-donna) released as public domain.
     /// </summary>
     public static class Poly1305
     {

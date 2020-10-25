@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 
-namespace Carambolas
+namespace Carambolas.Internal
 {
     public interface IResourcesProvider
     {

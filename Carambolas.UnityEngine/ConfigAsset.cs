@@ -38,7 +38,7 @@ namespace Carambolas.UnityEngine
         protected virtual void Reset()
         {
             // HACK: Workaround for Unity insisting on clearing the scriptable object's name when reset is called in the inspector.
-            name = Path.GetFileNameWithoutExtension(UnityEditor.AssetDatabase.GetAssetPath(this));
+            name = Path.GetFileNameWithoutExtension(global::UnityEditor.AssetDatabase.GetAssetPath(this));
         }
 
 #endif

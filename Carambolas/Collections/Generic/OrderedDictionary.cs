@@ -5,6 +5,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 
+using Carambolas.Internal;
+
 namespace Carambolas.Collections.Generic
 {
     internal class OrderedDictionaryDebugView<TKey, TValue>

@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Diagnostics;
 
-// Based on https://github.com/force-net/Crc32.NET
+using Carambolas.Internal;
 
 namespace Carambolas.Security.Cryptography
 {
     /// <summary>
     /// Represents a CRC32-C (Castagnoli) value.
+    /// Based on https://github.com/force-net/Crc32.NET
     /// </summary>
     public readonly struct Crc32C: IEquatable<Crc32C>
     {

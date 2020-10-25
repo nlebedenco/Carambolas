@@ -3,9 +3,6 @@ using System;
 using UnityEngine;
 using UnityApplication = UnityEngine.Application;
 using UnityObject = UnityEngine.Object;
-using IUnityLogHandler = UnityEngine.ILogHandler;
-
-// TODO: address the issue of UNITY_EDITOR ifdefs not making much sense in a precompiled library
 
 namespace Carambolas.UnityEngine
 {
@@ -13,11 +10,22 @@ namespace Carambolas.UnityEngine
     {
         protected Application() { }
 
-        private sealed class PlayerLogHandler: IUnityLogHandler
+        private sealed class RedirectToUnityDebugLog: Carambolas.Internal.ILogHandler
         {
-            private IUnityLogHandler loghandler;
+            public void Error(string s) => Debug.LogError(s);
 
-            public PlayerLogHandler(IUnityLogHandler loghandler) => this.loghandler = loghandler;
+            public void Exception(Exception e) => Debug.LogException(e);
+
+            public void Info(string s) => Debug.Log(s);
+
+            public void Warn(string s) => Debug.LogWarning(s);
+        }
+
+        private sealed class PlayerLogHandler: ILogHandler
+        {
+            private ILogHandler loghandler;
+
+            public PlayerLogHandler(ILogHandler loghandler) => this.loghandler = loghandler;
 
             private string LogTypeToString(LogType logType)
             {
@@ -77,7 +85,7 @@ namespace Carambolas.UnityEngine
         public static new void Quit()
         {
 #if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
+            global::UnityEditor.EditorApplication.isPlaying = false;
 #else
             UnityApplication.Quit();
 #endif
@@ -86,67 +94,60 @@ namespace Carambolas.UnityEngine
         public static new void Quit(int exitcode)
         {
 #if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
+            global::UnityEditor.EditorApplication.isPlaying = false;
 #else
             UnityApplication.Quit(exitcode);
 #endif
         }
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
-        private static void OnRuntimeInitialize()
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
+        private static void OnAfterAssembliesLoaded()
         {
+            Carambolas.Internal.Log.Handler = new RedirectToUnityDebugLog();
+
             // Set default log level according to build
             Debug.unityLogger.filterLogType = Debug.isDebugBuild ? LogType.Log : LogType.Warning;
 
 #if UNITY_EDITOR
-            UnityEditor.EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+            global::UnityEditor.EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
 #else
             Application.quitting += OnApplicationQuitting;
             Debug.unityLogger.logHandler = new PlayerLogHandler(Debug.unityLogger.logHandler);
 #endif
             var build = Debug.isDebugBuild ? "DEBUG" : "RELEASE";
-            System.Console.WriteLine($"Application version: {Application.version} ({build})");
+            var uname = $"{Application.productName} version: {Application.version} ({build})";
 
-            // Sanity check
-            if (terminated) 
-                return;
+            System.Console.WriteLine(uname);
+            Debug.Log(uname);
 
-            LogInit();
-        }
-
-#if UNITY_EDITOR
-        // As of Unity 2019.1.11f the editor does not execute BeforeSpashScreen
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void OnRuntimeInitializeBeforeSceneLoad() => OnRuntimeInitialize();
-#endif
-
-        private static void OnApplicationQuitting() => terminated = true;
-
-#if UNITY_EDITOR
-        private static void OnPlayModeStateChanged(UnityEditor.PlayModeStateChange s)
-        {
-            if (s == UnityEditor.PlayModeStateChange.ExitingPlayMode)
-                OnApplicationQuitting();
-        }
-#endif
-
-        private static void LogInit()
-        {
 #if !UNITY_EDITOR
             // Set log level override from command-line
             if (commandLineArguments.TryGetValue("loglevel", out string logLevel) && !string.IsNullOrEmpty(logLevel))
             {
                 if (Enum.TryParse(logLevel, out LogLevel value))
                 {
-                    System.Console.WriteLine(string.Format("Log level set from command-line: '{0}'\n", value));
+                    System.Console.WriteLine($"Log level set from command-line: '{value}'\n");
                     Debug.logLevel = value;
                 }
                 else
                 {
-                    Debug.LogWarningFormat("Invalid -loglevel argument value: {0}", logLevel);
+                    Debug.LogWarning($"Invalid -loglevel argument value: {logLevel}");
                 }
             }
 #endif
+        }
+
+#if UNITY_EDITOR
+        private static void OnPlayModeStateChanged(global::UnityEditor.PlayModeStateChange s)
+        {
+            if (s == global::UnityEditor.PlayModeStateChange.ExitingPlayMode)
+                OnApplicationQuitting();
+        }
+#endif
+
+        private static void OnApplicationQuitting()
+        {
+            terminated = true;
         }
     }
 }

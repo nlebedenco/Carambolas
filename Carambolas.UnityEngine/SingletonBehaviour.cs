@@ -5,6 +5,9 @@ using System.Reflection;
 using UnityEngine;
 using UnityObject = UnityEngine.Object;
 
+using Resources = Carambolas.Internal.Resources;
+using Strings = Carambolas.Internal.Strings;
+
 namespace Carambolas.UnityEngine
 {
     public sealed class SilentAbortException: Exception { }
@@ -91,7 +94,7 @@ namespace Carambolas.UnityEngine
                 Instance = this as T;
                 DontDestroyOnLoad(gameObject);
                 transform.hideFlags = HideFlags.NotEditable | HideFlags.HideInInspector;
-                Debug.LogFormat(this, "{0}{1} created.", GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})");
+                Debug.LogFormat(this, "{0}{1} instantiated.", GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})");
                 OnSingletonAwake();
                 created = true;
             }
@@ -158,12 +161,6 @@ namespace Carambolas.UnityEngine
         protected virtual void OnSingletonAwake() { }
 
         protected virtual void OnSingletonDestroy() { }
-
-        [Conditional("UNITY_EDITOR")]
-        private void DstroyImmediateIfNotPlaying()
-        {
-
-        }
 
         [Conditional("UNITY_EDITOR")]
         private void ThrowIfNotPlaying()
