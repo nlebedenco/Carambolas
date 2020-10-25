@@ -10,7 +10,7 @@ namespace Carambolas.UnityEngine
     {
         protected Application() { }
 
-        private sealed class RedirectToUnityDebugLog: Carambolas.Internal.ILogHandler
+        private sealed class RedirectCarambolasInternalLogToUnityDebugLog: Carambolas.Internal.ILogHandler
         {
             public void Error(string s) => Debug.LogError(s);
 
@@ -21,11 +21,11 @@ namespace Carambolas.UnityEngine
             public void Warn(string s) => Debug.LogWarning(s);
         }
 
-        private sealed class PlayerLogHandler: ILogHandler
+        private sealed class DetailLogHandler: ILogHandler
         {
             private ILogHandler loghandler;
 
-            public PlayerLogHandler(ILogHandler loghandler) => this.loghandler = loghandler;
+            public DetailLogHandler(ILogHandler loghandler) => this.loghandler = loghandler;
 
             private string LogTypeToString(LogType logType)
             {
@@ -103,7 +103,7 @@ namespace Carambolas.UnityEngine
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
         private static void OnAfterAssembliesLoaded()
         {
-            Carambolas.Internal.Log.Handler = new RedirectToUnityDebugLog();
+            Carambolas.Internal.Log.Handler = new RedirectCarambolasInternalLogToUnityDebugLog();
 
             // Set default log level according to build
             Debug.unityLogger.filterLogType = Debug.isDebugBuild ? LogType.Log : LogType.Warning;
@@ -112,7 +112,7 @@ namespace Carambolas.UnityEngine
             global::UnityEditor.EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
 #else
             Application.quitting += OnApplicationQuitting;
-            Debug.unityLogger.logHandler = new PlayerLogHandler(Debug.unityLogger.logHandler);
+            Debug.unityLogger.logHandler = new DetailLogHandler(Debug.unityLogger.logHandler);
 #endif
             var build = Debug.isDebugBuild ? "DEBUG" : "RELEASE";
             var uname = $"{Application.productName} version: {Application.version} ({build})";
