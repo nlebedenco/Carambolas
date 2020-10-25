@@ -78,6 +78,7 @@
     
   <ItemGroup>
     <ProjectReference Include="..\Carambolas\Carambolas.csproj" />
+    <ProjectReference Include="..\Carambolas.Net\Carambolas.Net.csproj" />
     <ProjectReference Include="..\Carambolas.UnityEngine-Editor\Carambolas.UnityEngine-Editor.csproj" />
   </ItemGroup>
 
