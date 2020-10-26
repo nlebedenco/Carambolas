@@ -12,33 +12,11 @@ namespace Carambolas.Net
             public sealed partial class Message
             {
                 [DebuggerDisplay("Count = {queue.Count}")]
-                public sealed class Pool: IDisposable
+                public sealed class Pool: Pool<Message>
                 {
-                    [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-                    private SpinLock queueLock = new SpinLock(false);
+                    protected override Message Create() => new Message() { OnReleased = Return };
 
-                    [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-                    private Queue<Message> queue = new Queue<Message>(256);
-
-                    public Message Get()
-                    {
-                        var locked = false;
-                        try
-                        {
-                            queueLock.Enter(ref locked);
-                            if ((queue ?? throw new ObjectDisposedException(GetType().FullName)).Count > 0)
-                                return queue.Dequeue();
-                        }
-                        finally
-                        {
-                            if (locked)
-                                queueLock.Exit(false);
-                        }
-
-                        return new Message() { OnReleased = Return };
-                    }
-
-                    private void Return(Message instance)
+                    protected override void OnReturn(Message instance)
                     {
                         instance.Delivery = default;
                         instance.SequenceNumber = default;
@@ -47,24 +25,7 @@ namespace Carambolas.Net
                         instance.Payload = default;
                         instance.Encoded?.Dispose();
                         instance.Encoded = default;
-
-                        if (queue != null)
-                        {
-                            var locked = false;
-                            try
-                            {
-                                queueLock.Enter(ref locked);
-                                queue.Enqueue(instance);
-                            }
-                            finally
-                            {
-                                if (locked)
-                                    queueLock.Exit(false);
-                            }
-                        }
                     }
-
-                    public void Dispose() => queue = null;
                 }
             }
         }

@@ -60,5 +60,8 @@ namespace Carambolas
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int FindLastIndex<T>(this T[] array, int startIndex, int count, Predicate<T> match) => Array.FindLastIndex(array, startIndex, count, match);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int BinarySearch<T>(this T[] array, T value) => Array.BinarySearch(array, value);
     }
 }

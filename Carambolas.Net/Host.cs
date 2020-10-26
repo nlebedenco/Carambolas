@@ -1785,17 +1785,17 @@ namespace Carambolas.Net
         private Channel.Outbound.Message.Pool outboundMessagePool;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void Allocate(out Channel.Outbound.Message instance) => instance = outboundMessagePool.Get();
+        internal void Allocate(out Channel.Outbound.Message instance) => instance = outboundMessagePool.Take();
 
         private Channel.Inbound.Message.Pool inboundMessagePool;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void Allocate(out Channel.Inbound.Message instance) => instance = inboundMessagePool.Get();
+        internal void Allocate(out Channel.Inbound.Message instance) => instance = inboundMessagePool.Take();
 
         private Channel.Inbound.Reassembly.Pool inboundReassemblyPool;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void Allocate(out Channel.Inbound.Reassembly instance) => instance = inboundReassemblyPool.Get();
+        internal void Allocate(out Channel.Inbound.Reassembly instance) => instance = inboundReassemblyPool.Take();
 
         #endregion
     }    

@@ -23,7 +23,7 @@ namespace Carambolas.Internal
 
         public static ILogHandler DefaultHandler = new NullLogHandler();
 
-        private static ILogHandler handler;
+        private static ILogHandler handler = DefaultHandler;
 
         public static ILogHandler Handler
         {

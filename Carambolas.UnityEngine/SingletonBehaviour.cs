@@ -7,12 +7,14 @@ using UnityObject = UnityEngine.Object;
 
 using Resources = Carambolas.Internal.Resources;
 using Strings = Carambolas.Internal.Strings;
+using System.Collections.Generic;
 
 namespace Carambolas.UnityEngine
 {
-    public sealed class SilentAbortException: Exception { }
-
-    public abstract class SingletonBehaviour: MonoBehaviour { }
+    public abstract class SingletonBehaviour: MonoBehaviour
+    {
+        private protected SingletonBehaviour() { }
+    }
 
     /// <summary>
     /// A strict singleton behaviour that destroys itself in case an instance already exists in order to guarantee uniqueness.
@@ -46,15 +48,15 @@ namespace Carambolas.UnityEngine
     /// </remarks>
     public abstract class SingletonBehaviour<T> : SingletonBehaviour where T: SingletonBehaviour<T>
     {
-        private bool created;
-
         /// <summary>
         /// Resturn true if this singleton is short lived and may be destroyed any time or 
-        /// false if it must live until the application is terminated.
+        /// false if it must live until the application is terminated. Default is false.
         /// </summary>
-        protected abstract bool Transient { get; }
+        protected virtual bool Transient => false;
 
-        public static T Instance { get; protected set; }
+        public static T Instance { get; private set; }
+
+        public static GameObject SingletonObject => Instance?.gameObject;
 
         public event Action<T> Destroyed;
 
@@ -81,102 +83,94 @@ namespace Carambolas.UnityEngine
             }
         }
 
+#if UNITY_EDITOR
         protected virtual void Reset() { }
 
         protected virtual void OnValidate() { }
+#endif
 
         protected void Awake()
         {
             try
             {
-                OnSingletonAwaking();
-                ValidateRequiredComponents();
-                Instance = this as T;
-                DontDestroyOnLoad(gameObject);
-                transform.hideFlags = HideFlags.NotEditable | HideFlags.HideInInspector;
-                Debug.LogFormat(this, "{0}{1} instantiated.", GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})");
-                OnSingletonAwake();
-                created = true;
+                if (Instance is null)
+                {
+                    Debug.Log(string.Format("{0}{1} instantiated.", GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"), this);
+                    ValidateRequiredComponents();
+#if UNITY_EDITOR
+                    if (!Application.isPlaying)
+                        throw new InvalidOperationException(string.Format(Resources.GetString(Strings.UnityEngine.SingletonBehaviour.NotInPlayMode), 
+                            typeof(T).FullName, GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"));
+#endif
+                    OnSingletonAwaking();
+                }
+                else
+                {
+                    throw new InvalidOperationException(string.Format(Resources.GetString(Strings.UnityEngine.SingletonBehaviour.CannotHaveMultipleInstances), 
+                        typeof(T).FullName, GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"));
+                }                
             }
             catch (Exception e)
-            {                
-                if (!Application.isPlaying)
-                    DestroyImmediate(this);
-                else
-                    Destroy(this);
-
-                switch (e)
-                {
-                    case null:
-                    case SilentAbortException silent:
-                        break;
-                    default:
-                        Debug.LogException(e, this);
-                        break;
-                }
+            {
+                Debug.LogException(e, this);
+                AutoDestruction();
+                return;
             }
+
+            Instance = this as T;
+            DontDestroyOnLoad(gameObject);
+            transform.hideFlags = HideFlags.NotEditable | HideFlags.HideInInspector;
+            OnSingletonAwake();
         }
+
+        private void AutoDestruction()
+        {
+            if (!Application.isPlaying)
+                DestroyImmediate(this);
+            else
+                Destroy(this);
+        }
+
+        private static readonly List<Component> componentsOnDestroy = new List<Component>();
 
         protected void OnDestroy()
         {
-            if (created)
+            if (ReferenceEquals(Instance, this))
             {
-                Debug.LogFormat(this, "{0}{1} destroyed.", GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})");
-
-                if (ReferenceEquals(Instance, this))
-                    Instance = null;
-
                 try
                 {
                     OnSingletonDestroy();
                 }
-                catch(Exception e)
+                finally
                 {
-                    Debug.LogException(e, this);
+                    Instance = null;
+                    Debug.Log(string.Format("{0}{1} destroyed.", GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"), this);
                 }
-
-                OnDestroyed();
             }
 
-            if (gameObject.GetComponents<Component>().Length <= 2) // 2 => this component + transform component
-                Destroy(gameObject);
+            // Destroy game object if this was the last component (other than Transform)
+            if (!gameObject.IsNullOrDestroyed())
+            {
+                gameObject.GetComponents(componentsOnDestroy);
+                if (componentsOnDestroy.Count <= 2)
+                    Destroy(gameObject);
+            }          
         }
 
-        /// <summary>
-        /// Executed before <see cref="OnSingletonAwake"/> this method can be used to
-        /// prepare or validate the singleton creation.
-        /// </summary>
-        /// <remarks>The whole process is aborted
-        /// if this method throws an exception. Throw a <see cref="SilentAbortException"/>
-        /// if you want to abort but does not consider this an error.
-        /// </remarks>
-        protected virtual void OnSingletonAwaking()
-        {
-            ThrowIfNotPlaying();
-
-            if (Instance != null && Instance != this)
-                throw new InvalidOperationException(string.Format(Resources.GetString(Strings.UnityEngine.SingletonBehaviour.CannotHaveMultipleInstances), typeof(T).FullName, GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"));
-        }
+        protected virtual void OnSingletonAwaking() { }
 
         protected virtual void OnSingletonAwake() { }
 
         protected virtual void OnSingletonDestroy() { }
 
-        [Conditional("UNITY_EDITOR")]
-        private void ThrowIfNotPlaying()
-        {
-            if (!Application.isPlaying)
-                throw new InvalidOperationException(string.Format(Resources.GetString(Strings.UnityEngine.SingletonBehaviour.NotInPlayMode), typeof(T).FullName, GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"));
-        }
-
-        private void ThrowIfComponentIsMissing(Type required)
-        {
-            if (required != null && !GetComponent(required))
-                throw new InvalidOperationException(string.Format(Resources.GetString(Strings.UnityEngine.SingletonBehaviour.MissingRequiredComponent), typeof(T).FullName, required.FullName, GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"));
-        }
-
         protected virtual void ValidateRequiredComponents()
         {
+            void ThrowIfComponentIsMissing(Type required)
+            {
+                if (required != null && !GetComponent(required))
+                    throw new InvalidOperationException(string.Format(Resources.GetString(Strings.UnityEngine.SingletonBehaviour.MissingRequiredComponent), typeof(T).FullName, required.FullName, GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"));
+            }
+
             var attributes = GetType().GetCustomAttributes<RequireComponent>();
             foreach (var attr in attributes)
             {

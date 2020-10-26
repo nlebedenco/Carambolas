@@ -17,7 +17,7 @@ namespace Carambolas.Internal
 
         public static readonly IResourcesProvider DefaultProvider = new NullProvider();
 
-        private static IResourcesProvider provider;
+        private static IResourcesProvider provider = DefaultProvider;
 
         public static IResourcesProvider Provider
         {

@@ -76,10 +76,13 @@ namespace Carambolas.Internal
         {
             public static class SingletonBehaviour
             {
+                public const string CannotInstantiateInEditor = "{0} cannot be used in the editor. This instance will be destroyed: {1}{2}.";
                 public const string NotInPlayMode = "{0} can only be used in play mode. This instance will be destroyed: {1}{2}.";
                 public const string CannotHaveMultipleInstances = "{0} cannot have multiple (awakened) instances. This instance will be destroyed: {1}{2}.";
                 public const string MissingRequiredComponent = "{0} requires a {1}. This instance will be destroyed: {2}{3}.";                
             }
+
+
 
         }
     }

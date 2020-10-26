@@ -103,22 +103,10 @@ namespace Carambolas.UnityEngine
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
         private static void OnAfterAssembliesLoaded()
         {
-            Carambolas.Internal.Log.Handler = new RedirectCarambolasInternalLogToUnityDebugLog();
-
             // Set default log level according to build
             Debug.unityLogger.filterLogType = Debug.isDebugBuild ? LogType.Log : LogType.Warning;
 
-#if UNITY_EDITOR
-            global::UnityEditor.EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
-#else
-            Application.quitting += OnApplicationQuitting;
-            Debug.unityLogger.logHandler = new DetailLogHandler(Debug.unityLogger.logHandler);
-#endif
-            var build = Debug.isDebugBuild ? "DEBUG" : "RELEASE";
-            var uname = $"{Application.productName} version: {Application.version} ({build})";
-
-            System.Console.WriteLine(uname);
-            Debug.Log(uname);
+            Carambolas.Internal.Log.Handler = new RedirectCarambolasInternalLogToUnityDebugLog();
 
 #if !UNITY_EDITOR
             // Set log level override from command-line
@@ -134,6 +122,18 @@ namespace Carambolas.UnityEngine
                     Debug.LogWarning($"Invalid -loglevel argument value: {logLevel}");
                 }
             }
+#endif
+
+            var build = Debug.isDebugBuild ? "DEBUG" : "RELEASE";
+            Debug.Log($"{Application.productName} version: {Application.version} ({build})");
+
+#if UNITY_EDITOR
+            global::UnityEditor.EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+#endif
+
+#if !UNITY_EDITOR
+            Debug.unityLogger.logHandler = new DetailLogHandler(Debug.unityLogger.logHandler);
+            Application.quitting += OnApplicationQuitting;            
 #endif
         }
 
