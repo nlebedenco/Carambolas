@@ -1,0 +1,27 @@
+{
+  "name": "dev.nlebedenco.carambolas.net",
+  "version": "0.1",
+  "displayName": "Carambolas.Net",
+  "description": "Low latency reliable UDP protocol implementation.",
+  "unity": "2018.3",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nlebedenco/Carambolas.git"
+  },
+  "keywords": [
+    "carambolas",
+    "udp",
+    "reliable-udp",
+    "network",
+    "netcode"
+  ],
+  "dependencies": {
+    "dev.nlebedenco.carambolas":  "0.1"
+  },
+  "author": {
+    "name": "Nicolas Lebedenco",
+    "email": "nicolas@lebedenco.net",
+    "url": "http://github.com/nlebedenco"
+  }
+}

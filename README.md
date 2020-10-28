@@ -118,8 +118,8 @@ understand the way it worked and why.
 
 - **[Carambolas](Doc/README-Carambolas.md)**    
 - **[Carambolas.Net](Doc/README-Carambolas.Net.md)**
-- **[Carambolas.UnityEngine](Doc/README-Carambolas.UnityEngine.md)**
-- **[Carambolas.UnityEngine.Replication](Doc/README-Carambolas.UnityEngine.Replication.md)**
+- **[Carambolas.Unity](Doc/README-Carambolas.Unity.md)**
+- **[Carambolas.Unity.Replication](Doc/README-Carambolas.Unity.Replication.md)**
 
 
 ## Building from source
@@ -146,7 +146,7 @@ and libCarambolas.Net.Native.dll.dynlib on MacOS. Build scripts already create t
 
 **Dependencies:**
 
-*Carambolas.UnityEngine* and *Carambolas.UnityEngine.Replication* depend on assemblies from the [Unity Engine](http://www.unity.com).
+*Carambolas.Unity* and *Carambolas.Unity.Replication* depend on assemblies from the [Unity Engine](http://www.unity.com).
 
 As redistributing such assemblies would represent a breach of the license agreement, I chose to add a dependency on [this great nuget package by DerploidEntertainment](https://www.nuget.org/packages/Unity3D)
 that basically lets you refer to your own Unity installation. If you use UnityHub and installed unity in the default location nothing else should be needed.
@@ -421,17 +421,31 @@ messages or complete packets.
 
 ## License
 
-All the source code and any binaries produced to be deployed alongside a user application are licensed under an [MIT license](LICENSE).
+Carambolas and all its constituent components including both source code and compiled forms are licensed under the [MIT License](LICENSE).
+Unless expressly provided otherwise, the Software under this license is made available strictly on an “AS IS” BASIS WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. 
+Please review the license for details on these and other terms and conditions.
+
+### Third Party Notices
 
 *Carambolas.CommandLineArguments* was based on an [article by GriffonRL](http://www.codeproject.com/KB/recipes/command_line.aspx) with source code published 
 under an [MIT license](LICENSE-CommandLine) with additional ideas from another [article by Jake Ginnivan](http://jake.ginnivan.net/c-sharp-argument-parser/) 
 that expanded on the original source.
 
-*Carambolas.Security.Criptography.Crc32c* was based on [Crc32.Net by force](https://github.com/force-net/Crc32.NET) under an [MIT license](LICENSE-Crc32.Net).
+*Carambolas.Security.Criptography.Crc32c* was based on [Crc32.Net 1.0 (fbc1061b0cb53df2322d5aed33167a2e6335970b) by force](https://github.com/force-net/Crc32.NET) 
+under an [MIT license](LICENSE-Crc32.Net).
 
-*Carambolas.Security.Criptography.NaCl* was based and expanded on [NaCl.Core by David De Smet](https://github.com/daviddesmet/NaCl.Core) under an [MIT license](LICENSE-NaCl.Core).
+*Carambolas.Security.Criptography.NaCl* was based and expanded on [NaCl.Core (96e134f848763cc6d015ce5a1b371f1b74c24509) by David De Smet](https://github.com/daviddesmet/NaCl.Core) 
+under an [MIT license](LICENSE-NaCl.Core).
 
-The [protocol dissector](Tools/Wireshark/plugins/carambolas.lua) written in lua for [Wireshark](https://www.wireshark.org) is available under a 
+*Carambolas.Unity depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
+
+*Carambolas.Unity-Editor depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
+
+*Carambolas.Unity.Replication depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
+
+*Carambolas.Unity.Replication-Editor depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
+
+* The [protocol dissector](Tools/Wireshark/plugins/carambolas.lua) written in lua for [Wireshark](https://www.wireshark.org) is available under a 
 [GPLv3 license](Tools/Wireshark/plugins/LICENSE). It's only supposed to be used as an input file for Wireshark in order to extend it's capabilities and allow 
 it to display more information about UDP packets formatted according to the carambolas network protocol. Therefore it's completely separate and does not interact, 
-depend or contribute in any way to any source files, assemblies or native libraries.
+depend or contribute in any way to Carambolas source files, assemblies or native libraries.

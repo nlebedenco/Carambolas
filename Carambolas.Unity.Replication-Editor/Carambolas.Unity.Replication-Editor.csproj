@@ -5,47 +5,56 @@
   </PropertyGroup>
 
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
-    
+
   <Import Project="../Version.props" />
-  
+
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.3</LangVersion>
-    <RootNamespace>Carambolas</RootNamespace>
-    <PackageId>Carambolas</PackageId>
+    <RootNamespace>Carambolas.Unity.Replication</RootNamespace>
+    <PackageId>Carambolas.Unity.Replication-Editor</PackageId>
     <Product>Carambolas</Product>
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Description>Core classes including cryptography, a simple log and a basic string resource manager.</Description>
-    <PackageTags>carambolas nacl crc32c chacha20 poly1305 curve25519 isaac</PackageTags>
+    <Description>Distributed objects and replication for the Unity Engine (Editor).</Description>
+    <PackageTags>carambolas udp reliable-udp unity3d game framework replication</PackageTags>
     <Platforms>AnyCPU</Platforms>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
   </PropertyGroup>
-  
+
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;UNITY_EDITOR</DefineConstants>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <NoWarn>1701;1702;CS1591</NoWarn>
   </PropertyGroup>
- 
+
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
-    <DefineConstants></DefineConstants>
+    <DefineConstants>TRACE;UNITY_EDITOR</DefineConstants>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <NoWarn>1701;1702;CS1591</NoWarn>
   </PropertyGroup>
-  
+
   <ItemGroup>
-    <PackageReference Include="System.Memory" Version="4.5.3" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Compile Update="Security/Cryptography/NaCl/Curve25519.FieldElement.cs">
-        <DependentUpon>Security/Cryptography/NaCl/Curve25519.cs</DependentUpon>
+    <Compile Include="..\Carambolas.Unity.Replication\**\*.cs">
+      <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Compile>
   </ItemGroup>
     
+  <ItemGroup>
+    <ProjectReference Include="..\Carambolas.Unity-Editor\Carambolas.Unity-Editor.csproj" />
+    <ProjectReference Include="..\Carambolas\Carambolas.csproj" Private="False" />
+    <ProjectReference Include="..\Carambolas.Net\Carambolas.Net.csproj" Private="False" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Unity3D" Version="1.5.0" />
+    <Reference Include="$(UnityInstallRoot)\$(UnityVersion)\$(UnityEditorPath)" Private="false" />
+  </ItemGroup>
+
 </Project>

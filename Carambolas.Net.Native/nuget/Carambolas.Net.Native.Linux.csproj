@@ -35,7 +35,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <Content Include="$(MSBuildProjectDirectory)/../../Build/NuGet/runtimes/linux*/**/*.so">
+    <Content Include="$(MSBuildProjectDirectory)/../../Build/Native/runtimes/linux*/**/*.so">
       <PackagePath>runtimes</PackagePath>
       <Pack>true</Pack>
     </Content>

@@ -1,0 +1,26 @@
+{
+  "name": "dev.nlebedenco.carambolas.unity",
+  "version": "0.1",
+  "displayName": "Carambolas.Unity",
+  "description": "Extensions and helper classes for the Unity Engine.",
+  "unity": "2018.3",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nlebedenco/Carambolas.git"
+  },
+  "keywords": [
+    "carambolas",
+    "unity3d",
+    "game",
+    "framework"
+  ],
+  "dependencies": {
+    "dev.nlebedenco.carambolas": "0.1"
+  },
+  "author": {
+    "name": "Nicolas Lebedenco",
+    "email": "nicolas@lebedenco.net",
+    "url": "http://github.com/nlebedenco"
+  }
+}

@@ -85,7 +85,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IntDir>$(SolutionDir)Build\$(ProjectName)\obj\$(PlatformShortName)\$(Configuration)\</IntDir>
-    <OutDir>$(SolutionDir)Build\NuGet\runtimes\win-$(PlatformShortName)\native\</OutDir>
+    <OutDir>$(SolutionDir)Build\Native\runtimes\win-$(PlatformShortName)\native\</OutDir>
     <CustomBuildAfterTargets>
     </CustomBuildAfterTargets>
     <CustomBuildBeforeTargets>
@@ -95,7 +95,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IntDir>$(SolutionDir)Build\$(ProjectName)\obj\$(PlatformShortName)\$(Configuration)\</IntDir>
-    <OutDir>$(SolutionDir)Build\NuGet\runtimes\win-$(PlatformShortName)\native\</OutDir>
+    <OutDir>$(SolutionDir)Build\Native\runtimes\win-$(PlatformShortName)\native\</OutDir>
     <CustomBuildAfterTargets>
     </CustomBuildAfterTargets>
     <CustomBuildBeforeTargets>
@@ -106,7 +106,7 @@
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
     <IntDir>$(SolutionDir)Build\$(ProjectName)\obj\$(PlatformShortName)\$(Configuration)\</IntDir>
-    <OutDir>$(SolutionDir)Build\NuGet\runtimes\win-$(PlatformShortName)\native\</OutDir>
+    <OutDir>$(SolutionDir)Build\Native\runtimes\win-$(PlatformShortName)\native\</OutDir>
     <CustomBuildAfterTargets>
     </CustomBuildAfterTargets>
     <CustomBuildBeforeTargets>
@@ -116,7 +116,7 @@
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
     <IntDir>$(SolutionDir)Build\$(ProjectName)\obj\$(PlatformShortName)\$(Configuration)\</IntDir>
-    <OutDir>$(SolutionDir)Build\NuGet\runtimes\win-$(PlatformShortName)\native\</OutDir>
+    <OutDir>$(SolutionDir)Build\Native\runtimes\win-$(PlatformShortName)\native\</OutDir>
     <CustomBuildAfterTargets>
     </CustomBuildAfterTargets>
     <CustomBuildBeforeTargets>

@@ -1,0 +1,50 @@
+﻿<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)\..\Build\Unity\Packages\</BaseOutputPath>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <Import Project="../Version.props" />
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <OutputPath>$(BaseOutputPath)$(Configuration)\dev.nlebedenco.carambolas</OutputPath>
+  </PropertyGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+  <ItemGroup>
+    <ProjectReference Include="..\Carambolas\Carambolas.csproj" DestinationSubDirectory="Runtime\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="unity.package.json" Link="package.json" CopyToOutputDirectory="Always" />
+    <None Update="Third Party Notices.md">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>    
+    <None Include="..\Doc\README-Carambolas.md" Link="README.md" CopyToOutputDirectory="Always" />
+    <None Include="..\Carambolas\CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="Always" />
+    <None Include="..\LICENSE" Link="LICENSE.md" CopyToOutputDirectory="Always" />
+    <None Include="..\LICENSE-CommandLine" Link="Documentation~\LICENSE-CommandLine" CopyToOutputDirectory="Always" />
+    <None Include="..\LICENSE-Crc32.Net" Link="Documentation~\LICENSE-Crc32.Net" CopyToOutputDirectory="Always" />
+    <None Include="..\LICENSE-NaCl.Core" Link="Documentation~\LICENSE-NaCl.Core" CopyToOutputDirectory="Always" />    
+  </ItemGroup>
+
+  <Target Name="AfterBuild">
+    <ItemGroup>
+      <AssemblyFiles Include="$(OutputPath)$(AssemblyName).*" />
+    </ItemGroup>
+    <Delete Files="@(AssemblyFiles)" />
+  </Target>
+
+  <Target Name="AfterClean">
+    <RemoveDir Directories="$(OutputPath)Runtime;$(OutputPath)Editor;$(OutputPath)Documentation~" />
+  </Target>
+  
+</Project>

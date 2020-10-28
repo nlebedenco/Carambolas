@@ -1,5 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("Carambolas.Tests")]
-[assembly: InternalsVisibleTo("Carambolas.Security.Cryptography.Tests")]
-[assembly: InternalsVisibleTo("Carambolas.Security.Cryptography.NaCl.Tests")]
+[assembly: InternalsVisibleTo("Tests.Unit.Carambolas")]
+[assembly: InternalsVisibleTo("Tests.Unit.Carambolas.Security.Cryptography")]
+[assembly: InternalsVisibleTo("Tests.Unit.Carambolas.Security.Cryptography.NaCl")]

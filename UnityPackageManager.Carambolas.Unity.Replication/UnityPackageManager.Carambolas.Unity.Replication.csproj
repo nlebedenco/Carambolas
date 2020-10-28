@@ -1,0 +1,50 @@
+﻿<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)\..\Build\Unity\Packages\</BaseOutputPath>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <Import Project="../Version.props" />
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <OutputPath>$(BaseOutputPath)$(Configuration)\dev.nlebedenco.carambolas.unity.replication</OutputPath>
+  </PropertyGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+  <ItemGroup>
+    <ProjectReference Include="..\Carambolas.Unity.Replication\Carambolas.Unity.Replication.csproj" DestinationSubDirectory="Runtime\" />
+    <ProjectReference Include="..\Carambolas.Unity.Replication-Editor\Carambolas.Unity.Replication-Editor.csproj" DestinationSubDirectory="Editor\" />
+    
+    <ProjectReference Include="..\Carambolas\Carambolas.csproj" Private="False" />
+    <ProjectReference Include="..\Carambolas.Net\Carambolas.Net.csproj" Private="False" />
+    <ProjectReference Include="..\Carambolas.Unity\Carambolas.Unity.csproj" Private="False" />
+    <ProjectReference Include="..\Carambolas.Unity-Editor\Carambolas.Unity-Editor.csproj" Private="False" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="unity.package.json" Link="package.json" CopyToOutputDirectory="Always" />
+    <None Include="..\Doc\README-Carambolas.Unity.Replication.md" Link="README.md" CopyToOutputDirectory="Always" />
+    <None Include="..\Carambolas.Unity.Replication\CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="Always" />
+    <None Include="..\Carambolas.Unity.Replication\LICENSE.md" Link="LICENSE.md" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+  
+  <Target Name="AfterBuild">
+    <ItemGroup>
+      <AssemblyFiles Include="$(OutputPath)$(AssemblyName).*" />
+    </ItemGroup>
+    <Delete Files="@(AssemblyFiles)" />
+  </Target>
+
+  <Target Name="AfterClean">
+    <RemoveDir Directories="$(OutputPath)Runtime;$(OutputPath)Editor;$(OutputPath)Documentation~" />
+  </Target>
+
+</Project>

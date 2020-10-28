@@ -1,0 +1,30 @@
+{
+  "name": "dev.nlebedenco.carambolas.unity.replication",
+  "version": "0.1",
+  "displayName": "Carambolas",
+  "description": "Distributed objects and replication for the Unity Engine.",
+  "unity": "2018.3",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nlebedenco/Carambolas.git"
+  },
+  "keywords": [
+    "carambolas",
+    "udp",
+    "reliable-udp",
+    "unity3d",
+    "game",
+    "framework",
+    "replication"
+  ],
+  "dependencies": {
+    "dev.nlebedenco.carambolas.net": "0.1",
+    "dev.nlebedenco.carambolas.unity": "0.1"
+  },
+  "author": {
+    "name": "Nicolas Lebedenco",
+    "email": "nicolas@lebedenco.net",
+    "url": "http://github.com/nlebedenco"
+  }
+}

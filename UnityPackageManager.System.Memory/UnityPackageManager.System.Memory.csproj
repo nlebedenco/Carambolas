@@ -1,0 +1,52 @@
+﻿<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)\..\Build\Unity\Packages\</BaseOutputPath>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <Import Project="../Version.props" />
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <OutputPath>$(BaseOutputPath)$(Configuration)\dotnet.system.memory</OutputPath>
+  </PropertyGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+  <ItemGroup>
+    <ProjectReference Include="..\Carambolas\Carambolas.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="LICENSE.md">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="unity.package.json" Link="package.json" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
+  <Target Name="AfterBuild">
+    <ItemGroup>
+      <AssemblyFiles Include="$(OutputPath)$(AssemblyName).*" />
+    </ItemGroup>
+    <ItemGroup>
+      <SystemFiles Include="$(OutputPath)System*.dll" />
+    </ItemGroup>
+    <ItemGroup>
+      <CarambolasFiles Include="$(OutputPath)Carambolas.*" />
+    </ItemGroup>
+    <Delete Files="@(AssemblyFiles)" />
+    <Delete Files="@(CarambolasFiles)" />
+    <Move SourceFiles="@(SystemFiles)" DestinationFolder="$(OutputPath)Runtime\" />
+  </Target>
+
+  <Target Name="AfterClean">
+    <RemoveDir Directories="$(OutputPath)Runtime;$(OutputPath)Editor;$(OutputPath)Documentation~" />
+  </Target>
+
+</Project>

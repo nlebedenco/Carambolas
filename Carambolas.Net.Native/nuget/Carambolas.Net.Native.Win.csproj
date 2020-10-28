@@ -9,7 +9,7 @@
   <Import Project="../../Version.props" />
   
   <PropertyGroup>
-     <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <IsPackable>true</IsPackable>
     <IncludeBuildOutput>false</IncludeBuildOutput>        
     <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
@@ -35,7 +35,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <Content Include="$(MSBuildProjectDirectory)/../../Build/NuGet/runtimes/win*/**/*.dll">
+    <Content Include="$(MSBuildProjectDirectory)/../../Build/Native/runtimes/win*/**/*.dll">
       <PackagePath>runtimes</PackagePath>
       <Pack>true</Pack>
     </Content>

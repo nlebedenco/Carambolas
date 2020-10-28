@@ -1,0 +1,27 @@
+{
+  "name": "dev.nlebedenco.carambolas",
+  "version": "0.1",
+  "displayName": "Carambolas",
+  "description": "Core classes including cryptography, a simple log and a basic string resource manager. This package requires System.Memory.dll (>= 4.5.3) but it's not included intentionally to prevent conflicts with other third-party packages. If you don't have a System.Memory.dll in your project you may install the dotnet.system.memory package.",
+  "unity": "2018.3",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nlebedenco/Carambolas.git"
+  },
+  "keywords": [
+    "carambolas",
+    "nacl",
+    "crc32c",
+    "chacha20",
+    "poly1305",
+    "curve25519",
+    "isaac"
+  ],
+  "dependencies": {},
+  "author": {
+    "name": "Nicolas Lebedenco",
+    "email": "nicolas@lebedenco.net",
+    "url": "http://github.com/nlebedenco"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "dotnet.system.memory",
+  "version": "4.5.3",
+  "displayName": "System.Memory",
+  "description": "This is a repackaging of System.Memory 4.5.3 from Nuget.org (https://www.nuget.org/packages/System.Memory/4.5.3). It includes a netstandard 2.0 compatible assembly and dependencies.",
+  "unity": "2018.3",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dotnet/corefx.git"
+  },
+  "keywords": [
+    "system",
+    "memory",
+    "span"
+  ],
+  "dependencies": {},
+  "author": {
+    "name": "Nicolas Lebedenco",
+    "email": "nicolas@lebedenco.net",
+    "url": "http://github.com/nlebedenco"
+  }
+}
