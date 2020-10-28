@@ -1,6 +1,6 @@
 {
   "name": "dev.nlebedenco.carambolas.net",
-  "version": "0.1",
+  "version": "0.1.0",
   "displayName": "Carambolas.Net",
   "description": "Low latency reliable UDP protocol implementation.",
   "unity": "2018.3",
@@ -17,7 +17,7 @@
     "netcode"
   ],
   "dependencies": {
-    "dev.nlebedenco.carambolas":  "0.1"
+    "dev.nlebedenco.carambolas":  "0.1.0"
   },
   "author": {
     "name": "Nicolas Lebedenco",

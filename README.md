@@ -146,6 +146,9 @@ and libCarambolas.Net.Native.dll.dynlib on MacOS. Build scripts already create t
 
 **Dependencies:**
 
+*Carambolas* depends on [System.Memory.dll (>= 4.5.3)](https://www.nuget.org/packages/System.Memory/) which should be automatically fetched in the build process
+and does not require manual intervention.
+
 *Carambolas.Unity* and *Carambolas.Unity.Replication* depend on assemblies from the [Unity Engine](http://www.unity.com).
 
 As redistributing such assemblies would represent a breach of the license agreement, I chose to add a dependency on [this great nuget package by DerploidEntertainment](https://www.nuget.org/packages/Unity3D)
@@ -168,8 +171,35 @@ UnityInstallRoot=D:\Unity
 UnityVersion=2019
 ```
 
-And that's it. I don't ever need to touch those variables again.
+And that's it. No one ever needs to touch those variables again.
 
+**Unity Package Manager (UPM) Projects:**
+
+These are projects intended to build UPM packages and must not produce assemblies of their own. If you edit the respective csproj files you will notice I had 
+to use a few tricks to work around certain Visual Studio and MSBuild limitations such as: 
+
+* Empty projects with no assembly info still produce a dll, a pdb and a deps.json file in the output path. The nuget packaging process is smart enough to 
+ignore these files when the project has `<NoBuild>true</NoBuild>` hence why NuGet packages for runtimes only (such as [this one](Carambolas.Net.Native/nuget/Carambolas.Net.Native.Win.csproj))
+do not end up with no-op assemblies. In the normal build process, however, one has to manually delete the undesired files using a post build task.
+
+* Visual studio treats any file called package.json as an npm package manifest which poses a problem becase UPM being based on npm also uses a package.json.
+Besides the format not being exactly the same, visual studio will by default try to automatically restore the packages described inside it when the project is 
+open or the file is saved. The most common solution to this problem is to disable npm auto restore on Visual Studio settings. This is inconvenient because as 
+a global setting it may adversely affect other unrelated projects. I opted for the alternative of naming the file differently and add it to the project using a link which 
+will automatically produce the proper renaming of the output on build.
+
+* Visual Studio insists on copying upper level dependencies over to the output path even when the immediate project reference is configured with Private 
+= False. The only workaround I found besides deleting the files in a post build task was to also reference all indirect (upper level ) dependencies with 
+Private = False.
+
+* System dependencies introduced by NuGet package references in [Carambolas.csproj](Carambolas/Carambolas.csproj)) cannot be included side-by-side with 
+Carambolas.dll in the same unity package or we risk unreconcilable conflicts with third-party packages. Unity cannot handle multiple assemblies with the same name in a single unity 
+project regardless of how these assemblies ended up in there. This poses a problem because if any other third-party package or even user code is included that brings in its own System.Memmory.dll (or any of its dependencies) Unity will raise an
+exception and refuse to build the project. In theory, until Unity provides an official System.Memory UPM package the best we can do it leave the user responsible 
+for the management of third-party dependencies. In order to build a separate dotnet.system.memory package we created a csproj that sets 
+`<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>` references any other projects with known dependencies (in this case 
+[Carambolas.csproj](Carambolas/Carambolas.csproj)) and deletes the resulting assembly (pdb and deps.json) leaving only the package reference dependencies which then
+are copied to the Runtime subfolder.
 
 ### Windows 
  
@@ -187,7 +217,7 @@ Use [build.bat](build.bat) to build all projects for release without using Visua
 
 Visual Studio for Mac hasn't been tested and is not supported, so don't expect it to work.
 
-Make sure to have cmake (>= 2.8) and gcc to be able to compile the native library.
+Make sure to have cmake (>= 2.8) and gcc to be able to compile native libraries.
 Dotnet core SDK 2.1 is required to compile the assemblies and generate nuget packages.
 
 Use [nugetpack.sh](nugetpack.sh) to compile the native library and portable assemblies and create NuGet packages all in a single action. 
@@ -197,7 +227,7 @@ Use [build.sh](build.sh) to build all projects for release without using Visual 
 
 ### Linux
 
-Make sure to have cmake (>= 2.8), build-essential and gcc-multilib installed to be able to compile the native library for both x86 and x64. 
+Make sure to have cmake (>= 2.8), build-essential and gcc-multilib installed to be able to compile native libraries for both x86 and x64. 
 
 On Ubuntu run:
 $ sudo apt-get install build-essential gcc-multilib g++-multilib cmake
@@ -220,6 +250,7 @@ Use [nugetpack.sh](nugetpack.sh) to compile the native library and portable asse
 Use [build.sh](build.sh) to build all projects for release without using Visual Studio.
 
 
+
 ## Testing
 
 A minimum set of unit tests are implemented around key features using [xUnit](https://xunit.net) projects.
@@ -231,6 +262,13 @@ Carambolas.Net.Tests.Integration is a set of integration tests for Carambolas.Ne
 starting two separate threads (a server and a client), that communicate over the loopback interface for a specific amount of time. The loopback represents an ideal 
 network where round-trip time is minimum, packets never arrive out of order and are never lost unless there is a bufffer overflow. These characteristics are useful 
 to validate normal execution paths.
+
+
+## Resource Icons
+
+All resource icons exported for use in the unity editor were obtained from [Material Design Icons](http://materialdesignicons.com) as PNG with 72px
+background = transparent, foreground = #565656 (for normal skin) / #C2C2C2 (for pro skin), padding = 0, corner radius = 0. Art sources may be found 
+at https://github.com/Templarian/MaterialDesign.
 
 
 ## Tools
@@ -427,14 +465,14 @@ Please review the license for details on these and other terms and conditions.
 
 ### Third Party Notices
 
-*Carambolas.CommandLineArguments* was based on an [article by GriffonRL](http://www.codeproject.com/KB/recipes/command_line.aspx) with source code published 
-under an [MIT license](LICENSE-CommandLine) with additional ideas from another [article by Jake Ginnivan](http://jake.ginnivan.net/c-sharp-argument-parser/) 
+*Carambolas.CommandLineArguments* was based on an [article by GriffonRL (Richard Lopes)](http://www.codeproject.com/KB/recipes/command_line.aspx) with source code published 
+under an [MIT license](LICENSE-CommandLine) with ideas from an [article by Jake Ginnivan](http://jake.ginnivan.net/c-sharp-argument-parser/) 
 that expanded on the original source.
 
 *Carambolas.Security.Criptography.Crc32c* was based on [Crc32.Net 1.0 (fbc1061b0cb53df2322d5aed33167a2e6335970b) by force](https://github.com/force-net/Crc32.NET) 
 under an [MIT license](LICENSE-Crc32.Net).
 
-*Carambolas.Security.Criptography.NaCl* was based and expanded on [NaCl.Core (96e134f848763cc6d015ce5a1b371f1b74c24509) by David De Smet](https://github.com/daviddesmet/NaCl.Core) 
+*Carambolas.Security.Criptography.NaCl* was based and expanded on [NaCl.Core 1.2 (a9f09c01fceb5b47bca5256518e848afc860acea) by David De Smet](https://github.com/daviddesmet/NaCl.Core) 
 under an [MIT license](LICENSE-NaCl.Core).
 
 *Carambolas.Unity depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
@@ -444,6 +482,8 @@ under an [MIT license](LICENSE-NaCl.Core).
 *Carambolas.Unity.Replication depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
 
 *Carambolas.Unity.Replication-Editor depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
+
+*Resource icons* exported for use in the unity editor were provided by [Material Design Icons](http://materialdesignicons.com) under the [Pictogrammers Free License](LICENSE-MaterialDesignIcons)
 
 * The [protocol dissector](Tools/Wireshark/plugins/carambolas.lua) written in lua for [Wireshark](https://www.wireshark.org) is available under a 
 [GPLv3 license](Tools/Wireshark/plugins/LICENSE). It's only supposed to be used as an input file for Wireshark in order to extend it's capabilities and allow 

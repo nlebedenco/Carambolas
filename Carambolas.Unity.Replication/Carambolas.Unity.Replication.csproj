@@ -11,7 +11,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.3</LangVersion>
-    <RootNamespace>Carambolas.Unity.Replication</RootNamespace>
+    <RootNamespace>Carambolas.UnityEngine.Replication</RootNamespace>
     <PackageId>Carambolas.Unity.Replication</PackageId>
     <Product>Carambolas</Product>
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>

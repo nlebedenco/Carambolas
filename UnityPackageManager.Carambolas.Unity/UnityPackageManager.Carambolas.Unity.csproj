@@ -21,15 +21,36 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Carambolas.Unity\Carambolas.Unity.csproj" DestinationSubDirectory="Runtime\" />
-    <ProjectReference Include="..\Carambolas.Unity-Editor\Carambolas.Unity-Editor.csproj" DestinationSubDirectory="Editor\" />
+    <ProjectReference Include="..\Carambolas.Unity-Editor\Carambolas.Unity-Editor.csproj" DestinationSubDirectory="Runtime\" />
 
     <ProjectReference Include="..\Carambolas\Carambolas.csproj" Private="False" />
     <ProjectReference Include="..\Carambolas.Net\Carambolas.Net.csproj" Private="False" />
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="CHANGELOG.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="Editor.meta" CopyToOutputDirectory="Always" />
+    <None Update="Editor\Resources.meta" CopyToOutputDirectory="Always" />
+    <None Update="Editor\Resources\Carambolas.meta" CopyToOutputDirectory="Always" />
+    <None Update="Editor\Resources\Carambolas\Icons.meta" CopyToOutputDirectory="Always" />
+    <None Update="Editor\Resources\Carambolas\Icons\cog.png" CopyToOutputDirectory="Always" />
+    <None Update="Editor\Resources\Carambolas\Icons\cog.png.meta" CopyToOutputDirectory="Always" />
+    <None Update="Editor\Resources\Carambolas\Icons\ProSkin.meta" CopyToOutputDirectory="Always" />
+    <None Update="Editor\Resources\Carambolas\Icons\ProSkin\cog.png" CopyToOutputDirectory="Always" />
+    <None Update="Editor\Resources\Carambolas\Icons\ProSkin\cog.png.meta" CopyToOutputDirectory="Always" />
+    <None Update="LICENSE.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="package.json.meta" CopyToOutputDirectory="Always" />
+    <None Update="README.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Unity-Editor.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Unity-Editor.pdb.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Unity-Editor.xml.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Unity.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Unity.pdb.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Unity.xml.meta" CopyToOutputDirectory="Always" />
     <None Update="unity.package.json" Link="package.json" CopyToOutputDirectory="Always" />
-    <None Include="..\Doc\README-Carambolas.Unity.md" Link="README.md" CopyToOutputDirectory="Always" />
+    <None Include="..\UnityPackagemanager.Carambolas\README.md" Link="README.md" CopyToOutputDirectory="Always" />
+    <None Include="..\Doc\README-Carambolas.Unity.md" Link="Documentation~\index.md" CopyToOutputDirectory="Always" />
     <None Include="..\Carambolas.Unity\CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="Always" />
     <None Include="..\Carambolas.Unity\LICENSE.md" Link="LICENSE.md" CopyToOutputDirectory="Always" />
   </ItemGroup>

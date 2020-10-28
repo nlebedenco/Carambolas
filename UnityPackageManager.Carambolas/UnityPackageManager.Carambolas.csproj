@@ -23,12 +23,20 @@
     <ProjectReference Include="..\Carambolas\Carambolas.csproj" DestinationSubDirectory="Runtime\" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup>    
+    <None Update="CHANGELOG.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="LICENSE.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="package.json.meta" CopyToOutputDirectory="Always" />
+    <None Update="README.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.pdb.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.xml.meta" CopyToOutputDirectory="Always" />
+    <None Update="THIRD PARTY NOTICES.md.meta" CopyToOutputDirectory="Always" />
     <None Update="unity.package.json" Link="package.json" CopyToOutputDirectory="Always" />
-    <None Update="Third Party Notices.md">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>    
-    <None Include="..\Doc\README-Carambolas.md" Link="README.md" CopyToOutputDirectory="Always" />
+    <None Update="README.md" CopyToOutputDirectory="Always" />
+    <None Update="THIRD PARTY NOTICES.md" CopyToOutputDirectory="Always" />
+    <None Include="..\Doc\README-Carambolas.md" Link="Documentation~\index.md" CopyToOutputDirectory="Always" />
     <None Include="..\Carambolas\CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="Always" />
     <None Include="..\LICENSE" Link="LICENSE.md" CopyToOutputDirectory="Always" />
     <None Include="..\LICENSE-CommandLine" Link="Documentation~\LICENSE-CommandLine" CopyToOutputDirectory="Always" />

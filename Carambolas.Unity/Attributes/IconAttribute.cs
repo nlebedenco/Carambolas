@@ -5,8 +5,16 @@ namespace Carambolas.UnityEngine
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
     public class IconAttribute: Attribute
     {
-        public string IconName { get; private set; }
+        public string Name { get; private set; }
 
-        public IconAttribute(string iconName) => IconName = iconName;
+        public IconAttribute(string name) => Name = name;
+    }
+
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
+    public class ProSkinIconAttribute: Attribute
+    {
+        public string Name { get; private set; }
+
+        public ProSkinIconAttribute(string name) => Name = name;
     }
 }

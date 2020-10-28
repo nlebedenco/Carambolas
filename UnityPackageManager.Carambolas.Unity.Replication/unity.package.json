@@ -1,7 +1,7 @@
 {
   "name": "dev.nlebedenco.carambolas.unity.replication",
-  "version": "0.1",
-  "displayName": "Carambolas",
+  "version": "0.1.0",
+  "displayName": "Carambolas.Unity.Replication",
   "description": "Distributed objects and replication for the Unity Engine.",
   "unity": "2018.3",
   "license": "MIT",
@@ -19,8 +19,8 @@
     "replication"
   ],
   "dependencies": {
-    "dev.nlebedenco.carambolas.net": "0.1",
-    "dev.nlebedenco.carambolas.unity": "0.1"
+    "dev.nlebedenco.carambolas.net": "0.1.0",
+    "dev.nlebedenco.carambolas.unity": "0.1.0"
   },
   "author": {
     "name": "Nicolas Lebedenco",

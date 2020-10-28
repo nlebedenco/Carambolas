@@ -25,8 +25,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="CHANGELOG.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="LICENSE.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="package.json.meta" CopyToOutputDirectory="Always" />
+    <None Update="README.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Net.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Net.pdb.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Net.xml.meta" CopyToOutputDirectory="Always" />
     <None Update="unity.package.json" Link="package.json" CopyToOutputDirectory="Always" />
-    <None Include="..\Doc\README-Carambolas.Net.md" Link="README.md" CopyToOutputDirectory="Always" />
+    <None Include="..\UnityPackagemanager.Carambolas\README.md" Link="README.md" CopyToOutputDirectory="Always" />
+    <None Include="..\Doc\README-Carambolas.Net.md" Link="Documentation~\index.md" CopyToOutputDirectory="Always" />
     <None Include="..\Carambolas.Net\CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="Always" />
     <None Include="..\LICENSE" Link="LICENSE.md" CopyToOutputDirectory="Always" />
   </ItemGroup>

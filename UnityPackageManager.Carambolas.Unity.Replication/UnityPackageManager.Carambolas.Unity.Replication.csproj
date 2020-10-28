@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Carambolas.Unity.Replication\Carambolas.Unity.Replication.csproj" DestinationSubDirectory="Runtime\" />
-    <ProjectReference Include="..\Carambolas.Unity.Replication-Editor\Carambolas.Unity.Replication-Editor.csproj" DestinationSubDirectory="Editor\" />
+    <ProjectReference Include="..\Carambolas.Unity.Replication-Editor\Carambolas.Unity.Replication-Editor.csproj" DestinationSubDirectory="Runtime\" />
     
     <ProjectReference Include="..\Carambolas\Carambolas.csproj" Private="False" />
     <ProjectReference Include="..\Carambolas.Net\Carambolas.Net.csproj" Private="False" />
@@ -30,8 +30,20 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="CHANGELOG.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="LICENSE.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="package.json.meta" CopyToOutputDirectory="Always" />
+    <None Update="README.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Unity.Replication-Editor.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Unity.Replication-Editor.pdb.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Unity.Replication-Editor.xml.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Unity.Replication.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Unity.Replication.pdb.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\Carambolas.Unity.Replication.xml.meta" CopyToOutputDirectory="Always" />
     <None Update="unity.package.json" Link="package.json" CopyToOutputDirectory="Always" />
-    <None Include="..\Doc\README-Carambolas.Unity.Replication.md" Link="README.md" CopyToOutputDirectory="Always" />
+    <None Include="..\UnityPackagemanager.Carambolas\README.md" Link="README.md" CopyToOutputDirectory="Always" />
+    <None Include="..\Doc\README-Carambolas.Unity.Replication.md" Link="Documentation~\index.md" CopyToOutputDirectory="Always" />
     <None Include="..\Carambolas.Unity.Replication\CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="Always" />
     <None Include="..\Carambolas.Unity.Replication\LICENSE.md" Link="LICENSE.md" CopyToOutputDirectory="Always" />
   </ItemGroup>

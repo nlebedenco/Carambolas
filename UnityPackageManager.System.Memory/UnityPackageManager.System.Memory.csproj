@@ -24,10 +24,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="LICENSE.md">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    <None Update="LICENSE.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="package.json.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\System.Buffers.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\System.Memory.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\System.Numerics.Vectors.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime\System.Runtime.CompilerServices.Unsafe.dll.meta" CopyToOutputDirectory="Always" />
     <None Update="unity.package.json" Link="package.json" CopyToOutputDirectory="Always" />
+    <None Update="LICENSE.md" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
   <Target Name="AfterBuild">

@@ -11,7 +11,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.3</LangVersion>
-    <RootNamespace>Carambolas.Unity</RootNamespace>
+    <RootNamespace>Carambolas.UnityEngine</RootNamespace>
     <PackageId>Carambolas.Unity</PackageId>
     <Product>Carambolas</Product>
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
@@ -27,6 +27,7 @@
       
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
     <NoWarn>1701;1702;CS1591</NoWarn>
   </PropertyGroup>
 

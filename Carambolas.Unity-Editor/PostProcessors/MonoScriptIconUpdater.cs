@@ -33,13 +33,18 @@ namespace Carambolas.UnityEditor
                     UpdateIcon(script);
         }
 
+        private static string GetIconName(Type type) => EditorGUIUtility.isProSkin ?
+            type.GetCustomAttribute<ProSkinIconAttribute>(true)?.Name ?? type.GetCustomAttribute<IconAttribute>(true)?.Name : type.GetCustomAttribute<IconAttribute>(true)?.Name;
+
         private static void UpdateIcon(MonoScript script)
         {
             if (script)
             {
                 var type = script.GetClass();
-                var attr = type?.GetCustomAttribute<IconAttribute>(true);
-                string iconName = attr?.IconName;
+                if (type == null)
+                    return;
+
+                var iconName = GetIconName(type);
                 if (!string.IsNullOrEmpty(iconName))
                 {
                     var icon = UnityResources.Load<Texture2D>(iconName);
@@ -60,7 +65,7 @@ namespace Carambolas.UnityEditor
                     }
                     else
                     {
-                        Debug.LogWarningFormat("Failed to load icon {0} required by type {1}.", iconName, type.FullName);
+                        Debug.LogWarning($"Failed to load icon {iconName} required by type {type.FullName}.");
                     }
                 }
             }

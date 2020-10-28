@@ -5,7 +5,8 @@ using UnityEngine;
 
 namespace Carambolas.UnityEngine
 {
-    [Icon("Icons/small-n-flat/png/72/file-exe")]
+    [Icon("Carambolas/Icons/Cog")]
+    [ProSkinIcon("Carambolas/Icons/ProSkin/Cog")]
     public abstract class ConfigAsset: ScriptableObject, IRevertableObject
     {
         public const string DefaultFileExtension = "cfg";
