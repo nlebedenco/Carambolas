@@ -173,34 +173,6 @@ UnityVersion=2019
 
 And that's it. No one ever needs to touch those variables again.
 
-**Unity Package Manager (UPM) Projects:**
-
-These are projects intended to build UPM packages and must not produce assemblies of their own. If you edit the respective csproj files you will notice I had 
-to use a few tricks to work around certain Visual Studio and MSBuild limitations such as: 
-
-* Empty projects with no assembly info still produce a dll, a pdb and a deps.json file in the output path. The nuget packaging process is smart enough to 
-ignore these files when the project has `<NoBuild>true</NoBuild>` hence why NuGet packages for runtimes only (such as [this one](Carambolas.Net.Native/nuget/Carambolas.Net.Native.Win.csproj))
-do not end up with no-op assemblies. In the normal build process, however, one has to manually delete the undesired files using a post build task.
-
-* Visual studio treats any file called package.json as an npm package manifest which poses a problem becase UPM being based on npm also uses a package.json.
-Besides the format not being exactly the same, visual studio will by default try to automatically restore the packages described inside it when the project is 
-open or the file is saved. The most common solution to this problem is to disable npm auto restore on Visual Studio settings. This is inconvenient because as 
-a global setting it may adversely affect other unrelated projects. I opted for the alternative of naming the file differently and add it to the project using a link which 
-will automatically produce the proper renaming of the output on build.
-
-* Visual Studio insists on copying upper level dependencies over to the output path even when the immediate project reference is configured with Private 
-= False. The only workaround I found besides deleting the files in a post build task was to also reference all indirect (upper level ) dependencies with 
-Private = False.
-
-* System dependencies introduced by NuGet package references in [Carambolas.csproj](Carambolas/Carambolas.csproj)) cannot be included side-by-side with 
-Carambolas.dll in the same unity package or we risk unreconcilable conflicts with third-party packages. Unity cannot handle multiple assemblies with the same name in a single unity 
-project regardless of how these assemblies ended up in there. This poses a problem because if any other third-party package or even user code is included that brings in its own System.Memmory.dll (or any of its dependencies) Unity will raise an
-exception and refuse to build the project. In theory, until Unity provides an official System.Memory UPM package the best we can do it leave the user responsible 
-for the management of third-party dependencies. In order to build a separate dotnet.system.memory package we created a csproj that sets 
-`<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>` references any other projects with known dependencies (in this case 
-[Carambolas.csproj](Carambolas/Carambolas.csproj)) and deletes the resulting assembly (pdb and deps.json) leaving only the package reference dependencies which then
-are copied to the Runtime subfolder.
-
 ### Windows 
  
 A visual studio solution is included for convenience, so no additional build steps should be required for Windows. 
@@ -249,6 +221,121 @@ Use [nugetpack.sh](nugetpack.sh) to compile the native library and portable asse
 
 Use [build.sh](build.sh) to build all projects for release without using Visual Studio.
 
+## Unity "Gotchas"
+
+**Use of compiler directives**
+
+Unity defines a whole set of useful [compiler directives](https://docs.unity3d.com/Manual/PlatformDependentCompilation.html).
+One of the most well known is `UNITY_EDITOR`. It's useful because many classes are only available in the Editor as well as certain assemblies. So it's not 
+uncommon to see `#if UNITY_EDITOR` in scripts everywhere and Carambolas.Unity is not different. The problem with pre-compiled assemblies, however is that 
+compiler directives must be provided ahead of time and there's now way to know which ones are actually going to be used in a Unity project. Therefore all 
+Carambolas projects that depend on the Unity Engine also have a second corresponding project that includes all the original source code as links plus any 
+editor only classes and is be compiled with the UNITY_EDITOR directive. For example, Carambolas.Unity produces Carambolas.Unity.dll and has a corresponding 
+Carambolas.Unity-Editor project that is compiled with `UNITY_EDITOR` defined and produces Carambolas.Unity-Editor.dll. The former assembly is configured in 
+Unity (in the meta file) for all platforms except Editor so it's included in builds but never while playing in the Editor. The latter is configured to the
+opposite, available only in Editor and not for any other platform. This way carambolas classes that are meant to be included for both the Unity Player and the
+Unity Editor may still use the idiomatic #if UNITY_EDITOR to adapt compilation for each case.
+
+Note that all this refers to carambolas sources only and does interfere with user code or any third-party code in a Unity project.
+
+For predefined compiler directives other than `UNITY_EDITOR` the issue is more complicated. We can't have an assembly version for each directive and even if
+we had those there's no way to condition the use of an assembly to a compiler directive. The case for `UNITY_EDITOR` is very specific because it happens to be 
+related to a platform. So it's not possible to refer to any other unity compiler directive in Carambolas source code (that is precompiled).
+
+This is an issue in certain cases where the Unity API does not provide a static property but only a compiler directive to identify certain system properties.
+Consider the Server Build option, for example. Different than a Development Build that can be identified in runtime by checking Debug.IsDebugBuild, there is 
+no built in way to identify Server Builds in runtime. You may check Application.isBatchMode but they're not the same thing. So there's no Debug.isServerBuild. 
+Fine. But there is a `UNITY_SERVER` directive that is provided by the compiler on server builds. Ok. But pre-compiled assemblies cannot do `#if UNITY_SERVER`
+so now what? Well, one interesting alternative is to cleverly use the [Conditional Attribute](https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.conditionalattribute).
+For example, when a precompiled assembly has a class like this:
+ 
+```c#
+namespace Carambolas.UnityEngine
+{
+    public static class SomeClass
+    {
+        [Conditional("UNITY_SERVER")]
+        public static void SomeMethod() 
+        { 
+            Debug.Log("This is a server build");
+        }
+    }
+}
+```
+
+one may call SomeClass.SomeMethod() from any other assembly (CSharp-Assembly included) that was compiled with `UNITY_SERVER` defined and the call will 
+produce the log the message. Otherwise the call will be completely ommited by the JIT. Sounds great, uh? Sort of a dynamic compiler directive. The gotcha is 
+that the directive the condition is based on does not propagate, it's only evaluated in the compilation unit of the caller - the exact location. For example:
+
+```c#
+namespace Carambolas.UnityEngine
+{
+    public static class SomeClass
+    {
+        [Conditional("UNITY_SERVER")]
+        public static void SomeMethod() 
+        { 
+            Debug.Log("This is a server build");
+        }
+
+        public static void OtherMethod() 
+        {
+            // Do something interesting here and then...
+
+            SomeMethod();
+        }
+    }
+}
+```
+
+If instead of calling SomeClass.SomeMethod() directly we decided to call SomeClass.OtherMethod() the log message would never be produced regardless of the 
+caller's assembly being compiled with `UNITY_SERVER` or not. The reason is that the call to SomeMethod() is now originating from within the precompiled 
+assembly itself (not the user's assembly) and it has not been compiled with `UINTY_SERVER` defined (obviously) thus the condition always fails. 
+
+This situation with conditional methods may look really puzzling sometimes so the solution employed by Carambolas to capture information of the build context 
+in Unity (such as isServerBuild, for example) is to leave an assembly to be compiled by Unity itself, namely Carambolas.Unity.Deferred. As the name implies, 
+this assembly contains only code that depends on the build context of a Unity project and cannot be pre-compiled - hence the "deferred" qualifier. Assembly 
+definition and source files are packed by [UnityPackageManager.Carambolas.Unity](UnityPackageManager.Carambolas.Unity/UnityPackageManager.Carambolas.Unity.csproj).
+
+
+**Console input/output**
+
+Unity applications have console input and output disabled so methods such as *System.Console.WriteLine* will silently fail even if the application is started in the 
+command line with *-batchmode*. There are alternatives to attach a terminal window but they all require use of native system libraries. The only exception is for 
+headless unity applications built with [BuildOptions.EnableHeadlessMode](https://docs.unity3d.com/ScriptReference/BuildOptions.EnableHeadlessMode.html) 
+(equivalent to setting the *Server Build* checkbox in the build settings window). The resulting unity player in this case will have no visual elements without 
+the need to specify any command line options (hence the *headless*), managed scripts will be compiled with the `UNITY_SERVER` compiler directive and stdin and 
+stdout will be accessible (Unity will logs go to stdout by default). Mac and Linux players are compiled as a standard console application. Windows player is 
+compiled with /SUBSYSTEM:Console and runs as a standard windows console application.
+
+
+**Unity Package Manager (UPM) Projects:**
+
+Projects with names starting with "UnityPackagerManager" are intended to build UPM packages and must not produce assemblies of their own. If you edit the
+respective csproj files however you will notice I had to resort to a few tricks to work around some Visual Studio and MSBuild limitations such as: 
+
+* Empty projects with no assembly info still produce a dll, a pdb and a deps.json file in the output path. The nuget packaging process is smart enough to 
+ignore these files when the project has `<NoBuild>true</NoBuild>` hence why NuGet packages for runtimes only (such as [this one](Carambolas.Net.Native/nuget/Carambolas.Net.Native.Win.csproj))
+do not end up with no-op assemblies. In the normal build process, however, one has to manually delete the undesired files using a post build task.
+
+* Visual studio treats any file called package.json as an npm package manifest which poses a problem becase UPM being based on npm also uses a package.json.
+Besides the format not being exactly the same, visual studio will by default try to automatically restore the packages described inside it when the project is 
+open or the file is saved. The most common solution to this problem is to disable npm auto restore on Visual Studio settings. This is inconvenient because as 
+a global setting it may adversely affect other unrelated projects. I opted for the alternative of naming the file differently and add it to the project using a link which 
+will automatically produce the proper renaming of the output on build.
+
+* Visual Studio insists on copying upper level dependencies over to the output path even when the immediate project reference is configured with Private 
+= False. The only workaround I found besides deleting the files in a post build task was to also reference all indirect (upper level ) dependencies with 
+Private = False.
+
+* System dependencies introduced by NuGet package references in [Carambolas.csproj](Carambolas/Carambolas.csproj)) cannot be included side-by-side with 
+Carambolas.dll in the same unity package or we risk unreconcilable conflicts with third-party packages. Unity cannot handle multiple assemblies with the same name in a single unity 
+project regardless of how these assemblies ended up in there. This poses a problem because if any other third-party package or even user code is included that brings in its own System.Memmory.dll (or any of its dependencies) Unity will raise an
+exception and refuse to build the project. In theory, until Unity provides an official System.Memory UPM package the best we can do it leave the user responsible 
+for the management of third-party dependencies. In order to build a separate dotnet.system.memory package we created a csproj that sets 
+`<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>` references any other projects with known dependencies (in this case 
+[Carambolas.csproj](Carambolas/Carambolas.csproj)) and deletes the resulting assembly (pdb and deps.json) leaving only the package reference dependencies which then
+are copied to the Runtime subfolder.
 
 
 ## Testing
@@ -412,6 +499,36 @@ libraries cannot. They must match the CPU architecture of the running operating 
 System.BadImageFormatException. Note that this is not the same as trying to load a library that is not found which is by definition not an error.
 
 
+##### What is all this x86, x86_64, x64 and Win32 terminology ?
+
+Long story short these are code names used to identify CPU instruction sets and consequently a hardware platform (because in the past a CPU would only support a 
+single set of instructions and even though nowadays CPUs may implement multiple sets there's always one identified as *the main one*.) 
+
+About 30 years ago, the term x86 was used to denote a whole family of CPUs that implemented more or less the same instruction set development by Intel Corp.
+which started with the 8086 CPU (learn more at [wikipedia](wikipedia.org/wiki/X86)). Later with the advent of 64-bit CPU architectures an interesting thing 
+hapened. Intel pushed a new CPU architecture (Itanium) with a brand new instruction set tailored exclusively for 64-bit systems and this set was then referred 
+to as x64. Nonetheless, at the same time AMD also produced and extended x86 instruction set for a hybrid 32/64-bit CPU [(Opteron and the like in 2003)](wikipedia.org/wiki/X86-64) 
+which suddenly rendered the term x64 umbiguous. For a while x64 was exclusively used to refer to Itanium-like architectures and other terms were used for x86 
+extended with 64-bit instructions. These terms included AMD64 and x86_64 and Itanium started to be refered to as i64. In time x86_64 was preferred largely due
+to AMD being a trademark. After all, what company in the world would passively employ a competitor's brand name in technical terminology that was widely 
+publicised? Anyway, adding to the confusion Microsoft started to refer to its Windows operating system and legacy APIs as Win32 while the 64-bit versions rather
+than being called Win64 became known as Win32 x64. Yes, programmers are confused beasts. In another fron MacOS and Linux started supporting binaries that were 
+compiled with two sets of instructions a pure x64 for 32-bit systems and a x86_64 for 64-bit systems running on those hybrid CPUs that had become the norm (yes,
+huge Intel blunder with the CPU market at the time). These smart binaries were sometimes also referred to as being x86_64 which caused even more confusion.
+
+Cutting to the chase, usually in Visual Studio solutions and in project files:
+
+  * x86 refers to 32-bit operating systems running on a modern x86 CPU;
+  * x64 refers to 64-bit operating systems running on a modern x86 CPU;
+  * Win32 is a legacy term still employed by default in Microsft tools to refer 32-bit operating systems running on a modern x86 CPU;
+  * AnyCPU refers to a high level instruction set that does not depend on the CPU architecture (such as dotnet IL) and is only employed for .NET assemblies;
+
+In Unity on the other hand:
+
+  * x86 refers to 32-bit operating systems running on a modern x86 CPU;
+  * x86_64 refers to 64-bit operating systems running on a modern x86 CPU;
+
+
 ### Network
 
 
@@ -455,6 +572,36 @@ interfaces. The only requirements are:
  
 A user application is free to compresss its data before sending but there's currently no mechanism to provide automatic compression/decompression of either individual 
 messages or complete packets.
+
+### Unity
+
+##### What is this magic number unity complains about when I try to run my server build in a linux terminal?
+
+This has nothing to do with Carambolas but it's still a very common issue. 
+
+When running a headless server build, Unity does two main things differently: first, it disables rendering by creating a Null GfxDevice (like when you run a unity
+app with -batchmode); and second, it tries to attach the debug log to the console output. This latter step is the issue. Mono checks the type of linux terminal in 
+use against a hardcoded type id (the magic number 542) which represents xterm. If you are seeing an error like this
+
+```
+Exception: Magic number is wrong: 542
+  at System.TermInfoReader.ReadHeader (System.Byte[] buffer, System.Int32& position) [0x00028] in <2b3a3162be434770b7a4fac8b896e90c>:0
+  at System.TermInfoReader..ctor (System.String term, System.String filename) [0x0005f] in <2b3a3162be434770b7a4fac8b896e90c>:0
+  at System.TermInfoDriver..ctor (System.String term) [0x00055] in <2b3a3162be434770b7a4fac8b896e90c>:0
+  at System.ConsoleDriver.CreateTermInfoDriver (System.String term) [0x00000] in <2b3a3162be434770b7a4fac8b896e90c>:0
+  at System.ConsoleDriver..cctor () [0x0004d] in <2b3a3162be434770b7a4fac8b896e90c>:0
+Rethrow as TypeInitializationException: The type initializer for 'System.ConsoleDriver' threw an exception.
+  at System.Console.SetupStreams (System.Text.Encoding inputEncoding, System.Text.Encoding outputEncoding) [0x00007] in <2b3a3162be434770b7a4fac8b896e90c>:0
+  at System.Console..cctor () [0x0008e] in <2b3a3162be434770b7a4fac8b896e90c>:0
+Rethrow as TypeInitializationException: The type initializer for 'System.Console' threw an exception.
+  at UnityEngine.UnityLogWriter.Init () [0x00006] in <35ac225908204e43a83851058e9e621c>:0
+  at UnityEngine.ClassLibraryInitializer.Init () [0x00001] in <35ac225908204e43a83851058e9e621c>:0
+
+(Filename: <2b3a3162be434770b7a4fac8b896e90c> Line: 0)
+```
+
+then your terminal env must have a TERM variable value other than xterm. In Windows 10 WSL for instance, TERM is set to xterm-256color which is not what
+Unity can handle. A simple workaround is to execute your unity server build in linux as `$> TERM=xterm ./myunityserverbuild`
 
 
 ## License

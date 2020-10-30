@@ -11,7 +11,7 @@ using Strings = Carambolas.Internal.Strings;
 
 namespace Carambolas.UnityEngine
 {
-    public sealed class ServerBuildConsole: Console
+    public sealed class TextConsole: Console
     {
         protected override void OnSingletonAwaking()
         {
@@ -19,16 +19,18 @@ namespace Carambolas.UnityEngine
 #if UNITY_EDITOR
             if (Application.isEditor)
                 throw new InvalidOperationException(string.Format(string.Format(Resources.GetString(Strings.UnityEngine.SingletonBehaviour.CannotInstantiateInEditor), 
-                    typeof(ServerBuildConsole).FullName, GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})")));
-#endif            
+                    typeof(TextConsole).FullName, GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})")));
+#endif
+
+            if (!Application.isServerBuild)
+                throw new InvalidOperationException(string.Format(string.Format(Resources.GetString(Strings.UnityEngine.SingletonBehaviour.NotInServerBuild),
+                    typeof(TextConsole).FullName, GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})")));
         }
 
         protected override void OnSingletonAwake()
         {
             base.OnSingletonAwake();
-
             text = new StringBuilder();
-            Debug.LogWarning("TextConsole awake");
         }
 
         protected override bool TryReadLine(out string value)

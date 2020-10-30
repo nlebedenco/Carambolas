@@ -817,6 +817,8 @@ namespace Carambolas.UnityEngine
             }
         }
 
+        protected override bool Transient => true;
+
         private static string prompt = ">";
         public static string Prompt
         {

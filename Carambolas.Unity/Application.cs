@@ -1,5 +1,5 @@
 using System;
-
+using System.Diagnostics;
 using UnityEngine;
 using UnityApplication = UnityEngine.Application;
 using UnityObject = UnityEngine.Object;
@@ -78,6 +78,8 @@ namespace Carambolas.UnityEngine
 
         public static bool terminated { get; private set; }
 
+        public static bool isServerBuild { get; internal set; }
+
         public static readonly CommandLineArguments commandLineArguments = new CommandLineArguments();
 
         #pragma warning restore IDE1006
@@ -100,8 +102,8 @@ namespace Carambolas.UnityEngine
 #endif
         }
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
-        private static void OnAfterAssembliesLoaded()
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
+        public static void OnBeforeSplashScreen()
         {
             // Set default log level according to build
             Debug.unityLogger.filterLogType = Debug.isDebugBuild ? LogType.Log : LogType.Warning;
@@ -114,7 +116,7 @@ namespace Carambolas.UnityEngine
             {
                 if (Enum.TryParse(logLevel, out LogLevel value))
                 {
-                    System.Console.WriteLine($"Log level set from command-line: '{value}'\n");
+                    System.Console.WriteLine($"Log level set from command-line: '{value}'");
                     Debug.logLevel = value;
                 }
                 else
@@ -125,7 +127,8 @@ namespace Carambolas.UnityEngine
 #endif
 
             var build = Debug.isDebugBuild ? "DEBUG" : "RELEASE";
-            Debug.Log($"{Application.productName} version: {Application.version} ({build})");
+            var server = isServerBuild ? "SERVER" : "";
+            Debug.Log($"{Application.productName} version: {Application.version} ({build}) {server}");
 
 #if UNITY_EDITOR
             global::UnityEditor.EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
@@ -135,6 +138,13 @@ namespace Carambolas.UnityEngine
             Debug.unityLogger.logHandler = new DetailLogHandler(Debug.unityLogger.logHandler);
             Application.quitting += OnApplicationQuitting;            
 #endif
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void OnBeforeSceneLoad()
+        {
+            if (isServerBuild && !commandLineArguments.Contains("noconsole"))
+                Component<TextConsole>.Create();
         }
 
 #if UNITY_EDITOR
