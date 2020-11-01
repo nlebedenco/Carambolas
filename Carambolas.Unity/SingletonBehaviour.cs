@@ -77,7 +77,8 @@ namespace Carambolas.UnityEngine
             {
                 if (!Transient && !Application.terminated)
                 {
-                    Debug.LogErrorFormat(this, "Unexpected destruction of non-transient singleton {0}{1}. Application will be terminated.", GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})");
+                    Debug.LogError(string.Format("Unexpected destruction of non-transient singleton {0}{1}. Application will be terminated.", 
+                        GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"), this);
                     Application.Quit();
                 }
             }
@@ -95,8 +96,12 @@ namespace Carambolas.UnityEngine
             {
                 if (Instance is null)
                 {
-                    Debug.Log(string.Format("{0}{1} instantiated.", GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"), this);
+                    Debug.Log(string.Format("{0} instantiated{1}.", 
+                        GetType() == typeof(T) ? "Singleton" : $"Singleton derived of {typeof(T).FullName}",
+                        string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"), this);
+
                     ValidateRequiredComponents();
+
 #if UNITY_EDITOR
                     if (!Application.isPlaying)
                         throw new InvalidOperationException(string.Format(Resources.GetString(Strings.UnityEngine.SingletonBehaviour.NotInPlayMode), 
@@ -144,7 +149,9 @@ namespace Carambolas.UnityEngine
                 finally
                 {
                     Instance = null;
-                    Debug.Log(string.Format("{0}{1} destroyed.", GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"), this);
+                    Debug.Log(string.Format("{0} destroyed{1}.",
+                        GetType() == typeof(T) ? "Singleton" : $"Singleton derived of {typeof(T).FullName}",
+                        string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"), this);
                 }
             }
 
@@ -165,18 +172,20 @@ namespace Carambolas.UnityEngine
 
         protected virtual void ValidateRequiredComponents()
         {
-            void ThrowIfComponentIsMissing(Type required)
+            void ThrowIfComponentIsMissing(Type self, Type required)
             {
                 if (required != null && !GetComponent(required))
-                    throw new InvalidOperationException(string.Format(Resources.GetString(Strings.UnityEngine.SingletonBehaviour.MissingRequiredComponent), typeof(T).FullName, required.FullName, GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"));
+                    throw new InvalidOperationException(string.Format(Resources.GetString(Strings.UnityEngine.SingletonBehaviour.MissingRequiredComponent), 
+                        typeof(T).FullName, required.FullName, self.FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"));
             }
 
-            var attributes = GetType().GetCustomAttributes<RequireComponent>();
+            var type = GetType();
+            var attributes = type.GetCustomAttributes<RequireComponent>();
             foreach (var attr in attributes)
             {
-                ThrowIfComponentIsMissing(attr.m_Type0);
-                ThrowIfComponentIsMissing(attr.m_Type1);
-                ThrowIfComponentIsMissing(attr.m_Type2);
+                ThrowIfComponentIsMissing(type, attr.m_Type0);
+                ThrowIfComponentIsMissing(type, attr.m_Type1);
+                ThrowIfComponentIsMissing(type, attr.m_Type2);
             }
         }
     }

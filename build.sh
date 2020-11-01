@@ -19,12 +19,21 @@ esac
 for P in \
 "Carambolas" \
 "Carambolas.Net" \
-"Carambolas.Tests" \
-"Carambolas.Net.Tests" \
-"Carambolas.Net.Tests.Host" \
-"Carambolas.Net.Tests.Integration" \
-"Carambolas.Security.Cryptography.Tests" \
-"Carambolas.Security.Cryptography.NaCl.Tests"
+"Carambolas.Unity" \
+"Carambolas.Unity.Replication" \
+"Carambolas.Unity.Replication-Editor" \
+"Carambolas.Unity-Editor" \
+"Tests.Application.Carambolas.Net.Host" \
+"Tests.Integration.Carambolas.Net" \
+"Tests.Unit.Carambolas" \
+"Tests.Unit.Carambolas.Net" \
+"Tests.Unit.Carambolas.Security.Cryptography" \
+"Tests.Unit.Carambolas.Security.Cryptography.NaCl" \
+"UnityPackageManager.Carambolas" \
+"UnityPackageManager.Carambolas.Net" \
+"UnityPackageManager.Carambolas.Unity" \
+"UnityPackageManager.Carambolas.Unity.Replication" \
+"UnityPackageManager.System.Memory"
 do 
     dotnet build $P -c Release -p:Platform=$PLAT || exit 1
 done

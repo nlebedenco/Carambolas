@@ -7,8 +7,7 @@ namespace Carambolas
     public static class EnumeratorExtenions
     {
         /// <summary>
-        /// Run an iterator function that might throw an exception. Call the callback with the exception
-        /// if it throws or null if it finishes without throwing an exception.
+        /// Run an iterator function that might throw an exception. Call the callback with the exception if it throws.
         /// </summary>
         /// <returns>An enumerator that runs the given enumerator inside a try..catch block</returns>
         public static IEnumerator Catch(this IEnumerator enumerator, Action<Exception> onException, Action onComplete = null)
@@ -36,11 +35,10 @@ namespace Carambolas
         }
 
         /// <summary>
-        /// Run an iterator function that might throw an exception. Call the callback with the exception
-        /// if it throws or null if it finishes without throwing an exception.
+        /// Run an iterator function that might throw an exception. Call the callback with the exception if it throws.
         /// </summary>
         /// <returns>An enumerator that runs the given enumerator inside a try..catch block</returns>
-        public static IEnumerator<T> ToSafeEnumerator<T>(this IEnumerator<T> enumerator, Action<Exception> onException, Action onComplete = null)
+        public static IEnumerator<T> Catch<T>(this IEnumerator<T> enumerator, Action<Exception> onException, Action onComplete = null)
         {
             while (true)
             {

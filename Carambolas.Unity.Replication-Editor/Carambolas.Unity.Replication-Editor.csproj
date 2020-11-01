@@ -27,7 +27,7 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-    <DefineConstants>TRACE;DEBUG;UNITY_EDITOR</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;UNITY_EDITOR;UNITY_ASSERTIONS</DefineConstants>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <NoWarn>1701;1702;CS1591</NoWarn>
   </PropertyGroup>

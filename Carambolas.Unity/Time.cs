@@ -127,23 +127,23 @@ namespace Carambolas.UnityEngine
 
         private static class TimeCommands
         {
-            [Console(Name = "time.scale")]
-            private static void TimeScale(Console.Writer writer) => writer.Out.WriteLine(Time.timeScale);
+            [Command(Name = "time.scale")]
+            private static void TimeScale(CommandLineInterface.Writer writer) => writer.WriteLine($"{Time.timeScale}");
 
-            [Console(Name = "time.scaled_time")]
-            private static void TimeScaled(Console.Writer writer) => writer.Out.WriteLine(TimeSpan.FromSeconds(Time.time));
+            [Command(Name = "time.scaledtime")]
+            private static void TimeScaled(CommandLineInterface.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.time)}");
 
-            [Console(Name = "time.unscaled_time")]
-            private static void ScaledTime(Console.Writer writer) => writer.Out.WriteLine(TimeSpan.FromSeconds(Time.unscaledTime));
+            [Command(Name = "time.unscaledtime")]
+            private static void ScaledTime(CommandLineInterface.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.unscaledTime)}");
 
-            [Console(Name = "time.real_time")]
-            private static void RealTimeSinceStartup(Console.Writer writer) => writer.Out.WriteLine(TimeSpan.FromSeconds(Time.realtimeSinceStartup));
+            [Command(Name = "time.realtime")]
+            private static void RealTimeSinceStartup(CommandLineInterface.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.realtimeSinceStartup)}");
 
-            [Console(Name = "time.startup")]
-            private static void StartupTime(Console.Writer writer) => writer.Out.WriteLine(Time.startupTime);
+            [Command(Name = "time.startup")]
+            private static void StartupTime(CommandLineInterface.Writer writer) => writer.WriteLine($"{Time.startupTime}");
 
-            [Console(Name = "time.loaded_time")]
-            private static void TimSinceLevelLoad(Console.Writer writer) => writer.Out.WriteLine(TimeSpan.FromSeconds(Time.timeSinceLevelLoad));
+            [Command(Name = "time.leveltime")]
+            private static void TimSinceLevelLoad(CommandLineInterface.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.timeSinceLevelLoad)}");
         }
     }
 }

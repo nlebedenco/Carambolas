@@ -13,16 +13,40 @@ using UnityEngine.Scripting;
 namespace Carambolas.UnityEngine
 {
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-    public sealed class ConsoleAttribute: PreserveAttribute
+    public sealed class CommandAttribute: PreserveAttribute
     {
         public string Name;
         public string Description;
         public string Help;
     }
 
-    public abstract class Console: SingletonBehaviour<Console>
+    [DisallowMultipleComponent]
+    public abstract class CommandLineInterface: SingletonBehaviour<CommandLineInterface>
     {
-        private static class Shell
+        public abstract class Writer
+        {
+            public abstract void Write(char c);          
+            public abstract void Write(string s);
+
+            public abstract void Error(char c);
+            public abstract void Error(string s);
+
+            public void WriteLine() => Write(Environment.NewLine);
+            public void WriteLine(string s)
+            {
+                Write(s);
+                Write(Environment.NewLine);
+            }
+
+            public void ErrorLine() => Error(Environment.NewLine);
+            public void ErrorLine(string s)
+            {
+                Error(s);
+                Error(Environment.NewLine);
+            }
+        }
+
+        protected static class Shell
         {
             public delegate object CommandDelegate(Writer writer, params string[] args);
 
@@ -62,10 +86,10 @@ namespace Carambolas.UnityEngine
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static bool TryGetCommandDelegate(string key, out CommandDelegate value) => handlers.TryGetValue(key, out value);
 
-            private static readonly MethodInfo BoxedFuncMaker = typeof(Console).GetMethod("GenericMakeMethod", BindingFlags.NonPublic | BindingFlags.Static);
-            private static readonly MethodInfo BoxedFuncWithoutArgsMaker = typeof(Console).GetMethod("GenericMakeMethodWithoutArgs", BindingFlags.NonPublic | BindingFlags.Static);
-            private static readonly MethodInfo BoxedFuncWithoutWriterMaker = typeof(Console).GetMethod("GenericMakeMethodWithoutWriter", BindingFlags.NonPublic | BindingFlags.Static);
-            private static readonly MethodInfo BoxedFuncWithoutWriterAndArgsMaker = typeof(Console).GetMethod("GenericMakeMethodWithoutWriterAndArgs", BindingFlags.NonPublic | BindingFlags.Static);
+            private static readonly MethodInfo BoxedFuncMaker = typeof(CommandLineInterface).GetMethod("GenericMakeMethod", BindingFlags.NonPublic | BindingFlags.Static);
+            private static readonly MethodInfo BoxedFuncWithoutArgsMaker = typeof(CommandLineInterface).GetMethod("GenericMakeMethodWithoutArgs", BindingFlags.NonPublic | BindingFlags.Static);
+            private static readonly MethodInfo BoxedFuncWithoutWriterMaker = typeof(CommandLineInterface).GetMethod("GenericMakeMethodWithoutWriter", BindingFlags.NonPublic | BindingFlags.Static);
+            private static readonly MethodInfo BoxedFuncWithoutWriterAndArgsMaker = typeof(CommandLineInterface).GetMethod("GenericMakeMethodWithoutWriterAndArgs", BindingFlags.NonPublic | BindingFlags.Static);
 
             private static CommandDelegate GenericMakeMethod<U>(MethodInfo method) => (Delegate.CreateDelegate(typeof(Func<Writer, string[], U>), method, false) is Func<Writer, string[], U> func) ? (writer, args) => func(writer, args) : (CommandDelegate)null;
 
@@ -124,7 +148,7 @@ namespace Carambolas.UnityEngine
                 handlers.Clear();
                 details.Clear();
 
-                RegisterCommands(typeof(Console).Assembly);
+                RegisterCommands(typeof(CommandLineInterface).Assembly);
                 foreach (var assembly in assemblies)
                     RegisterCommands(assembly);
 
@@ -134,7 +158,7 @@ namespace Carambolas.UnityEngine
 
             private static void RegisterCommands(Assembly assembly)
             {
-                Debug.Log($"Inspecting assembly {assembly} for console commands.");
+                Debug.Log($"Inspecting assembly {assembly} for commands.");
 
                 Type[] types;
                 try
@@ -152,12 +176,12 @@ namespace Carambolas.UnityEngine
                     {
                         try
                         {
-                            var attribute = method.GetCustomAttribute<ConsoleAttribute>();
+                            var attribute = method.GetCustomAttribute<CommandAttribute>();
                             if (attribute != null)
                             {
                                 if (!method.IsStatic)
                                 {
-                                    Debug.LogError($"Method decorated with {typeof(ConsoleAttribute).Name} must be static: {method}");
+                                    Debug.LogError($"Method decorated with {typeof(CommandAttribute).Name} must be static: {method}");
                                 }
                                 else
                                 {
@@ -172,7 +196,7 @@ namespace Carambolas.UnityEngine
                                         var handler = MakeDelegate(method);
                                         if (handler == null)
                                         {
-                                            Debug.LogError($"Method decorated with {typeof(ConsoleAttribute).Name} is not supported: {method}");
+                                            Debug.LogError($"Method decorated with {typeof(CommandAttribute).Name} is not supported: {method}");
                                         }
                                         else
                                         {
@@ -194,54 +218,67 @@ namespace Carambolas.UnityEngine
 
             private static class StandardCommands
             {
-                [Console(Name = "frame")]
-                private static void Frame(Writer writer) => writer.Out.WriteLine(Time.frameCount);
+                [Command(Name = "clear")]
+                private static void Clear(Writer writer) => CommandLineInterface.Instance.Clear();
 
-                [Console(Name = "app.version")]
-                private static void Version(Writer writer) => writer.Out.WriteLine(Application.version);
+                [Command(Name = "time")]
+                private static void SystemTime(Writer writer) => writer.WriteLine($"{DateTime.Now:T}");
 
-                [Console(Name = "app.name")]
-                private static void AppName(Writer writer) => writer.Out.WriteLine($"{Application.productName}");
+                [Command(Name = "date")]
+                private static void SystemDate(Writer writer) => writer.WriteLine($"{DateTime.Now}");
 
-                [Console(Name = "app.info")]
-                private static void AppInfo(Writer writer) => writer.Out.WriteLine($"{Application.productName} {Application.version} (unity version {Application.unityVersion})");
+                [Command(Name = "frame")]
+                private static void Frame(Writer writer) => writer.WriteLine($"{Time.frameCount}");
 
-                [Console(Name = "echo")]
+                [Command(Name = "app.version")]
+                private static void Version(Writer writer) => writer.WriteLine(Application.version);
+
+                [Command(Name = "app.name")]
+                private static void AppName(Writer writer) => writer.WriteLine($"{Application.productName}");
+
+                [Command(Name = "app.info")]
+                private static void AppInfo(Writer writer) => writer.WriteLine($"{Application.productName} {Application.version} (unity version {Application.unityVersion})");
+
+                [Command(Name = "echo")]
                 private static void Echo(Writer writer, params string[] args)
                 {
                     if (args?.Length > 0)
                     {
                         for (int i = 0; i < args.Length - 1; ++i)
                         {
-                            writer.Out.Write(args[i]);
-                            writer.Out.Write(' ');
+                            writer.Write(args[i]);
+                            writer.Write(' ');
                         }
 
-                        writer.Out.Write(args[args.Length - 1]);
+                        writer.Write(args[args.Length - 1]);
                     }
-                    writer.Out.WriteLine();
+
+                    writer.WriteLine();
                 }
 
-                [Console(Name = "fail")]
+                [Command(Name = "fail")]
                 private static void Fail(Writer writer, params string[] args)
                 {
                     if (args?.Length > 0)
                     {
                         for (int i = 0; i < args.Length - 1; ++i)
                         {
-                            writer.Error.Write(args[i]);
-                            writer.Error.Write(' ');
+                            writer.Error(args[i]);
+                            writer.Error(' ');
                         }
 
-                        writer.Error.Write(args[args.Length - 1]);
+                        writer.ErrorLine(args[args.Length - 1]);
                     }
-                    writer.Error.WriteLine();
 
-                    throw new UnityException(string.Empty);
+                    throw new Exception("");
                 }
 
-                [Console(Name = "quit")]
+                [Command(Name = "quit")]
                 private static void Quit(Writer writer) => Application.Quit();
+
+                [Command(Name = "exit")]
+                private static void Exit(Writer writer) 
+                    => throw new Exception($"This is not a shell. You're in the command line interface of an instance of {Application.productName}. Did you mean 'quit'?");
             }
         }
 
@@ -819,28 +856,11 @@ namespace Carambolas.UnityEngine
 
         protected override bool Transient => true;
 
-        private static string prompt = ">";
-        public static string Prompt
-        {
-            get => prompt;
-            set => prompt = value ?? string.Empty;
-        }
-
         private static Assembly[] assemblies = Array.Empty<Assembly>();
         public static Assembly[] Assemblies
         {
             get => assemblies;
             set => assemblies = value ?? Array.Empty<Assembly>();
-        }
-
-        public sealed class Writer
-        {
-            public readonly TextWriter Out;
-            public readonly TextWriter Error;
-
-            public Writer() => (Out, Error) = (new StringWriter(), new StringWriter());
-            public Writer(TextWriter output, TextWriter error) => (Out, Error) = (output, error);
-            public Writer(StringBuilder output, StringBuilder error) => (Out, Error) = (new StringWriter(output), new StringWriter(error));
         }
 
         protected interface IHistory
@@ -852,6 +872,8 @@ namespace Carambolas.UnityEngine
             string GoToLast();
             string GoToNext();
             string GoToPrevious();
+
+            void Reset();
 
             void Add(string value);
             void Clear();
@@ -883,7 +905,7 @@ namespace Carambolas.UnityEngine
 
             public void Add(string value)
             {
-                if (!string.IsNullOrEmpty(value))
+                if (!string.IsNullOrEmpty(value) && value != items.Last?.Value)
                 {
                     var node = pool.Take();
                     node.Value = value;
@@ -891,6 +913,8 @@ namespace Carambolas.UnityEngine
                     line = null;
                 }
             }
+
+            public void Reset() => line = null;
 
             public void Clear()
             {
@@ -926,7 +950,8 @@ namespace Carambolas.UnityEngine
             public LinkedList<string>.Enumerator GetEnumerator() => items.GetEnumerator();
         }
 
-        private Coroutine reader;
+        private Writer writer;
+        private Coroutine reader;        
 
         protected IHistory History { get; private set; }
 
@@ -952,25 +977,45 @@ namespace Carambolas.UnityEngine
             History = new LimitedHistory(64);
         }
 
+        protected virtual void OnStarted() { }
+
+        protected virtual void OnProcessing() { }
+
+        protected virtual void OnProcessed() { }
+
+        protected abstract Writer StartWriter();
+
+        protected abstract bool TryRead(out string value);
+
+        protected abstract void Clear();
+
         protected virtual void Start()
         {
-            reader = StartCoroutine(ReadInput());
+            writer = StartWriter();
+            reader = StartCoroutine(ReadInput().Catch(Critical));
         }
 
-        protected abstract bool TryReadLine(out string value);
-
-        protected virtual void AutoComplete(string prefix, out ArraySegment<string> completions) => Shell.FindCommandNamesStartingWith(prefix, out completions);
+        private void Error(string s) => writer.ErrorLine(s);
+        private void Error(Exception e) => writer.ErrorLine(e.Message);
+        private void Critical(Exception e)
+        {
+            Debug.LogException(e);
+            Error($"{GetType().FullName} critical exception.");            
+            Destroy(this);
+        }
 
         private IEnumerator ReadInput()
         {
-            System.Console.Write(prompt);
+            OnStarted();
             while (true)
-            {
-                if (TryReadLine(out string value))
+            {                
+                if (TryRead(out string value))
                 {
-                    System.Console.WriteLine();
-                    yield return Process(value).Catch(Print);
-                    System.Console.Write(prompt);
+                    History.Add(value);
+
+                    OnProcessing();
+                    yield return Process(value).Catch(Error);
+                    OnProcessed();
                 }
 
                 yield return null;
@@ -980,10 +1025,7 @@ namespace Carambolas.UnityEngine
         private IEnumerator Process(string input)
         {
             if (Parser.Parse(input) is Parser.Token.Group group)
-            {
-                var writer = new Writer(System.Console.Out, System.Console.Error);
-                yield return Process(group, writer).Catch(Print);
-            }
+                yield return Process(group, writer).Catch(Error);
         }
 
         private enum ProcessCondition
@@ -993,7 +1035,7 @@ namespace Carambolas.UnityEngine
             Failure
         }
 
-        private IEnumerator Process(Parser.Token.Group group, Writer writer)
+        private IEnumerator Process(Parser.Token.Group group, Writer pipe)
         {
             var exception = default(Exception);
             var condition = ProcessCondition.None;
@@ -1008,7 +1050,7 @@ namespace Carambolas.UnityEngine
                      || (condition == ProcessCondition.Failure && exception != null))
                     {
                         exception = null;
-                        yield return Process(subgroup, writer).Catch(e => exception = e);
+                        yield return Process(subgroup, pipe).Catch(e => exception = e);
                     }
                 }
                 else if (item is Parser.Token.Command command)
@@ -1018,7 +1060,7 @@ namespace Carambolas.UnityEngine
                      || (condition == ProcessCondition.Failure && exception != null))
                     {
                         exception = null;
-                        yield return Process(command, writer).Catch(e => exception = e);
+                        yield return Process(command, pipe).Catch(e => exception = e);
                     }
                 }
                 else if (item is Parser.Token.Continue)
@@ -1103,7 +1145,6 @@ namespace Carambolas.UnityEngine
                 var key = splitted[0];
                 if (Shell.TryGetCommandDelegate(key, out Shell.CommandDelegate handler))
                 {
-                    History.Add(key);
                     var ret = handler(writer, splitted.Skip(1).ToArray());
                     switch (ret)
                     {
@@ -1124,12 +1165,11 @@ namespace Carambolas.UnityEngine
                 {
                     Shell.FindCommandNamesStartingWith(key, out ArraySegment<string> completions);
                     if (completions.Count == 0)
-                        throw new UnityException($"{key}: command not found");
+                        throw new KeyNotFoundException($"{key}: command not found");
 
-                    History.Add(key);
                     var n = completions.Offset + completions.Count;
                     for (int i = completions.Offset; i < n; ++i)
-                        writer.Out.WriteLine(completions.Array[i]);                    
+                        writer.WriteLine(completions.Array[i]);                    
                 }
             }
         }
@@ -1154,19 +1194,6 @@ namespace Carambolas.UnityEngine
                         break;
                 }
             }
-        }
-
-        private static void Print(Exception e)
-        {
-            var msg = e.Message;
-            if (!string.IsNullOrEmpty(msg))
-            {
-                var color = System.Console.ForegroundColor;
-                System.Console.ForegroundColor = ConsoleColor.Red;
-                System.Console.Error.WriteLine(msg);
-                System.Console.ForegroundColor = color;
-            }
-        }
-
+        }       
     }
 }

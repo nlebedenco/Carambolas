@@ -19,6 +19,6 @@ namespace Carambolas.UnityEngine
         /// Starts a coroutine that might throw an exception.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Coroutine StartCoroutine<T>(this MonoBehaviour self, IEnumerator<T> enumerator, Action<Exception> onCompleted) => self.StartCoroutine(enumerator.ToSafeEnumerator(onCompleted));
+        public static Coroutine StartCoroutine<T>(this MonoBehaviour self, IEnumerator<T> enumerator, Action<Exception> onCompleted) => self.StartCoroutine(enumerator.Catch(onCompleted));
     }
 }

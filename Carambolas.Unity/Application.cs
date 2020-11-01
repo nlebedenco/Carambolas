@@ -69,7 +69,7 @@ namespace Carambolas.UnityEngine
                     string.Format("{0} {1}{2}{3}",
                         DateTime.UtcNow.ToString("o"),
                         LogTypeToString(logType),
-                        context ? $"({context.GetType().FullName})" : "",
+                        context ? $"({context.GetType().FullName}) " : "",
                         msg));
             }
         }
@@ -116,7 +116,7 @@ namespace Carambolas.UnityEngine
             {
                 if (Enum.TryParse(logLevel, out LogLevel value))
                 {
-                    System.Console.WriteLine($"Log level set from command-line: '{value}'");
+                    Console.WriteLine($"Log level set from command-line: '{value}'");
                     Debug.logLevel = value;
                 }
                 else
@@ -144,7 +144,7 @@ namespace Carambolas.UnityEngine
         private static void OnBeforeSceneLoad()
         {
             if (isServerBuild && !commandLineArguments.Contains("noconsole"))
-                Component<TextConsole>.Create();
+                ComponentUtility.Create<ConsoleCommandLineInterface>();
         }
 
 #if UNITY_EDITOR
