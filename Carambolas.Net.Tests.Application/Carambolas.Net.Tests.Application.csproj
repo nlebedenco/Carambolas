@@ -1,0 +1,55 @@
+﻿<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/../Build/$(MSBuildProjectName)/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)/../Build/$(MSBuildProjectName)/bin/</BaseOutputPath>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <LangVersion>7.3</LangVersion>
+    <Platforms>AnyCPU;x64;x86</Platforms>    
+  </PropertyGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+  
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Carambolas.Core/Carambolas.Core.csproj" />
+    <ProjectReference Include="../Carambolas.Net/Carambolas.Net.csproj" />    
+  </ItemGroup>
+
+  <Target Name="AfterBuild">
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+      <NativeFiles Include="$(OutputPath)Native/win-$(Platform)/*.*" />
+    </ItemGroup>
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+      <NativeFiles Include="$(OutputPath)Native/linux-$(Platform)/*.*" />
+    </ItemGroup>
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+      <NativeFiles Include="$(OutputPath)Native/osx-$(Platform)/*.*" />
+    </ItemGroup>
+    
+    <Move SourceFiles="@(NativeFiles)" DestinationFolder="$(OutputPath)" />
+    <RemoveDir Directories="$(OutputPath)Native" />    
+  </Target>
+
+</Project>

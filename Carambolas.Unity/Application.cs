@@ -140,13 +140,6 @@ namespace Carambolas.UnityEngine
 #endif
         }
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void OnBeforeSceneLoad()
-        {
-            if (isServerBuild && !commandLineArguments.Contains("noconsole"))
-                ComponentUtility.Create<ConsoleCommandLineInterface>();
-        }
-
 #if UNITY_EDITOR
         private static void OnPlayModeStateChanged(global::UnityEditor.PlayModeStateChange s)
         {

@@ -1,7 +1,7 @@
 ﻿<Project>
   <PropertyGroup>
-    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
-    <BaseOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/../Build/$(MSBuildProjectName)/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)/../Build/$(MSBuildProjectName)/bin/</BaseOutputPath>
   </PropertyGroup>
 
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
@@ -21,6 +21,7 @@
     <PackageTags>carambolas udp reliable-udp network netcode</PackageTags>
     <Platforms>AnyCPU</Platforms>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <RuntimeIdentifiers>win-x64;win-x86;linux-x86;linux-x64;osx-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
@@ -38,6 +39,10 @@
     <NoWarn>1701;1702;CS1591</NoWarn>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Include="../Doc/README-Carambolas.Net.md" Link="@Documentation/README.md" />
+  </ItemGroup>
+  
   <ItemGroup>
     <Compile Update="Channel.Inbound.cs">
         <DependentUpon>Channel.cs</DependentUpon>
@@ -84,7 +89,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Carambolas\Carambolas.csproj" Private="False"/>
+    <Content Include="Native/**/*" PackagePath="runtimes/%(RecursiveDir)/native/%(Filename)%(Extension)" Pack="true" CopyToOutputDirectory="Always" />
   </ItemGroup>
-  
+
+  <ItemGroup>
+    <ProjectReference Include="../Carambolas.Core/Carambolas.Core.csproj" Private="False" />
+  </ItemGroup>
+
 </Project>

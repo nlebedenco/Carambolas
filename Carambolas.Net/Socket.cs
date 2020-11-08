@@ -620,42 +620,42 @@ namespace Carambolas.Net.Sockets
             }
         }
 
-        private const string nativeLibrary = "Carambolas.Net.Native.dll";
+        private const string NativeLibraryName = "cnsock";
 
-        [DllImport(nativeLibrary, EntryPoint = "carambolas_net_initialize", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(NativeLibraryName, EntryPoint = "carambolas_net_initialize", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int Initialize();
 
-        [DllImport(nativeLibrary, EntryPoint = "carambolas_net_socket_open", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(NativeLibraryName, EntryPoint = "carambolas_net_socket_open", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern SocketError Open(AddressFamily addressFamily, out int sockfd);
 
-        [DllImport(nativeLibrary, EntryPoint = "carambolas_net_socket_close", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(NativeLibraryName, EntryPoint = "carambolas_net_socket_close", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern void Close(int sockfd);
 
-        [DllImport(nativeLibrary, EntryPoint = "carambolas_net_socket_setsockopt", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(NativeLibraryName, EntryPoint = "carambolas_net_socket_setsockopt", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern SocketError SetSocketOption(int sockfd, SocketOptionLevel level, SocketOptionName optionName, int optionValue);
 
-        [DllImport(nativeLibrary, EntryPoint = "carambolas_net_socket_getsockopt", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(NativeLibraryName, EntryPoint = "carambolas_net_socket_getsockopt", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern SocketError GetSocketOption(int sockfd, SocketOptionLevel level, SocketOptionName optionName, out int optionValue);
 
-        [DllImport(nativeLibrary, EntryPoint = "carambolas_net_socket_setblocking", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(NativeLibraryName, EntryPoint = "carambolas_net_socket_setblocking", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern SocketError SetBlocking(int sockfd, int value);
 
-        [DllImport(nativeLibrary, EntryPoint = "carambolas_net_socket_setconnreset", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(NativeLibraryName, EntryPoint = "carambolas_net_socket_setconnreset", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern SocketError SetConnReset(int sockfd, int value);
 
-        [DllImport(nativeLibrary, EntryPoint = "carambolas_net_socket_bind", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(NativeLibraryName, EntryPoint = "carambolas_net_socket_bind", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern SocketError Bind(int sockfd, ref IPEndPoint endPoint);
 
-        [DllImport(nativeLibrary, EntryPoint = "carambolas_net_socket_available", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(NativeLibraryName, EntryPoint = "carambolas_net_socket_available", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern SocketError Available(int sockfd, out int value);
 
-        [DllImport(nativeLibrary, EntryPoint = "carambolas_net_socket_poll", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(NativeLibraryName, EntryPoint = "carambolas_net_socket_poll", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern SocketError Poll(int sockfd, int microSeconds, SelectMode mode, out int result);
 
-        [DllImport(nativeLibrary, EntryPoint = "carambolas_net_socket_recvfrom", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(NativeLibraryName, EntryPoint = "carambolas_net_socket_recvfrom", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern SocketError ReceiveFrom(int sockfd, byte[] buffer, int offset, int size, out IPEndPoint endPoint, out int nbytes);
 
-        [DllImport(nativeLibrary, EntryPoint = "carambolas_net_socket_sendto", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(NativeLibraryName, EntryPoint = "carambolas_net_socket_sendto", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern SocketError SendTo(int sockfd, byte[] buffer, int offset, int size, in IPEndPoint endPoint, out int nbytes);
     }
 

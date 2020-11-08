@@ -1,7 +1,7 @@
 ﻿<Project>
   <PropertyGroup>
-    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
-    <BaseOutputPath>$(MSBuildProjectDirectory)\..\Build\Unity\Packages\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/../Build/$(MSBuildProjectName)/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)/../Build/Unity/Packages/</BaseOutputPath>
   </PropertyGroup>
 
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
@@ -14,53 +14,55 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-    <OutputPath>$(BaseOutputPath)$(Configuration)\dev.nlebedenco.carambolas.unity</OutputPath>
+    <OutputPath>$(BaseOutputPath)$(Configuration)/dev.nlebedenco.carambolas.unity</OutputPath>
+    <NoWarn>CS2008</NoWarn>
   </PropertyGroup>
 
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
 
   <ItemGroup>
-    <Compile Remove="Runtime\Carambolas.Unity.Deferred\Runtime.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Carambolas.Unity\Carambolas.Unity.csproj" DestinationSubDirectory="Runtime\" />
-    <ProjectReference Include="..\Carambolas.Unity-Editor\Carambolas.Unity-Editor.csproj" DestinationSubDirectory="Runtime\" />
-
-    <ProjectReference Include="..\Carambolas\Carambolas.csproj" Private="False" />
-    <ProjectReference Include="..\Carambolas.Net\Carambolas.Net.csproj" Private="False" />
+    <Compile Remove="Runtime/Carambolas.Unity.Deferred/Runtime.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="CHANGELOG.md.meta" CopyToOutputDirectory="Always" />
     <None Update="Editor.meta" CopyToOutputDirectory="Always" />
-    <None Update="Editor\Resources.meta" CopyToOutputDirectory="Always" />
-    <None Update="Editor\Resources\Carambolas.meta" CopyToOutputDirectory="Always" />
-    <None Update="Editor\Resources\Carambolas\Icons.meta" CopyToOutputDirectory="Always" />
-    <None Update="Editor\Resources\Carambolas\Icons\cog.png" CopyToOutputDirectory="Always" />
-    <None Update="Editor\Resources\Carambolas\Icons\cog.png.meta" CopyToOutputDirectory="Always" />
-    <None Update="Editor\Resources\Carambolas\Icons\ProSkin.meta" CopyToOutputDirectory="Always" />
-    <None Update="Editor\Resources\Carambolas\Icons\ProSkin\cog.png" CopyToOutputDirectory="Always" />
-    <None Update="Editor\Resources\Carambolas\Icons\ProSkin\cog.png.meta" CopyToOutputDirectory="Always" />
+    <None Update="Editor/Resources.meta" CopyToOutputDirectory="Always" />
+    <None Update="Editor/Resources/Carambolas.meta" CopyToOutputDirectory="Always" />
+    <None Update="Editor/Resources/Carambolas/Icons.meta" CopyToOutputDirectory="Always" />
+    <None Update="Editor/Resources/Carambolas/Icons/cog.png" CopyToOutputDirectory="Always" />
+    <None Update="Editor/Resources/Carambolas/Icons/cog.png.meta" CopyToOutputDirectory="Always" />
+    <None Update="Editor/Resources/Carambolas/Icons/ProSkin.meta" CopyToOutputDirectory="Always" />
+    <None Update="Editor/Resources/Carambolas/Icons/ProSkin/cog.png" CopyToOutputDirectory="Always" />
+    <None Update="Editor/Resources/Carambolas/Icons/ProSkin/cog.png.meta" CopyToOutputDirectory="Always" />
     <None Update="LICENSE.md.meta" CopyToOutputDirectory="Always" />
     <None Update="package.json.meta" CopyToOutputDirectory="Always" />
     <None Update="README.md.meta" CopyToOutputDirectory="Always" />
     <None Update="Runtime.meta" CopyToOutputDirectory="Always" />
-    <None Update="Runtime\Carambolas.Unity-Editor.dll.meta" CopyToOutputDirectory="Always" />
-    <None Update="Runtime\Carambolas.Unity-Editor.pdb.meta" CopyToOutputDirectory="Always" />
-    <None Update="Runtime\Carambolas.Unity-Editor.xml.meta" CopyToOutputDirectory="Always" />
-    <None Update="Runtime\Carambolas.Unity.Deferred\Carambolas.Unity.Deferred.asmdef" CopyToOutputDirectory="Always" />
-    <None Update="Runtime\Carambolas.Unity.Deferred\Carambolas.Unity.Deferred.asmdef.meta" CopyToOutputDirectory="Always" />
-    <None Update="Runtime\Carambolas.Unity.Deferred\Runtime.cs.meta" CopyToOutputDirectory="Always" />
-    <None Update="Runtime\Carambolas.Unity.dll.meta" CopyToOutputDirectory="Always" />
-    <None Update="Runtime\Carambolas.Unity.pdb.meta" CopyToOutputDirectory="Always" />
-    <None Update="Runtime\Carambolas.Unity.xml.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.Unity-Editor.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.Unity-Editor.pdb.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.Unity-Editor.xml.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.Unity.Deferred.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.Unity.Deferred/Carambolas.Unity.Deferred.asmdef" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.Unity.Deferred/Carambolas.Unity.Deferred.asmdef.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.Unity.Deferred/Runtime.cs.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.Unity.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.Unity.pdb.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.Unity.xml.meta" CopyToOutputDirectory="Always" />
+    <None Update="THIRD PARTY NOTICES.md" CopyToOutputDirectory="Always" />
+    <None Update="THIRD PARTY NOTICES.md.meta" CopyToOutputDirectory="Always" />    
     <None Update="unity.package.json" Link="package.json" CopyToOutputDirectory="Always" />
-    <None Include="..\UnityPackagemanager.Carambolas\README.md" Link="README.md" CopyToOutputDirectory="Always" />
-    <None Include="..\Doc\README-Carambolas.Unity.md" Link="Documentation~\index.md" CopyToOutputDirectory="Always" />
-    <None Include="..\Carambolas.Unity\CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="Always" />
-    <None Include="..\Carambolas.Unity\LICENSE.md" Link="LICENSE.md" CopyToOutputDirectory="Always" />
-    <None Include="Runtime\Carambolas.Unity.Deferred\Runtime.cs" CopyToOutputDirectory="Always" />
+    <None Include="../UnityPackagemanager.Carambolas.Core/README.md" Link="README.md" CopyToOutputDirectory="Always" />
+    <None Include="../Doc/README-Carambolas.Unity.md" Link="Documentation~/index.md" CopyToOutputDirectory="Always" />
+    <None Include="../Carambolas.Unity/@Documentation/CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="Always" />
+    <None Include="../Carambolas.Unity/@Documentation/LICENSE.md" Link="LICENSE.md" CopyToOutputDirectory="Always" />
+    <None Include="Runtime/Carambolas.Unity.Deferred/Runtime.cs" CopyToOutputDirectory="Always" />    
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Carambolas.Unity/Carambolas.Unity.csproj" DestinationSubDirectory="Runtime/" />
+    <ProjectReference Include="../Carambolas.Unity-Editor/Carambolas.Unity-Editor.csproj" DestinationSubDirectory="Runtime/" />
+    <ProjectReference Include="../Carambolas.Core/Carambolas.Core.csproj" Private="False" />
   </ItemGroup>
 
   <Target Name="AfterBuild">

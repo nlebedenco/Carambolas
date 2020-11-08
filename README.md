@@ -116,9 +116,12 @@ understand the way it worked and why.
 
 ### Modules
 
-- **[Carambolas](Doc/README-Carambolas.md)**    
+- **[Carambolas.Core](Doc/README-Carambolas.Core.md)**    
 - **[Carambolas.Net](Doc/README-Carambolas.Net.md)**
+- **[Carambolas.UI.Replxx](Doc/README-Carambolas.UI.Replxx.md)**
+- **[Carambolas.Runtime.InteropServices](Doc/README-Carambolas.Runtime.InteropServices.md)**
 - **[Carambolas.Unity](Doc/README-Carambolas.Unity.md)**
+- **[Carambolas.Unity.CommandLine](Doc/README-Carambolas.Unity.CommandLine.md)**
 - **[Carambolas.Unity.Replication](Doc/README-Carambolas.Unity.Replication.md)**
 
 
@@ -127,22 +130,35 @@ understand the way it worked and why.
 The managed assemblies can be built in any platform with a compiler that supports C# 7.3 or higher.
 Tests and accessory applications require netcore 2.2.
 
-Native libraries can be built using [CMake](https://cmake.org/download/) with GCC or Visual Studio.
+Native libraries, when available or required, are precompiled for release and manually added to the corresponding project for both output and packaging via 
+nuget. Source code for each library is available under the *Native* folder for reference.
+
+Native libraries can be built using [CMake](https://cmake.org/download/) with GCC on Linux/macOS or Visual Studio on Windows. Build scripts are located in the 
+*Native* folder.
 
 **Supported OS versions:**
 - Windows 7 or higher
 - Linux (kernel 4.4 or higher)
 - macOS 10.12 or higher
 
-For any other platform, or in the absence of a required native library, fallback code exists that although in general may be less efficient must be fully
-functional and transparent.
+Carambolas.Net uses cnsock (Carambolas Native Socket) but will rely on a fallback implementation based on the System.Net.Sockets.Socket class for any platform 
+other Windows, Linux and macOS, or if the library file cannot be found. Although this fallback in general is less efficient in terms of memory usage, GC 
+pressure and performance, it must be fully functional and transparent.
+
+Carambolas.UI.Replxx requires replxx and does not offer a fallback implementation. Only Window, Linux and macOS are currently supported.
 
 All C# projects and build scripts are configured to store intermediate files and binaries under a *Build* folder located at the project root so builds can be 
 easily inspected, verified and cleaned.
 
-The code uses DllImport to bind native libraries. DllImport may always use Windows library names and will automatically add other platforms' prefixes/suffixes 
-as required. For instance, Carambolas.Net.Native.dll, the net native library's name on Windows, becomes libCarambolas.Net.Native.dll.so on Linux 
-and libCarambolas.Net.Native.dll.dynlib on MacOS. Build scripts already create the libraries under the proper names.
+The code uses DllImport to bind native libraries. One of the main advantages is that a base name may be passed and the automatic load/import will adjust with 
+any prefixes/suffixes required by the running platform. For instance, Carambolas native socket implementation (cnsock) is named cnsock.dll on Windows, 
+libcnsock.so on Linux and libcnsock.dylib on macOS. There is no definitive strategy, however, in order to deal with library version sufixes that are common in 
+unix systems therefore library filenames must be in a plain lib[name].so form or acompanied by a symlink in that form. 
+
+Because windows cannot easily handle symlinks and most git clients for windows will produce weird placeholders and in order to simplify deployment because native 
+libraries are supposed to be copied side-by-side with their corresponding wrappers anyway (as opposed to installed in the target system as separate entities) no  
+library deployed is appended with a version number. 
+
 
 **Dependencies:**
 
@@ -315,27 +331,28 @@ Projects with names starting with "UnityPackagerManager" are intended to build U
 respective csproj files however you will notice I had to resort to a few tricks to work around some Visual Studio and MSBuild limitations such as: 
 
 * Empty projects with no assembly info still produce a dll, a pdb and a deps.json file in the output path. The nuget packaging process is smart enough to 
-ignore these files when the project has `<NoBuild>true</NoBuild>` hence why NuGet packages for runtimes only (such as [this one](Carambolas.Net.Native/nuget/Carambolas.Net.Native.Win.csproj))
-do not end up with no-op assemblies. In the normal build process, however, one has to manually delete the undesired files using a post build task.
+ignore these files when the project has `<NoBuild>true</NoBuild>` but in the normal build process, one has to manually delete the undesired files using 
+a post build task.
 
 * Visual studio treats any file called package.json as an npm package manifest which poses a problem becase UPM being based on npm also uses a package.json.
 Besides the format not being exactly the same, visual studio will by default try to automatically restore the packages described inside it when the project is 
 open or the file is saved. The most common solution to this problem is to disable npm auto restore on Visual Studio settings. This is inconvenient because as 
-a global setting it may adversely affect other unrelated projects. I opted for the alternative of naming the file differently and add it to the project using a link which 
-will automatically produce the proper renaming of the output on build.
+a global setting it may adversely affect other unrelated projects. I opted for the alternative of naming the file differently and add it to the project using 
+a link which will automatically produce the proper renaming of the output on build.
 
 * Visual Studio insists on copying upper level dependencies over to the output path even when the immediate project reference is configured with Private 
 = False. The only workaround I found besides deleting the files in a post build task was to also reference all indirect (upper level ) dependencies with 
 Private = False.
 
-* System dependencies introduced by NuGet package references in [Carambolas.csproj](Carambolas/Carambolas.csproj)) cannot be included side-by-side with 
-Carambolas.dll in the same unity package or we risk unreconcilable conflicts with third-party packages. Unity cannot handle multiple assemblies with the same name in a single unity 
-project regardless of how these assemblies ended up in there. This poses a problem because if any other third-party package or even user code is included that brings in its own System.Memmory.dll (or any of its dependencies) Unity will raise an
-exception and refuse to build the project. In theory, until Unity provides an official System.Memory UPM package the best we can do it leave the user responsible 
-for the management of third-party dependencies. In order to build a separate dotnet.system.memory package we created a csproj that sets 
+* System dependencies introduced by NuGet package references in [Carambolas.Core.csproj](Carambolas.Core/Carambolas.Core.csproj)) cannot be included 
+side-by-side with Carambolas.Core.dll in the same unity package or we risk unreconcilable conflicts with third-party packages. Unity cannot handle multiple 
+assemblies with the same name in a single unity project regardless of how these assemblies ended up in there. This poses a problem because if any other 
+third-party package or even user code is included that brings in its own System.Memmory.dll (or any of its dependencies) Unity will raise an exception and 
+refuse to build the project. In theory, until Unity provides an official System.Memory UPM package the best we can do it leave the user responsible for the
+management of third-party dependencies. In order to build a separate dotnet.system.memory package we created a csproj that sets 
 `<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>` references any other projects with known dependencies (in this case 
-[Carambolas.csproj](Carambolas/Carambolas.csproj)) and deletes the resulting assembly (pdb and deps.json) leaving only the package reference dependencies which then
-are copied to the Runtime subfolder.
+[Carambolas.Core.csproj](Carambolas.Core/Carambolas.Core.csproj)) and deletes the resulting assembly (pdb and deps.json) leaving only the package reference 
+dependencies which then are copied to the Runtime subfolder.
 
 
 ## Testing
@@ -505,9 +522,9 @@ Long story short these are code names used to identify CPU instruction sets and 
 single set of instructions and even though nowadays CPUs may implement multiple sets there's always one identified as *the main one*.) 
 
 About 30 years ago, the term x86 was used to denote a whole family of CPUs that implemented more or less the same instruction set development by Intel Corp.
-which started with the 8086 CPU (learn more at [wikipedia](wikipedia.org/wiki/X86)). Later with the advent of 64-bit CPU architectures an interesting thing 
+which started with the 8086 CPU (learn more at [wikipedia](https://en.wikipedia.org/wiki/X86)). Later with the advent of 64-bit CPU architectures an interesting thing 
 hapened. Intel pushed a new CPU architecture (Itanium) with a brand new instruction set tailored exclusively for 64-bit systems and this set was then referred 
-to as x64. Nonetheless, at the same time AMD also produced and extended x86 instruction set for a hybrid 32/64-bit CPU [(Opteron and the like in 2003)](wikipedia.org/wiki/X86-64) 
+to as x64. Nonetheless, at the same time AMD also produced and extended x86 instruction set for a hybrid 32/64-bit CPU [(Opteron and the like in 2003)](https://en.wikipedia.org/wiki/X86-64) 
 which suddenly rendered the term x64 umbiguous. For a while x64 was exclusively used to refer to Itanium-like architectures and other terms were used for x86 
 extended with 64-bit instructions. These terms included AMD64 and x86_64 and Itanium started to be refered to as i64. In time x86_64 was preferred largely due
 to AMD being a trademark. After all, what company in the world would passively employ a competitor's brand name in technical terminology that was widely 
@@ -622,13 +639,18 @@ under an [MIT license](LICENSE-Crc32.Net).
 *Carambolas.Security.Criptography.NaCl* was based and expanded on [NaCl.Core 1.2 (a9f09c01fceb5b47bca5256518e848afc860acea) by David De Smet](https://github.com/daviddesmet/NaCl.Core) 
 under an [MIT license](LICENSE-NaCl.Core).
 
-*Carambolas.Unity depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
+*Carambolas.UI.Replxx* depends on [Replxx by Marcin Konarski et al.](https://github.com/AmokHuginnsson/replxx) published under the [MIT license](LICENSE-Replxx).
 
-*Carambolas.Unity-Editor depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
+*Carambolas.Runtime.InteropServices* contains classes based on source code from [LibGit2Sharp](https://github.com/libgit2/libgit2sharp) published under 
+the [MIT license](LICENSE-LibGit2Sharp).
 
-*Carambolas.Unity.Replication depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
+*Carambolas.Unity* depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
 
-*Carambolas.Unity.Replication-Editor depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
+*Carambolas.Unity-Editor* depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
+
+*Carambolas.Unity.Replication* depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
+
+*Carambolas.Unity.Replication-Editor* depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
 
 *Resource icons* exported for use in the unity editor were provided by [Material Design Icons](http://materialdesignicons.com) under the [Pictogrammers Free License](LICENSE-MaterialDesignIcons)
 

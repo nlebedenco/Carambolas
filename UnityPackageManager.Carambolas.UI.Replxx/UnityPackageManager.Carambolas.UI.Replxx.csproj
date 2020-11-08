@@ -1,0 +1,70 @@
+﻿<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/../Build/$(MSBuildProjectName)/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)/../Build/Unity/Packages/</BaseOutputPath>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <Import Project="../Version.props" />
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <OutputPath>$(BaseOutputPath)$(Configuration)/dev.nlebedenco.carambolas.ui.replxx</OutputPath>
+    <NoWarn>CS2008</NoWarn>
+  </PropertyGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+  <ItemGroup>    
+    <None Update="CHANGELOG.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="LICENSE.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="package.json.meta" CopyToOutputDirectory="Always" />
+    <None Update="README.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.UI.Replxx.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.UI.Replxx.pdb.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.UI.Replxx.xml.meta" CopyToOutputDirectory="Always" />
+    <None Update="Plugins.meta" CopyToOutputDirectory="Always" />
+    <None Update="Plugins/x86.meta" CopyToOutputDirectory="Always" />
+    <None Update="Plugins/x86/replxx.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Plugins/x86_64.meta" CopyToOutputDirectory="Always" />
+    <None Update="Plugins/x86_64/libreplxx.dylib.meta" CopyToOutputDirectory="Always" />
+    <None Update="Plugins/x86_64/libreplxx.so.meta" CopyToOutputDirectory="Always" />
+    <None Update="Plugins/x86_64/replxx.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="THIRD PARTY NOTICES.md" CopyToOutputDirectory="Always" />
+    <None Update="THIRD PARTY NOTICES.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="unity.package.json" Link="package.json" CopyToOutputDirectory="Always" />
+    <None Include="../UnityPackagemanager.Carambolas.Core/README.md" Link="README.md" CopyToOutputDirectory="Always" />    
+    <None Include="../Doc/README-Carambolas.UI.Replxx.md" Link="Documentation~/index.md" CopyToOutputDirectory="Always" />
+    <None Include="../Carambolas.UI.Replxx/@Documentation/CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="Always" />
+    <None Include="../LICENSE" Link="LICENSE.md" CopyToOutputDirectory="Always" />
+    <None Include="../LICENSE-Replxx" Link="Documentation~/LICENSE-Replxx" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Carambolas.UI.Replxx/Carambolas.UI.Replxx.csproj" DestinationSubDirectory="Runtime/" />
+    <ProjectReference Include="../Carambolas.Runtime.InteropServices/Carambolas.Runtime.InteropServices.csproj" Private="False" />    
+  </ItemGroup>
+
+  <Target Name="AfterBuild">
+    <ItemGroup>
+      <AssemblyFiles Include="$(OutputPath)$(AssemblyName).*" />
+    </ItemGroup>
+    <Delete Files="@(AssemblyFiles)" />
+    <Move SourceFiles="$(OutputPath)Native/osx-x64/libreplxx.dylib" DestinationFolder="$(OutputPath)Plugins/x86_64/" />
+    <Move SourceFiles="$(OutputPath)Native/linux-x64/libreplxx.so" DestinationFolder="$(OutputPath)Plugins/x86_64/" />
+    <Move SourceFiles="$(OutputPath)Native/win-x64/replxx.dll" DestinationFolder="$(OutputPath)Plugins/x86_64/" />
+    <Move SourceFiles="$(OutputPath)Native/win-x86/replxx.dll" DestinationFolder="$(OutputPath)Plugins/x86/" />
+    <RemoveDir Directories="$(OutputPath)Native" />
+  </Target>
+
+  <Target Name="AfterClean">
+    <RemoveDir Directories="$(OutputPath)Runtime;$(OutputPath)Editor;$(OutputPath)Documentation~" />
+  </Target>
+  
+</Project>

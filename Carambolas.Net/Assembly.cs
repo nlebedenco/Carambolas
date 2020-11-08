@@ -1,3 +1,3 @@
 ﻿using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("Tests.Unit.Carambolas.Net")]
+[assembly: InternalsVisibleTo("Carambolas.Net.Tests")]

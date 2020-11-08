@@ -128,22 +128,22 @@ namespace Carambolas.UnityEngine
         private static class TimeCommands
         {
             [Command(Name = "time.scale")]
-            private static void TimeScale(CommandLineInterface.Writer writer) => writer.WriteLine($"{Time.timeScale}");
+            private static void TimeScale(Repl.Writer writer) => writer.WriteLine($"{Time.timeScale}");
 
             [Command(Name = "time.scaledtime")]
-            private static void TimeScaled(CommandLineInterface.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.time)}");
+            private static void TimeScaled(Repl.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.time)}");
 
             [Command(Name = "time.unscaledtime")]
-            private static void ScaledTime(CommandLineInterface.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.unscaledTime)}");
+            private static void ScaledTime(Repl.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.unscaledTime)}");
 
             [Command(Name = "time.realtime")]
-            private static void RealTimeSinceStartup(CommandLineInterface.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.realtimeSinceStartup)}");
+            private static void RealTimeSinceStartup(Repl.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.realtimeSinceStartup)}");
 
             [Command(Name = "time.startup")]
-            private static void StartupTime(CommandLineInterface.Writer writer) => writer.WriteLine($"{Time.startupTime}");
+            private static void StartupTime(Repl.Writer writer) => writer.WriteLine($"{Time.startupTime}");
 
             [Command(Name = "time.leveltime")]
-            private static void TimSinceLevelLoad(CommandLineInterface.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.timeSinceLevelLoad)}");
+            private static void TimSinceLevelLoad(Repl.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.timeSinceLevelLoad)}");
         }
     }
 }

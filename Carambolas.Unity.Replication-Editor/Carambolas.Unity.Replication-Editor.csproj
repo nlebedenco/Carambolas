@@ -1,7 +1,7 @@
 ﻿<Project>
   <PropertyGroup>
-    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
-    <BaseOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/../Build/$(MSBuildProjectName)/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)/../Build/$(MSBuildProjectName)/bin/</BaseOutputPath>
   </PropertyGroup>
 
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
@@ -41,15 +41,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Carambolas.Unity.Replication\**\*.cs">
+    <Compile Include="../Carambolas.Unity.Replication/**/*.cs">
       <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Compile>
   </ItemGroup>
     
   <ItemGroup>
-    <ProjectReference Include="..\Carambolas.Unity-Editor\Carambolas.Unity-Editor.csproj" />
-    <ProjectReference Include="..\Carambolas\Carambolas.csproj" Private="False" />
-    <ProjectReference Include="..\Carambolas.Net\Carambolas.Net.csproj" Private="False" />
+    <ProjectReference Include="../Carambolas.Core/Carambolas.Core.csproj" Private="False" />
+    <ProjectReference Include="../Carambolas.Net/Carambolas.Net.csproj" Private="False" />
+    <ProjectReference Include="../Carambolas.Unity-Editor/Carambolas.Unity-Editor.csproj" Private="False" />        
   </ItemGroup>
 
   <ItemGroup>

@@ -1,7 +1,7 @@
 ﻿<Project>
   <PropertyGroup>
-    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
-    <BaseOutputPath>$(MSBuildProjectDirectory)\..\Build\$(MSBuildProjectName)\bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/../Build/$(MSBuildProjectName)/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)/../Build/$(MSBuildProjectName)/bin/</BaseOutputPath>
   </PropertyGroup>
 
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
@@ -24,7 +24,7 @@
   </PropertyGroup>
 
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
-      
+
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <DefineConstants>TRACE;DEBUG</DefineConstants>
@@ -35,11 +35,11 @@
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <NoWarn>1701;1702;CS1591</NoWarn>
   </PropertyGroup>
-
+    
   <ItemGroup>
-    <ProjectReference Include="..\Carambolas\Carambolas.csproj" Private="False"/>
+    <ProjectReference Include="../Carambolas.Core/Carambolas.Core.csproj" Private="False" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <PackageReference Include="Unity3D" Version="1.5.0" />
   </ItemGroup>

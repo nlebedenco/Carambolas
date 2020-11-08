@@ -2,7 +2,7 @@
   "name": "dev.nlebedenco.carambolas.net",
   "version": "0.1.0",
   "displayName": "Carambolas.Net",
-  "description": "Low latency reliable UDP protocol implementation.",
+  "description": "Carambolas is a custom multi-channel reliable UDP protocol implementation for low latency/low bandwidth-delay network applications with soft real-time constraints featured in a collection of .NET Standard 2.0 support assemblies.\n\nThis package contains the network classes.",
   "unity": "2018.3",
   "license": "MIT",
   "repository": {
@@ -17,7 +17,7 @@
     "netcode"
   ],
   "dependencies": {
-    "dev.nlebedenco.carambolas":  "0.1.0"
+    "dev.nlebedenco.carambolas.core": "0.1.0"
   },
   "author": {
     "name": "Nicolas Lebedenco",
