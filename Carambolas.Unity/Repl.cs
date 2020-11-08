@@ -276,12 +276,8 @@ namespace Carambolas.UnityEngine
                     throw new Exception("");
                 }
 
-                [Command(Name = "quit")]
-                private static void Quit(Writer writer) => Application.Quit();
-
                 [Command(Name = "exit")]
-                private static void Exit(Writer writer) 
-                    => throw new Exception($"This is not a shell. You're in the command line interface of an instance of {Application.productName}. Did you mean 'quit'?");
+                private static void Quit(Writer writer) => Application.Quit();
             }
         }
 

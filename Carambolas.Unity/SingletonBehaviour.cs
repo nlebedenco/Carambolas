@@ -99,7 +99,7 @@ namespace Carambolas.UnityEngine
                     Debug.Log(string.Format("{0}{1} singleton{2} instantiated.",
                         GetType().FullName,
                         string.IsNullOrEmpty(name) ? string.Empty : $" ({name})",
-                        GetType() == typeof(T) ? "" : $"derived of {typeof(T).FullName}"));
+                        GetType() == typeof(T) ? "" : $" derived of {typeof(T).FullName}"));
                         
                     ValidateRequiredComponents();
 
@@ -153,7 +153,7 @@ namespace Carambolas.UnityEngine
                     Debug.Log(string.Format("{0}{1} singleton{2} destroyed.",
                         GetType().FullName,
                         string.IsNullOrEmpty(name) ? string.Empty : $" ({name})",
-                        GetType() == typeof(T) ? "" : $"derived of {typeof(T).FullName}"));
+                        GetType() == typeof(T) ? "" : $" derived of {typeof(T).FullName}"));
                 }
             }
 

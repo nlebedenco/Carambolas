@@ -62,9 +62,10 @@ namespace Carambolas.UnityEngine
 
         private string prompt;
         private Replxx replxx;
-        private string line;
+               
+        private volatile bool terminated;
+        private volatile string line;
         private AutoResetEvent processed;
-        private bool terminated;
         private Thread thread;
 
         #region Replxx thread
@@ -73,12 +74,11 @@ namespace Carambolas.UnityEngine
         {
             while (!terminated)
             {
-                do
-                {
-                    line = replxx.Read(prompt);
-                }
-                while (string.IsNullOrEmpty(line) && !terminated);
+                var s = replxx.Read(prompt);
+                if (string.IsNullOrEmpty(s))
+                    continue;
 
+                line = s;
                 processed.WaitOne();                
             }
         }
@@ -127,16 +127,12 @@ namespace Carambolas.UnityEngine
 
         protected override bool TryRead(out string value)
         {
-            var s = line;
-            if (string.IsNullOrEmpty(s))
-            {
-                value = default;
+            value = line;
+            if (string.IsNullOrEmpty(value))
                 return false;
-            }
 
             line = default;
-            replxx.AddToHistory(s);
-            value = s;
+            replxx.AddToHistory(value);
             return true;
         }
 
