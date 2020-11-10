@@ -4,10 +4,11 @@ using System.Threading;
 
 using UnityEngine;
 using Carambolas.UI;
+using System.IO;
 
 namespace Carambolas.UnityEngine
 {
-    public sealed class ComandLineInterface: Repl
+    public sealed class CommandLineInterface: Repl
     {
         private class ReplxxWriter: Writer
         {
@@ -56,8 +57,8 @@ namespace Carambolas.UnityEngine
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void OnBeforeSceneLoad()
         {
-            if (Application.isServerBuild && !Application.commandLineArguments.Contains("noconsole"))
-                ComponentUtility.Create<ComandLineInterface>();
+            if (Application.isInteractiveServerBuild)
+                ComponentUtility.Create<CommandLineInterface>();
         }
 
         private string prompt;

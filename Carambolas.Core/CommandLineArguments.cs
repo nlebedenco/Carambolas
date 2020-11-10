@@ -82,7 +82,7 @@ namespace Carambolas
         private readonly Dictionary<string, StringCollection> dictionary;
         private string waitingArgument;
 
-        public CommandLineArguments() : this(Environment.CommandLine) { }
+        public CommandLineArguments() : this(SplitCommandLine(Environment.CommandLine).Skip(1)) { }
 
         public CommandLineArguments(string commandLine) : this(SplitCommandLine(commandLine)) { }
 
@@ -92,8 +92,7 @@ namespace Carambolas
 
             string[] parts;
 
-            //Splits on beginning of arguments ( - and -- and / )
-            //And on assignment operators ( = and : )
+            // Splits on beginning of arguments ( - and -- and / ) and on assignment operators ( = and : )
             var argumentSplitter = new Regex(@"^-{1,2}|^/|=", RegexOptions.IgnoreCase);
 
             foreach (var argument in arguments)
@@ -194,9 +193,9 @@ namespace Carambolas
 
         public bool TryGetValue(string argument, out string value)
         {
-            if (dictionary.TryGetValue(argument, out StringCollection list) && list != null)
+            if (dictionary.TryGetValue(argument, out StringCollection list))
             {
-                value = list.LastOrDefault();
+                value = list?.LastOrDefault();
                 return true;
             }
             else

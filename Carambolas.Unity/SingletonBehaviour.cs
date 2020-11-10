@@ -79,6 +79,7 @@ namespace Carambolas.UnityEngine
                 {
                     Debug.LogError(string.Format("Unexpected destruction of non-transient singleton {0}{1}. Application will be terminated.", 
                         GetType().FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"), this);
+
                     Application.Quit();
                 }
             }
@@ -95,12 +96,7 @@ namespace Carambolas.UnityEngine
             try
             {
                 if (Instance is null)
-                {
-                    Debug.Log(string.Format("{0}{1} singleton{2} instantiated.",
-                        GetType().FullName,
-                        string.IsNullOrEmpty(name) ? string.Empty : $" ({name})",
-                        GetType() == typeof(T) ? "" : $" derived of {typeof(T).FullName}"));
-                        
+                {                 
                     ValidateRequiredComponents();
 
 #if UNITY_EDITOR
@@ -118,18 +114,25 @@ namespace Carambolas.UnityEngine
             }
             catch (Exception e)
             {
-                Debug.LogException(e, this);
-                AutoDestruction();
+                if (!string.IsNullOrEmpty(e.Message))
+                    Debug.LogException(e, this);
+                SelfDestruct();
                 return;
-            }
+            }        
 
             Instance = this as T;
             DontDestroyOnLoad(gameObject);
             transform.hideFlags = HideFlags.NotEditable | HideFlags.HideInInspector;
+
+            Debug.Log(string.Format("{0}{1} singleton{2} instantiated.",
+                 GetType().FullName,
+                 string.IsNullOrEmpty(name) ? string.Empty : $" ({name})",
+                 GetType() == typeof(T) ? "" : $" derived of {typeof(T).FullName}"));
+
             OnSingletonAwake();
         }
 
-        private void AutoDestruction()
+        private void SelfDestruct()
         {
             if (!Application.isPlaying)
                 DestroyImmediate(this);
