@@ -23,7 +23,7 @@ namespace Carambolas.Collections.Generic
     }
 
     /// <summary>
-    /// Represents a dictionary that tracks the order that items were added.
+    /// A dictionary that preserves insertion order.
     /// </summary>
     /// <typeparam name="TKey">The type of the dictionary keys.</typeparam>
     /// <typeparam name="TValue">The type of the dictionary values.</typeparam>
@@ -38,36 +38,32 @@ namespace Carambolas.Collections.Generic
     public class OrderedDictionary<TKey, TValue>: IDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>
     {
         private readonly Dictionary<TKey, int> dictionary;
+
         private readonly List<TKey> keys;
         private readonly List<TValue> values;
+
+        private readonly ReadOnlyCollection<TKey> keysAsReadOnly;
+        private readonly ReadOnlyCollection<TValue> valuesAsReadOnly;
+
         private int version;
 
         /// <summary>
         /// Initializes a new instance of an OrderedDictionary.
         /// </summary>
-        public OrderedDictionary()
-            : this(0, null)
-        {
-        }
+        public OrderedDictionary() : this(0, null) { }
 
         /// <summary>
         /// Initializes a new instance of an OrderedDictionary.
         /// </summary>
         /// <param name="capacity">The initial capacity of the dictionary.</param>
         /// <exception cref="System.ArgumentOutOfRangeException">The capacity is less than zero.</exception>
-        public OrderedDictionary(int capacity)
-            : this(capacity, null)
-        {
-        }
+        public OrderedDictionary(int capacity) : this(capacity, null) { }
 
         /// <summary>
         /// Initializes a new instance of an OrderedDictionary.
         /// </summary>
         /// <param name="comparer">The equality comparer to use to compare keys.</param>
-        public OrderedDictionary(IEqualityComparer<TKey> comparer)
-            : this(0, comparer)
-        {
-        }
+        public OrderedDictionary(IEqualityComparer<TKey> comparer) : this(0, comparer) { }
 
         /// <summary>
         /// Initializes a new instance of an OrderedDictionary.
@@ -79,6 +75,9 @@ namespace Carambolas.Collections.Generic
             dictionary = new Dictionary<TKey, int>(capacity, comparer ?? EqualityComparer<TKey>.Default);
             keys = new List<TKey>(capacity);
             values = new List<TValue>(capacity);
+
+            keysAsReadOnly = new ReadOnlyCollection<TKey>(keys);
+            valuesAsReadOnly = new ReadOnlyCollection<TValue>(values);
         }
 
         /// <summary>
@@ -167,7 +166,7 @@ namespace Carambolas.Collections.Generic
         /// <summary>
         /// Gets the keys in the dictionary in the order they were added.
         /// </summary>
-        public KeyCollection Keys => new KeyCollection(this.dictionary);
+        public ReadOnlyCollection<TKey> Keys => keysAsReadOnly;
 
         /// <summary>
         /// Removes the key/value pair with the given key from the dictionary.
@@ -193,9 +192,9 @@ namespace Carambolas.Collections.Generic
         public void RemoveAt(int index)
         {
             var key = keys[index];
-            for (int keyIndex = index + 1; keyIndex < keys.Count; ++keyIndex)
+            for (int i = index + 1; i < keys.Count; ++i)
             {
-                var otherKey = keys[keyIndex];
+                var otherKey = keys[i];
                 dictionary[otherKey] -= 1;
             }
             dictionary.Remove(key);
@@ -226,7 +225,7 @@ namespace Carambolas.Collections.Generic
         /// <summary>
         /// Gets the values in the dictionary.
         /// </summary>
-        public ValueCollection Values => new ValueCollection(values);
+        public ReadOnlyCollection<TValue> Values => valuesAsReadOnly;
 
         /// <summary>
         /// Gets or sets the value at the given index.
@@ -237,6 +236,7 @@ namespace Carambolas.Collections.Generic
         public TValue this[int index]
         {
             get => values[index];
+
             set => values[index] = value;
         }
 
@@ -253,6 +253,7 @@ namespace Carambolas.Collections.Generic
             {
                 return values[dictionary[key]];
             }
+
             set
             {
                 if (dictionary.TryGetValue(key, out int index))
@@ -280,30 +281,20 @@ namespace Carambolas.Collections.Generic
         /// <summary>
         /// Gets the number of key/value pairs in the dictionary.
         /// </summary>
-        public int Count => dictionary.Count;
+        public int Count => keys.Count;
 
         /// <summary>
         /// Gets the key/value pairs in the dictionary in the order they were added.
         /// </summary>
         /// <returns>An enumerator over the key/value pairs in the dictionary.</returns>
-        public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
-        {
-            int startVersion = version;
-            for (int index = 0; index != keys.Count; ++index)
-            {
-                var key = keys[index];
-                var value = values[index];
-                yield return new KeyValuePair<TKey, TValue>(key, value);
-                if (version != startVersion)
-                {
-                    throw new InvalidOperationException();
-                }
-            }
-        }
+        public Enumerator GetEnumerator() => new Enumerator(this);
+
+        IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         int IList<KeyValuePair<TKey, TValue>>.IndexOf(KeyValuePair<TKey, TValue> item)
         {
-            if (dictionary.TryGetValue(item.Key, out int index) && Equals(values[index], item.Value))
+            if (dictionary.TryGetValue(item.Key, out int index) && EqualityComparer<TValue>.Default.Equals(values[index], item.Value))
             {
                 return index;
             }
@@ -351,14 +342,14 @@ namespace Carambolas.Collections.Generic
 
         bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item)
         {
-            if (dictionary.TryGetValue(item.Key, out int index) && Equals(values[index], item.Value))
+            if (dictionary.TryGetValue(item.Key, out int index) && EqualityComparer<TValue>.Default.Equals(values[index], item.Value))
             {
                 return true;
             }
             return false;
         }
 
-        void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
+        public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
         {
             if (array == null)
                 throw new ArgumentNullException(nameof(array));
@@ -366,12 +357,8 @@ namespace Carambolas.Collections.Generic
             if (arrayIndex < 0)
                 throw new ArgumentOutOfRangeException(nameof(arrayIndex), string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanBuffer), nameof(arrayIndex)));
 
-            for (int index = 0; index != keys.Count && arrayIndex < array.Length; ++index, ++arrayIndex)
-            {
-                var key = keys[index];
-                var value = values[index];
-                array[arrayIndex] = new KeyValuePair<TKey, TValue>(key, value);
-            }
+            for (int i = 0; i != keys.Count && arrayIndex < array.Length; ++i, ++arrayIndex)
+                array[arrayIndex] = new KeyValuePair<TKey, TValue>(keys[i], values[i]);
         }
 
         bool ICollection<KeyValuePair<TKey, TValue>>.IsReadOnly => false;
@@ -384,128 +371,63 @@ namespace Carambolas.Collections.Generic
                 return Remove(item.Key);
             }
             return false;
-        }
+        }       
 
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => Array.Copy(Keys.Zip(Values, (k, v) => new KeyValuePair<TKey, TValue>(k, v)).ToArray(), 0, array, arrayIndex, Keys.Count);
-
-        /// <summary>
-        /// Wraps the keys in an OrderDictionary.
-        /// </summary>
-        public sealed class KeyCollection: ICollection<TKey>
+        public struct Enumerator: IEnumerator<KeyValuePair<TKey, TValue>>, IDisposable, IEnumerator
         {
-            private readonly Dictionary<TKey, int> dictionary;
+            private readonly OrderedDictionary<TKey, TValue> dict;
+            private readonly int version;
 
-            /// <summary>
-            /// Initializes a new instance of a KeyCollection.
-            /// </summary>
-            /// <param name="dictionary">The OrderedDictionary whose keys to wrap.</param>
-            /// <exception cref="System.ArgumentNullException">The dictionary is null.</exception>
-            internal KeyCollection(Dictionary<TKey, int> dictionary)
+            private int index;
+            private KeyValuePair<TKey, TValue> current;
+
+            internal Enumerator(OrderedDictionary<TKey, TValue> dict)
             {
-                this.dictionary = dictionary;
+                this.dict = dict;
+                index = 0;
+                version = dict.version;
+                current = default;
             }
 
-            /// <summary>
-            /// Copies the keys from the OrderedDictionary to the given array, starting at the given index.
-            /// </summary>
-            /// <param name="array">The array to copy the keys to.</param>
-            /// <param name="arrayIndex">The index into the array to start copying the keys.</param>
-            /// <exception cref="System.ArgumentNullException">The array is null.</exception>
-            /// <exception cref="System.ArgumentOutOfRangeException">The arrayIndex is negative.</exception>
-            /// <exception cref="System.ArgumentException">The array, starting at the given index, is not large enough to contain all the keys.</exception>
-            public void CopyTo(TKey[] array, int arrayIndex)
+            public void Dispose() { }
+
+            public bool MoveNext()
             {
-                dictionary.Keys.CopyTo(array, arrayIndex);
+                if (version != dict.version || (uint)index >= (uint)dict.Count)
+                    return MoveNextRare();
+                current = new KeyValuePair<TKey, TValue>(dict.keys[index], dict.values[index]);
+                ++index;
+                return true;
             }
 
-            /// <summary>
-            /// Gets the number of keys in the OrderedDictionary.
-            /// </summary>
-            public int Count => dictionary.Count;
-
-            /// <summary>
-            /// Gets an enumerator over the keys in the OrderedDictionary.
-            /// </summary>
-            /// <returns>The enumerator.</returns>
-            public IEnumerator<TKey> GetEnumerator() => dictionary.Keys.GetEnumerator();
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            bool ICollection<TKey>.Contains(TKey item) => dictionary.ContainsKey(item);
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            void ICollection<TKey>.Add(TKey item) => throw new NotSupportedException();
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            void ICollection<TKey>.Clear() => throw new NotSupportedException();
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            bool ICollection<TKey>.IsReadOnly => true;
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            bool ICollection<TKey>.Remove(TKey item) => throw new NotSupportedException();
-
-            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        }
-
-        /// <summary>
-        /// Wraps the keys in an OrderDictionary.
-        /// </summary>
-        public sealed class ValueCollection: ICollection<TValue>
-        {
-            private readonly List<TValue> values;
-
-            /// <summary>
-            /// Initializes a new instance of a ValueCollection.
-            /// </summary>
-            /// <param name="values">The OrderedDictionary whose keys to wrap.</param>
-            /// <exception cref="System.ArgumentNullException">The dictionary is null.</exception>
-            internal ValueCollection(List<TValue> values)
+            private bool MoveNextRare()
             {
-                this.values = values;
+                if (version != dict.version)
+                    throw new InvalidOperationException(Resources.GetString(Strings.EnumeratorFailedVersion));
+                index = dict.keys.Count + 1;
+                current = default;
+                return false;
             }
 
-            /// <summary>
-            /// Copies the values from the OrderedDictionary to the given array, starting at the given index.
-            /// </summary>
-            /// <param name="array">The array to copy the values to.</param>
-            /// <param name="arrayIndex">The index into the array to start copying the values.</param>
-            /// <exception cref="System.ArgumentNullException">The array is null.</exception>
-            /// <exception cref="System.ArgumentOutOfRangeException">The arrayIndex is negative.</exception>
-            /// <exception cref="System.ArgumentException">The array, starting at the given index, is not large enough to contain all the values.</exception>
-            public void CopyTo(TValue[] array, int arrayIndex)
+            public KeyValuePair<TKey, TValue> Current => current;
+
+            object IEnumerator.Current
             {
-                values.CopyTo(array, arrayIndex);
+                get
+                {
+                    if (index == 0 || index == dict.keys.Count + 1)
+                        throw new InvalidOperationException(Resources.GetString(Strings.EnumeratorNotStartedOrFinished));
+                    return current;
+                }
             }
 
-            /// <summary>
-            /// Gets the number of values in the OrderedDictionary.
-            /// </summary>
-            public int Count => values.Count;
-
-            /// <summary>
-            /// Gets an enumerator over the values in the OrderedDictionary.
-            /// </summary>
-            /// <returns>The enumerator.</returns>
-            public IEnumerator<TValue> GetEnumerator() => values.GetEnumerator();
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            bool ICollection<TValue>.Contains(TValue item) => values.Contains(item);
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            void ICollection<TValue>.Add(TValue item) => throw new NotSupportedException();
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            void ICollection<TValue>.Clear() => throw new NotSupportedException();
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            bool ICollection<TValue>.IsReadOnly => true;
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            bool ICollection<TValue>.Remove(TValue item) => throw new NotSupportedException();
-
-            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+            void IEnumerator.Reset()
+            {
+                if (version != dict.version)
+                    throw new InvalidOperationException(Resources.GetString(Strings.EnumeratorFailedVersion));
+                index = 0;
+                current = default;
+            }
         }
     }
 }

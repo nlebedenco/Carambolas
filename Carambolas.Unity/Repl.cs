@@ -12,6 +12,8 @@ using UnityEngine.Scripting;
 
 namespace Carambolas.UnityEngine
 {
+    using Carambolas.Collections.Generic;
+
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
     public sealed class CommandAttribute: PreserveAttribute
     {
@@ -38,66 +40,62 @@ namespace Carambolas.UnityEngine
 
         public static class Shell
         {
-            public delegate object CommandDelegate(Writer writer, params string[] args);
+            public delegate object CommandHandler(Writer writer, params string[] args);
 
-            private struct CommandInfo
+            public readonly struct CommandInfo
             {
-                public string Description;
-                public string Help;
+                public readonly string Name;
+                public readonly string Description;
+                public readonly string Help;
+                public readonly CommandHandler Handler;
 
-                public CommandInfo(string description, string help)
-                {
-                    this.Description = description;
-                    this.Help = help;
-                }
+                internal CommandInfo(string name, string description, string help, CommandHandler handler) => (Name, Description, Help, Handler) = (name, description, help, handler);
             }
 
-            private static readonly HashSet<Assembly> registry = new HashSet<Assembly> { typeof(Repl).Assembly };
+            private static readonly HashSet<Assembly> assemblies = new HashSet<Assembly> { typeof(Repl).Assembly };
 
-            private static readonly Dictionary<string, CommandDelegate> handlers = new Dictionary<string, CommandDelegate>();            
-            private static readonly Dictionary<string, CommandInfo> details = new Dictionary<string, CommandInfo>();
+            // TODO: complete migration to sorted list
+            internal static readonly SortedList<string, CommandInfo> Commands = new SortedList<string, CommandInfo>();
 
-            private static string[] names = Array.Empty<string>();
-
-            internal static void GetCommandNames(out ArraySegment<string> commands) => commands = new ArraySegment<string>(names, 0, names.Length);
-
-            internal static void GetCommandNames(string prefix, out ArraySegment<string> commands)
+            internal static void FindCommands(string prefix, out IReadOnlyList<CommandInfo> list, out int index, out int count)
             {
                 if (string.IsNullOrWhiteSpace(prefix))
-                    return;
+                    (list, index, count) = (Commands.Values, -1, 0);
 
-                var index = names.BinarySearch(prefix);
+                list = Commands.Values;
+                index = Commands.IndexOfKey(prefix);
                 if (index < 0) // if not found take the next element larger than prefix
                     index = ~index;
 
                 var i = index;
-                while (i < names.Length && names[i].StartsWith(prefix))
+                var n = list.Count;
+                while (i < n && list[i].Name.StartsWith(prefix))
                     ++i;
 
-                commands = new ArraySegment<string>(names, index, i - index);
+                count = i - index;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal static bool TryGetCommandDelegate(string key, out CommandDelegate value) => handlers.TryGetValue(key, out value);
+            internal static bool TryGetCommandInfo(string key, out CommandInfo command) => Commands.TryGetValue(key, out command);
 
             private static readonly MethodInfo BoxedFuncMaker = typeof(Repl).GetMethod("GenericMakeMethod", BindingFlags.NonPublic | BindingFlags.Static);
             private static readonly MethodInfo BoxedFuncWithoutArgsMaker = typeof(Repl).GetMethod("GenericMakeMethodWithoutArgs", BindingFlags.NonPublic | BindingFlags.Static);
             private static readonly MethodInfo BoxedFuncWithoutWriterMaker = typeof(Repl).GetMethod("GenericMakeMethodWithoutWriter", BindingFlags.NonPublic | BindingFlags.Static);
             private static readonly MethodInfo BoxedFuncWithoutWriterAndArgsMaker = typeof(Repl).GetMethod("GenericMakeMethodWithoutWriterAndArgs", BindingFlags.NonPublic | BindingFlags.Static);
 
-            private static CommandDelegate GenericMakeMethod<U>(MethodInfo method) => (Delegate.CreateDelegate(typeof(Func<Writer, string[], U>), method, false) is Func<Writer, string[], U> func) ? (writer, args) => func(writer, args) : (CommandDelegate)null;
+            private static CommandHandler GenericMakeMethod<U>(MethodInfo method) => (Delegate.CreateDelegate(typeof(Func<Writer, string[], U>), method, false) is Func<Writer, string[], U> func) ? (writer, args) => func(writer, args) : (CommandHandler)null;
 
-            private static CommandDelegate GenericMakeMethodWithoutArgs<U>(MethodInfo method) => (Delegate.CreateDelegate(typeof(Func<Writer, U>), method, false) is Func<Writer, U> func) ? (writer, args) => func(writer) : (CommandDelegate)null;
+            private static CommandHandler GenericMakeMethodWithoutArgs<U>(MethodInfo method) => (Delegate.CreateDelegate(typeof(Func<Writer, U>), method, false) is Func<Writer, U> func) ? (writer, args) => func(writer) : (CommandHandler)null;
 
-            private static CommandDelegate GenericMakeMethodWithoutWriter<U>(MethodInfo method) => (Delegate.CreateDelegate(typeof(Func<string[], U>), method, false) is Func<string[], U> func) ? (writer, args) => func(args) : (CommandDelegate)null;
+            private static CommandHandler GenericMakeMethodWithoutWriter<U>(MethodInfo method) => (Delegate.CreateDelegate(typeof(Func<string[], U>), method, false) is Func<string[], U> func) ? (writer, args) => func(args) : (CommandHandler)null;
 
-            private static CommandDelegate GenericMakeMethodWithoutWriterAndArgs<U>(MethodInfo method) => (Delegate.CreateDelegate(typeof(Func<U>), method, false) is Func<U> func) ? (writer, args) => func() : (CommandDelegate)null;
+            private static CommandHandler GenericMakeMethodWithoutWriterAndArgs<U>(MethodInfo method) => (Delegate.CreateDelegate(typeof(Func<U>), method, false) is Func<U> func) ? (writer, args) => func() : (CommandHandler)null;
 
             private static readonly object[] genericMakeArgs = new object[1];
 
-            private static CommandDelegate MakeDelegate(MethodInfo method)
+            private static CommandHandler MakeDelegate(MethodInfo method)
             {
-                if (Delegate.CreateDelegate(typeof(CommandDelegate), method, false) is CommandDelegate func)
+                if (Delegate.CreateDelegate(typeof(CommandHandler), method, false) is CommandHandler func)
                     return func;
 
                 if (Delegate.CreateDelegate(typeof(Action<Writer, string[]>), method, false) is Action<Writer, string[]> action)
@@ -122,16 +120,16 @@ namespace Carambolas.UnityEngine
                     return (writer, args) => funcWithoutWriterAndArgs();
 
                 genericMakeArgs[0] = method;
-                if (BoxedFuncMaker.MakeGenericMethod(method.ReturnType).Invoke(null, genericMakeArgs) is CommandDelegate funcBoxed)
+                if (BoxedFuncMaker.MakeGenericMethod(method.ReturnType).Invoke(null, genericMakeArgs) is CommandHandler funcBoxed)
                     return funcBoxed;
 
-                if (BoxedFuncWithoutArgsMaker.MakeGenericMethod(method.ReturnType).Invoke(null, genericMakeArgs) is CommandDelegate funcBoxedWithoutArgs)
+                if (BoxedFuncWithoutArgsMaker.MakeGenericMethod(method.ReturnType).Invoke(null, genericMakeArgs) is CommandHandler funcBoxedWithoutArgs)
                     return funcBoxedWithoutArgs;
 
-                if (BoxedFuncWithoutWriterMaker.MakeGenericMethod(method.ReturnType).Invoke(null, genericMakeArgs) is CommandDelegate funcBoxedWithoutWriter)
+                if (BoxedFuncWithoutWriterMaker.MakeGenericMethod(method.ReturnType).Invoke(null, genericMakeArgs) is CommandHandler funcBoxedWithoutWriter)
                     return funcBoxedWithoutWriter;
 
-                if (BoxedFuncWithoutWriterAndArgsMaker.MakeGenericMethod(method.ReturnType).Invoke(null, genericMakeArgs) is CommandDelegate funcBoxedWithoutWriterAndArgs)
+                if (BoxedFuncWithoutWriterAndArgsMaker.MakeGenericMethod(method.ReturnType).Invoke(null, genericMakeArgs) is CommandHandler funcBoxedWithoutWriterAndArgs)
                     return funcBoxedWithoutWriterAndArgs;
 
                 return null;
@@ -141,7 +139,7 @@ namespace Carambolas.UnityEngine
             /// Register an assembly for command loading.
             /// </summary>
             /// <param name="assembly"></param>
-            public static void Register(Assembly assembly) => registry.Add(assembly);
+            public static void Register(Assembly assembly) => assemblies.Add(assembly);
 
             /// <summary>
             /// Load commands defined in the registered assemblies that have not been loaded yet.
@@ -149,16 +147,13 @@ namespace Carambolas.UnityEngine
             /// </summary>
             public static void LoadCommands()
             {
-                if (registry.Count == 0)
+                if (assemblies.Count == 0)
                     return;
 
-                foreach (var assembly in registry)
+                foreach (var assembly in assemblies)
                     RegisterCommands(assembly);
 
-                registry.Clear();
-
-                names = handlers.Keys.ToArray();
-                names.Sort();
+                assemblies.Clear();
             }
 
             private static void RegisterCommands(Assembly assembly)
@@ -194,21 +189,15 @@ namespace Carambolas.UnityEngine
                                     var description = attribute.Description;
                                     var help = attribute.Help;
 
-                                    if (handlers.ContainsKey(name))
-                                        Debug.LogError($"Error trying to register command '{name}' with method {method}. This command was already registered with another handler.");
+                                    if (Commands.ContainsKey(name))
+                                        Debug.LogError($"Error trying to register command '{name}' with handler {method}. This command has already been registered.");
                                     else
                                     {
                                         var handler = MakeDelegate(method);
                                         if (handler == null)
-                                        {
                                             Debug.LogError($"Method decorated with {typeof(CommandAttribute).Name} is not supported: {method}");
-                                        }
                                         else
-                                        {
-
-                                            handlers.Add(name, handler);
-                                            details.Add(name, new CommandInfo(description, help));
-                                        }
+                                            Commands.Add(name, new CommandInfo(name, description, help, handler));
                                     }
                                 }
                             }
@@ -895,8 +884,9 @@ namespace Carambolas.UnityEngine
             reader = StartCoroutine(ReadInput().Catch(Critical));
         }
 
-        protected void GetCommandNames(out ArraySegment<string> commands) => Shell.GetCommandNames(out commands);
-        protected void GetCommandNames(string prefix, out ArraySegment<string> commands) => Shell.GetCommandNames(prefix, out commands);
+        protected IReadOnlyList<Shell.CommandInfo> Commands => Shell.Commands.Values;
+
+        protected void FindCommands(string prefix, out IReadOnlyList<Shell.CommandInfo> list, out int index, out int count) => Shell.FindCommands(prefix, out list, out index, out count);
 
         private void Error(string s) => writer.ErrorLine(s);
         private void Error(Exception e) => writer.ErrorLine(e.Message);
@@ -1044,33 +1034,23 @@ namespace Carambolas.UnityEngine
             if (splitted.Count > 0)
             {
                 var key = splitted[0];
-                if (Shell.TryGetCommandDelegate(key, out Shell.CommandDelegate handler))
-                {
-                    var ret = handler(writer, splitted.Skip(1).ToArray());
-                    switch (ret)
-                    {
-                        case IEnumerator enumerator:
-                            yield return enumerator;
-                            break;
-                        case YieldInstruction wait:
-                            yield return wait;
-                            break;
-                        case int frames:
-                            yield return frames;
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                else
-                {
-                    Shell.GetCommandNames(key, out ArraySegment<string> commands);
-                    if (commands.Count == 0)
-                        throw new KeyNotFoundException($"{key}: command not found");
+                if (!Shell.TryGetCommandInfo(key, out Shell.CommandInfo info))
+                    throw new KeyNotFoundException($"{key}: command not found");
 
-                    var n = commands.Offset + commands.Count;
-                    for (int i = commands.Offset; i < n; ++i)
-                        writer.WriteLine(commands.Array[i]);                    
+                var ret = info.Handler(writer, splitted.Skip(1).ToArray());
+                switch (ret)
+                {
+                    case IEnumerator enumerator:
+                        yield return enumerator;
+                        break;
+                    case YieldInstruction wait:
+                        yield return wait;
+                        break;
+                    case int frames:
+                        yield return frames;
+                        break;
+                    default:
+                        break;
                 }
             }
         }

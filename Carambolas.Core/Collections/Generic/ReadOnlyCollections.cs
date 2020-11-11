@@ -42,16 +42,20 @@ namespace Carambolas.Collections.Generic
         public bool SetEquals(IEnumerable<T> other) => set.SetEquals(other);
     }
 
-    public class ReadOnlyList<T>: IReadOnlyList<T>, IList<T>
+    /// <summary>
+    /// A replacement for <see cref="System.Collections.ObjectModel.ReadOnlyCollection{T}"/> that returns a value-type enumerator 
+    /// instead of a <see cref="IEnumerator{T}"/> so the compiler may optimize foreach loops and avoid boxing.
+    /// </summary>
+    public class ReadOnlyCollection<T>: IReadOnlyList<T>, IList<T>
     {
         private readonly List<T> list;
 
-        public ReadOnlyList()
+        public ReadOnlyCollection()
         {
             list = new List<T>();
         }
 
-        public ReadOnlyList(List<T> list)
+        public ReadOnlyCollection(List<T> list)
         {
             this.list = list ?? throw new ArgumentNullException(nameof(list));
         }
@@ -82,6 +86,10 @@ namespace Carambolas.Collections.Generic
         IEnumerator IEnumerable.GetEnumerator() => (list as IEnumerable<T>).GetEnumerator();
     }
 
+    /// <summary>
+    /// A replacement for <see cref="System.Collections.ObjectModel.ReadOnlyDictionary{TKey, TValue}"/> that returns a value-type enumerator 
+    /// instead of a <see cref="IEnumerator{T}"/> so the compiler may optimize foreach loops and avoid boxing.
+    /// </summary>
     public class ReadOnlyDictionary<TKey, TValue>: IReadOnlyDictionary<TKey, TValue>, IDictionary<TKey, TValue>
     {
         private readonly Dictionary<TKey, TValue> dictionary = new Dictionary<TKey, TValue>();
@@ -129,7 +137,7 @@ namespace Carambolas.Collections.Generic
         bool IDictionary<TKey, TValue>.Remove(TKey key) => throw new NotSupportedException();
 
         bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item) => (dictionary as ICollection<KeyValuePair<TKey, TValue>>).Contains(item);
-        public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => (dictionary as IDictionary<TKey, TValue>).CopyTo(array, arrayIndex);
+        void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => (dictionary as IDictionary<TKey, TValue>).CopyTo(array, arrayIndex);
     }
 
     public class ReadOnlySortedDictionary<TKey, TValue>: IReadOnlyDictionary<TKey, TValue>, IDictionary<TKey, TValue>
@@ -178,6 +186,7 @@ namespace Carambolas.Collections.Generic
         bool IDictionary<TKey, TValue>.Remove(TKey key) => throw new NotSupportedException();
 
         bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item) => (dictionary as ICollection<KeyValuePair<TKey, TValue>>).Contains(item);
+
         public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => dictionary.CopyTo(array, arrayIndex);
     }
 
@@ -208,8 +217,8 @@ namespace Carambolas.Collections.Generic
         public int Count => dictionary.Count;
         public bool IsReadOnly => true;
 
-        public OrderedDictionary<TKey, TValue>.KeyCollection Keys => dictionary.Keys;
-        public OrderedDictionary<TKey, TValue>.ValueCollection Values => dictionary.Values;
+        public ReadOnlyCollection<TKey> Keys => dictionary.Keys;
+        public ReadOnlyCollection<TValue> Values => dictionary.Values;
 
         IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => Keys;
         IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => Values;

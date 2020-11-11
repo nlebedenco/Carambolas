@@ -5,6 +5,7 @@ using System.Threading;
 using UnityEngine;
 using Carambolas.UI;
 using System.IO;
+using System.Collections.Generic;
 
 namespace Carambolas.UnityEngine
 {
@@ -84,39 +85,43 @@ namespace Carambolas.UnityEngine
             }
         }
 
-        private void OnCompletionRequested(string input, ref int length, in Replxx.Completions completions)
+        private void OnCompletionRequested(string input, ref int contextLength, in Replxx.Completions completions)
         {
             if (string.IsNullOrEmpty(input))
             {
-                GetCommandNames(out ArraySegment<string> commands);
-                if (commands.Array != null)
-                    for (int i = commands.Offset; i < commands.Count; ++i)
-                        completions.Add(commands.Array[commands.Offset + i]);
+                foreach(var info in Commands)
+                    completions.Add(info.Name);
             }
-            else if (length > 0)
+            else if (contextLength > 0)
             {
-                var n = input.Length;
-                var startIndex = n - length;
+                var startIndex = input.Length - contextLength;
                 if (char.IsLetter(input[startIndex]))
                 {
-                    var prefix = startIndex == 0 ? input : input.Substring(startIndex, length);
-                    GetCommandNames(prefix, out ArraySegment<string> commands);
-                    if (commands.Array != null)
-                        for (int i = 0; i < commands.Count; ++i)
-                            completions.Add(commands.Array[commands.Offset + i]);
+                    var prefix = startIndex == 0 ? input : input.Substring(startIndex, contextLength);
+                    FindCommands(prefix, out IReadOnlyList<Shell.CommandInfo> list, out int index, out int count);
+                    if (count > 0)
+                    {
+                        var n = index + count;
+                        for (int i = index; i < n; ++i)
+                            completions.Add(list[i].Name);
+                    }
                 }
             }
         }
 
-        private void OnHintRequested(string input, ref int length, in Replxx.Hints hints)
+        private void OnHintRequested(string input, ref int contextLength, in Replxx.Hints hints)
         {
-            if (!string.IsNullOrEmpty(input) && length > 0)
+            if (!string.IsNullOrEmpty(input) && contextLength > 0)
             {
-                var prefix = input.Substring(input.Length - length, length);
-                GetCommandNames(prefix, out ArraySegment<string> commands);
-                if (commands.Array != null)
-                    for (int i = 0; i < commands.Count; ++i)
-                        hints.Add(commands.Array[commands.Offset + i]);
+                var startIndex = input.Length - contextLength;
+                var prefix = startIndex == 0 ? input : input.Substring(startIndex, contextLength);
+                FindCommands(prefix, out IReadOnlyList<Shell.CommandInfo> list, out int index, out int count);
+                if (count > 0)
+                {
+                    var n = index + count;
+                    for (int i = index; i < n; ++i)
+                        hints.Add(list[i].Name);
+                }
             }
         }
 

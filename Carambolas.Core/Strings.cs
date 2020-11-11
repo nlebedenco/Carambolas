@@ -10,6 +10,11 @@ namespace Carambolas.Internal
     public static class Strings
     {
         public const string InvalidValue = "Invalid value: {0}";
+        public const string DuplicateKey = "Item with the same key has already been added.";
+        public const string KeyNotFound = "Key not found.";
+
+        public const string EnumeratorFailedVersion = "Collection was modified; enumeration operation cannot execute.";
+        public const string EnumeratorNotStartedOrFinished = "Enumeration has either not started or has already finished.";
 
         public const string ArgumentIsGreaterThanMaximum = "{0} must not exceed {1}";
         public const string ArgumentIsLessThanMinimum = "{0} must be at least {1}";
