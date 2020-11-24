@@ -823,37 +823,37 @@ namespace Carambolas.Net
             return created;
         }
 
+        private void EnsurePacketInitialization(uint time, ref bool initialized, BinaryWriter writer)
+        {
+            if (!initialized)
+            {
+                initialized = true;
+
+                if (Session.Options.Contains(SessionOptions.Secure))
+                {
+                    writer.Reset(MaxTransmissionUnit - (Protocol.Packet.Secure.N64.Size + Protocol.Packet.Secure.Mac.Size));
+                    writer.UncheckedWrite(time);
+                    writer.UncheckedWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Data);
+                    writer.UncheckedWrite(ReceiveWindow);
+                }
+                else
+                {
+                    writer.Reset(MaxTransmissionUnit - Protocol.Packet.Insecure.Checksum.Size);
+                    writer.UncheckedWrite(time);
+                    writer.UncheckedWrite(Protocol.PacketFlags.Data);
+                    writer.UncheckedWrite(Session.Local);
+                    writer.UncheckedWrite(ReceiveWindow);
+                }
+            }
+        }
+
         /// <summary>
         /// Send data packets.
         /// Returns true if a packet was written and must be transmitted; otherwise false (yielding to the next peer).
         /// </summary>
         internal bool OnConnectedSend(uint time, BinaryWriter packet)
         {
-            var created = false;
-
-            void EnsureDataPacketIsCreated()
-            {
-                if (!created)
-                {
-                    created = true;
-
-                    if (Session.Options.Contains(SessionOptions.Secure))
-                    {
-                        packet.Reset(MaxTransmissionUnit - (Protocol.Packet.Secure.N64.Size + Protocol.Packet.Secure.Mac.Size));
-                        packet.UncheckedWrite(time);
-                        packet.UncheckedWrite(Protocol.PacketFlags.Secure | Protocol.PacketFlags.Data);
-                        packet.UncheckedWrite(ReceiveWindow);
-                    }
-                    else
-                    {
-                        packet.Reset(MaxTransmissionUnit - Protocol.Packet.Insecure.Checksum.Size);
-                        packet.UncheckedWrite(time);
-                        packet.UncheckedWrite(Protocol.PacketFlags.Data);
-                        packet.UncheckedWrite(Session.Local);
-                        packet.UncheckedWrite(ReceiveWindow);
-                    }
-                }
-            }
+            var isPacketInitialized = false;
 
             // Send control acks
             switch (control.Ack)
@@ -861,7 +861,7 @@ namespace Carambolas.Net
                 case Acknowledgment.Accept:
                     control.Ack = default;
 
-                    EnsureDataPacketIsCreated();
+                    EnsurePacketInitialization(time, ref isPacketInitialized, packet);
                     packet.UncheckedWrite(Protocol.MessageFlags.Ack | Protocol.MessageFlags.Accept);
                     packet.UncheckedWrite(control.AcknowledgedTime);
 
@@ -882,7 +882,7 @@ namespace Carambolas.Net
 
                     // Even if in the end all retransmissions are void (only unreliable messages were waiting) 
                     // an Enquire should still be transmitted so it's safe to ensure a packet header here. 
-                    EnsureDataPacketIsCreated();
+                    EnsurePacketInitialization(time, ref isPacketInitialized, packet);
 
                     do
                     {
@@ -978,7 +978,7 @@ namespace Carambolas.Net
 
                     if (channel.RX.Ack.Count > 0) // channel must send ACK
                     {
-                        EnsureDataPacketIsCreated();
+                        EnsurePacketInitialization(time, ref isPacketInitialized, packet);
 
                         // It's better to spread ACKs over multiple packets ahead of their own channel streams so that we don't 
                         // always end up with packets full of acks that may compromise several channels at once if lost.
@@ -1036,7 +1036,7 @@ namespace Carambolas.Net
                                 continue;
                             }
 
-                            EnsureDataPacketIsCreated();
+                            EnsurePacketInitialization(time, ref isPacketInitialized, packet);
 
                             var length = transmit.Encoded.Length;
                             if (packet.Available < length) // No more space left in the packet. 
@@ -1120,7 +1120,7 @@ namespace Carambolas.Net
                         ref var channel = ref channels[0];
                         if (transmissionBacklog == 0)
                         {
-                            EnsureDataPacketIsCreated();
+                            EnsurePacketInitialization(time, ref isPacketInitialized, packet);
 
                             var encoder = Host.WorkerEncoder;
                             encoder.Reset();
@@ -1203,7 +1203,7 @@ namespace Carambolas.Net
 
                     if (channel.RX.Ack.Count > 0) // Channel must send ACK
                     {
-                        EnsureDataPacketIsCreated();
+                        EnsurePacketInitialization(time, ref isPacketInitialized, packet);
 
                         if (!packet.TryWrite(new Protocol.Message.Ack(currentChannelIndex, channel.RX.Ack.Count, channel.RX.NextSequenceNumber, channel.RX.LastSequenceNumber, channel.RX.Ack.LatestRemoteTime)))
                             break;
@@ -1221,7 +1221,7 @@ namespace Carambolas.Net
                 while (currentChannelIndex != endChannelIndex);                
             }
 
-            if (created)
+            if (isPacketInitialized)
             {
                 if (Session.Options.Contains(SessionOptions.Secure))
                 {
@@ -1243,7 +1243,7 @@ namespace Carambolas.Net
                 }
             }
 
-            return created;
+            return isPacketInitialized;
         }
 
         private Channel.Outbound.Message CreateSegment(BinaryWriter encoder, byte channel, Protocol.Delivery delivery, Protocol.Time expiration, byte[] data, int offset, ushort length)

@@ -43,8 +43,8 @@ namespace Carambolas.Collections.Generic
     }
 
     /// <summary>
-    /// A replacement for <see cref="System.Collections.ObjectModel.ReadOnlyCollection{T}"/> that returns a value-type enumerator 
-    /// instead of a <see cref="IEnumerator{T}"/> so the compiler may optimize foreach loops and avoid boxing.
+    /// A replacement for <see cref="System.Collections.ObjectModel.ReadOnlyCollection{T}"/> that exposes a value-type 
+    /// enumerator instead of a <see cref="IEnumerator{T}"/> so the compiler may optimize foreach loops and avoid boxing.
     /// </summary>
     public class ReadOnlyCollection<T>: IReadOnlyList<T>, IList<T>
     {
@@ -87,8 +87,8 @@ namespace Carambolas.Collections.Generic
     }
 
     /// <summary>
-    /// A replacement for <see cref="System.Collections.ObjectModel.ReadOnlyDictionary{TKey, TValue}"/> that returns a value-type enumerator 
-    /// instead of a <see cref="IEnumerator{T}"/> so the compiler may optimize foreach loops and avoid boxing.
+    /// A replacement for <see cref="System.Collections.ObjectModel.ReadOnlyDictionary{TKey, TValue}"/> that exposes a value-type 
+    /// enumerator instead of a <see cref="IEnumerator{T}"/> so the compiler may optimize foreach loops and avoid boxing.
     /// </summary>
     public class ReadOnlyDictionary<TKey, TValue>: IReadOnlyDictionary<TKey, TValue>, IDictionary<TKey, TValue>
     {

@@ -354,7 +354,7 @@ namespace Carambolas.Collections.Generic
             if (array == null)
                 throw new ArgumentNullException(nameof(array));
 
-            if (arrayIndex < 0)
+            if (arrayIndex < 0 || arrayIndex > array.Length)
                 throw new ArgumentOutOfRangeException(nameof(arrayIndex), string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanBuffer), nameof(arrayIndex)));
 
             for (int i = 0; i != keys.Count && arrayIndex < array.Length; ++i, ++arrayIndex)
@@ -373,7 +373,7 @@ namespace Carambolas.Collections.Generic
             return false;
         }       
 
-        public struct Enumerator: IEnumerator<KeyValuePair<TKey, TValue>>, IDisposable, IEnumerator
+        public struct Enumerator: IEnumerator<KeyValuePair<TKey, TValue>>
         {
             private readonly OrderedDictionary<TKey, TValue> dict;
             private readonly int version;

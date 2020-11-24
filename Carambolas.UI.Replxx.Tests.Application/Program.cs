@@ -43,8 +43,7 @@ namespace Carambolas.UI.Tests.Application
 
         private void ParseParameters()
         {
-            string arg;
-            if (Program.CommandLineArguments.TryGetValue("b", out arg))
+            if (Program.CommandLineArguments.TryGetValue("b", out string arg))
                 replxx.SetBeepOnAmbiguousCompletion(Convert.ToBoolean(arg));
 
             if (Program.CommandLineArguments.TryGetValue("c", out arg))

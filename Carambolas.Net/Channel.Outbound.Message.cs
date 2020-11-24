@@ -40,7 +40,7 @@ namespace Carambolas.Net
                 public Memory Encoded;
 
                 [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-                private Action<Message> OnReleased;
+                private Action<Message> Return;
 
                 public void AddAfter(Message other)
                 {
@@ -59,7 +59,7 @@ namespace Carambolas.Net
                 public void Dispose()
                 {
                     Remove();
-                    OnReleased(this);
+                    Return(this);
                 }
 
                 private void Remove()

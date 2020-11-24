@@ -92,7 +92,7 @@ namespace Carambolas.Net.Tests
             var pool = new Carambolas.Net.Memory.Pool();
             var m = pool.Get();
 
-            Assert.Throws<ArgumentOutOfRangeException>(() => { var x = m[index]; });
+            Assert.Throws<IndexOutOfRangeException>(() => { var x = m[index]; });
         }
 
         [Theory]

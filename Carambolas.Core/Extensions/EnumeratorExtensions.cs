@@ -12,26 +12,34 @@ namespace Carambolas
         /// <returns>An enumerator that runs the given enumerator inside a try..catch block</returns>
         public static IEnumerator Catch(this IEnumerator enumerator, Action<Exception> onException, Action onComplete = null)
         {
-            while (true)
+            try
             {
-                object current;
-                try
+                while (true)
                 {
-                    if (!enumerator.MoveNext())
-                        break;
+                    object current;
+                    try
+                    {
+                        if (!enumerator.MoveNext())
+                            break;
 
-                    current = enumerator.Current;
-                }
-                catch (Exception e)
-                {
-                    onException(e);
-                    yield break;
+                        current = enumerator.Current;
+                    }
+                    catch (Exception e)
+                    {
+                        onException(e);
+                        yield break;
+                    }
+
+                    yield return current;
                 }
 
-                yield return current;
+                onComplete?.Invoke();
             }
-
-            onComplete?.Invoke();
+            finally
+            {
+                if (enumerator is IDisposable disposable)
+                    disposable.Dispose();
+            }
         }
 
         /// <summary>
@@ -40,26 +48,33 @@ namespace Carambolas
         /// <returns>An enumerator that runs the given enumerator inside a try..catch block</returns>
         public static IEnumerator<T> Catch<T>(this IEnumerator<T> enumerator, Action<Exception> onException, Action onComplete = null)
         {
-            while (true)
+            try
             {
-                T current;
-                try
+                while (true)
                 {
-                    if (!enumerator.MoveNext())
-                        break;
+                    T current;
+                    try
+                    {
+                        if (!enumerator.MoveNext())
+                            break;
 
-                    current = enumerator.Current;
-                }
-                catch (Exception e)
-                {
-                    onException(e);
-                    yield break;
+                        current = enumerator.Current;
+                    }
+                    catch (Exception e)
+                    {
+                        onException(e);
+                        yield break;
+                    }
+
+                    yield return current;
                 }
 
-                yield return current;
+                onComplete?.Invoke();
             }
-
-            onComplete?.Invoke();
+            finally
+            {
+                enumerator.Dispose();
+            }
         }
     }
 }

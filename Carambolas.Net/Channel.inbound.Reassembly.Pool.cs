@@ -14,7 +14,7 @@ namespace Carambolas.Net
                 [DebuggerDisplay("Count = {queue.Count}")]
                 public sealed class Pool: Pool<Reassembly>
                 {
-                    protected override Reassembly Create() => new Reassembly() { OnDisposed = Return };
+                    protected override Reassembly Create() => new Reassembly() { Return = Return };
 
                     protected override void OnReturn(Reassembly instance)
                     {

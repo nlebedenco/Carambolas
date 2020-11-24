@@ -177,21 +177,21 @@ namespace Carambolas.UnityEngine
 
         protected virtual void ValidateRequiredComponents()
         {
-            void ThrowIfComponentIsMissing(Type self, Type required)
-            {
-                if (required != null && !GetComponent(required))
-                    throw new InvalidOperationException(string.Format(Resources.GetString(Strings.UnityEngine.SingletonBehaviour.MissingRequiredComponent), 
-                        typeof(T).FullName, required.FullName, self.FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"));
-            }
-
             var type = GetType();
             var attributes = type.GetCustomAttributes<RequireComponent>();
             foreach (var attr in attributes)
             {
-                ThrowIfComponentIsMissing(type, attr.m_Type0);
-                ThrowIfComponentIsMissing(type, attr.m_Type1);
-                ThrowIfComponentIsMissing(type, attr.m_Type2);
+                ThrowIfRequiredComponentIsMissing(type, attr.m_Type0);
+                ThrowIfRequiredComponentIsMissing(type, attr.m_Type1);
+                ThrowIfRequiredComponentIsMissing(type, attr.m_Type2);
             }
+        }
+
+        private void ThrowIfRequiredComponentIsMissing(Type self, Type required)
+        {
+            if (required != null && !GetComponent(required))
+                throw new InvalidOperationException(string.Format(Resources.GetString(Strings.UnityEngine.SingletonBehaviour.MissingRequiredComponent),
+                    typeof(T).FullName, required.FullName, self.FullName, string.IsNullOrEmpty(name) ? string.Empty : $" ({name})"));
         }
     }
 }

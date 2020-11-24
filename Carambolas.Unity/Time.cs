@@ -128,22 +128,22 @@ namespace Carambolas.UnityEngine
         private static class TimeCommands
         {
             [Command(Name = "time.scale")]
-            private static void TimeScale(Repl.Writer writer) => writer.WriteLine($"{Time.timeScale}");
+            private static void TimeScale(Carambolas.IO.TextWriter writer) => writer.WriteLine(Time.timeScale.ToString());
 
             [Command(Name = "time.scaledtime")]
-            private static void TimeScaled(Repl.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.time)}");
+            private static void TimeScaled(Carambolas.IO.TextWriter writer) => writer.WriteLine(TimeSpan.FromSeconds(Time.time).ToString());
 
             [Command(Name = "time.unscaledtime")]
-            private static void ScaledTime(Repl.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.unscaledTime)}");
+            private static void ScaledTime(Carambolas.IO.TextWriter writer) => writer.WriteLine(TimeSpan.FromSeconds(Time.unscaledTime).ToString());
 
             [Command(Name = "time.realtime")]
-            private static void RealTimeSinceStartup(Repl.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.realtimeSinceStartup)}");
+            private static void RealTimeSinceStartup(Carambolas.IO.TextWriter writer) => writer.WriteLine(TimeSpan.FromSeconds(Time.realtimeSinceStartup).ToString());
 
             [Command(Name = "time.startup")]
-            private static void StartupTime(Repl.Writer writer) => writer.WriteLine($"{Time.startupTime}");
+            private static void StartupTime(Carambolas.IO.TextWriter writer) => writer.WriteLine(Time.startupTime.ToString());
 
             [Command(Name = "time.leveltime")]
-            private static void TimSinceLevelLoad(Repl.Writer writer) => writer.WriteLine($"{TimeSpan.FromSeconds(Time.timeSinceLevelLoad)}");
+            private static void TimSinceLevelLoad(Carambolas.IO.TextWriter writer) => writer.WriteLine(TimeSpan.FromSeconds(Time.timeSinceLevelLoad).ToString());
         }
     }
 }

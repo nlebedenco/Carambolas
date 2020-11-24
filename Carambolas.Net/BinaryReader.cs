@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 using Carambolas.Internal;
 
-// TODO: define a public static BitConverter and merge with Converter classes to over conversion and serialization?
+// TODO: define a public static BitConverter and merge with Converter classes to cover conversion and serialization?
 
 namespace Carambolas.Net
 {
@@ -33,7 +33,7 @@ namespace Carambolas.Net
 
         public void Reset(int offset, int length)
         {
-            if (offset < 0)
+            if (offset < 0 || offset > buffer.Length)
                 throw new ArgumentOutOfRangeException(nameof(offset));
 
             if (length < 0)

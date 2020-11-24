@@ -350,7 +350,6 @@ namespace Carambolas.Security.Cryptography.NaCl.Tests
 
                     var chacha = new ChaCha20 { Key = new Key(keybytes), Counter = 1 };
 
-
                     var ciphertext = new byte[plaintext.Length];
                     var nonce = new Nonce(noncebytes);
 

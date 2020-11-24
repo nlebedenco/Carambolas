@@ -20,10 +20,10 @@ namespace Carambolas.Net
 
                 public Memory Data;
 
-                public override void Dispose() => OnDisposed(this);
+                public override void Dispose() => Return(this);
 
                 [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-                private Action<Reassembly> OnDisposed;
+                private Action<Reassembly> Return;
             }
         }
     }

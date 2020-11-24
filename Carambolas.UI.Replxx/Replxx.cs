@@ -129,6 +129,10 @@ namespace Carambolas.UI
 
         public void Write(string s) => Native.Write(replxx, s);
 
+        public void Write(char[] c) => Native.Write(replxx, c);
+
+        public void Write(char[] c, int index, int count) => Native.Write(replxx, c, index, count);
+
         public void Write(char c) => Native.Write(replxx, c);
 
         public void EmulateKeyPress(uint keycode) => Native.EmulateKeyPress(replxx, keycode);
@@ -301,6 +305,42 @@ namespace Carambolas.UI
                 var n = Encoding.UTF8.GetMaxByteCount(s.Length) + 1;
                 var utf8 = ArrayPool<byte>.Shared.Rent(n);
                 var length = Encoding.UTF8.GetBytes(s, 0, s.Length, utf8, 0);
+                try
+                {
+                    return Write(replxx, utf8, length);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(utf8);
+                }
+            }
+
+            public static int Write(IntPtr replxx, char[] buffer)
+            {
+                if (buffer == null || buffer.Length == 0)
+                    return 0;
+
+                var n = Encoding.UTF8.GetMaxByteCount(buffer.Length) + 1;
+                var utf8 = ArrayPool<byte>.Shared.Rent(n);
+                var length = Encoding.UTF8.GetBytes(buffer, 0, buffer.Length, utf8, 0);
+                try
+                {
+                    return Write(replxx, utf8, length);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(utf8);
+                }
+            }
+
+            public static int Write(IntPtr replxx, char[] buffer, int index, int count)
+            {
+                if (buffer == null || buffer.Length == 0)
+                    return 0;
+
+                var n = Encoding.UTF8.GetMaxByteCount(count) + 1;
+                var utf8 = ArrayPool<byte>.Shared.Rent(n);
+                var length = Encoding.UTF8.GetBytes(buffer, index, count, utf8, 0);
                 try
                 {
                     return Write(replxx, utf8, length);

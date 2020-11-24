@@ -176,10 +176,10 @@ namespace Carambolas.Security.Cryptography.NaCl
             if (length < 0)
                 throw new ArgumentOutOfRangeException(nameof(length));
 
-            if (sourceIndex < 0)
+            if (sourceIndex < 0 || sourceIndex > source.Length)
                 throw new ArgumentOutOfRangeException(nameof(sourceIndex));
 
-            if (destinationIndex < 0)
+            if (destinationIndex < 0 || destinationIndex > destination.Length)
                 throw new ArgumentOutOfRangeException(nameof(destinationIndex));
 
             if (sourceIndex > source.Length - length)

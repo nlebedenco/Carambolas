@@ -138,7 +138,7 @@ namespace Carambolas.Security.Cryptography
             if (length < 0)
                 throw new ArgumentOutOfRangeException(nameof(length));
 
-            if (offset < 0)
+            if (offset < 0 || offset > buffer.Length)
                 throw new ArgumentOutOfRangeException(nameof(length));
 
             if (offset > (buffer.Length - length))
@@ -155,7 +155,7 @@ namespace Carambolas.Security.Cryptography
             if (length < 0)
                 throw new ArgumentOutOfRangeException(nameof(length));
 
-            if (offset < 0)
+            if (offset < 0 || offset > buffer.Length)
                 throw new ArgumentOutOfRangeException(nameof(length));
 
             if (offset > (buffer.Length - length - Size))

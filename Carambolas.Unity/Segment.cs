@@ -226,7 +226,11 @@ namespace Carambolas.UnityEngine
             // If the sphere radius approaches 0 check if sphereCenter belongs to the segment.
             if (Mathf.Approximately(0f, sphereRadius))
             {
-                // TODO
+                if (Contains(sphereCenter, sphereRadius))
+                {
+                    intersection = sphereCenter;
+                    return true;
+                }
             }
             else
             {

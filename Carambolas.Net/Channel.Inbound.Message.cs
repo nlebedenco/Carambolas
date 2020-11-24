@@ -31,10 +31,10 @@ namespace Carambolas.Net
                 /// </summary>
                 public Reassembly Reassembly;
 
-                public override void Dispose() => OnDisposed(this);
+                public override void Dispose() => Return(this);
 
                 [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-                private Action<Message> OnDisposed;
+                private Action<Message> Return;
             }
         }
     }

@@ -34,7 +34,7 @@ namespace Carambolas.Net
         public void Reset(int length) => Reset(0, length);
         public void Reset(int offset, int length)
         {
-            if (offset < 0)
+            if (offset < 0 || offset > buffer.Length)
                 throw new ArgumentOutOfRangeException(nameof(offset));
 
             if (length < 0)

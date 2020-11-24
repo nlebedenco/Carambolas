@@ -170,7 +170,8 @@ namespace Carambolas.UnityEngine
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float DiscardLeastSignificantDecimal(float v) => (float)Math.Round(v, Mathf.Clamp((int)(5.0 - Math.Log10(Math.Abs(v))), 0, 15), MidpointRounding.AwayFromZero);
-        
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static double DiscardLeastSignificantDecimal(double v)
         {
             try
@@ -182,6 +183,5 @@ namespace Carambolas.UnityEngine
                 return 0.0;
             }
         }
-
     }
 }

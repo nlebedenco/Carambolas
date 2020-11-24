@@ -14,7 +14,7 @@ namespace Carambolas.Net
                 [DebuggerDisplay("Count = {queue.Count}")]
                 public sealed class Pool: Pool<Message>
                 {
-                    protected override Message Create() => new Message() { OnDisposed = Return };
+                    protected override Message Create() => new Message() { Return = Return };
 
                     protected override void OnReturn(Message instance)
                     {

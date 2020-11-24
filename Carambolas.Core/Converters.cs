@@ -47,7 +47,7 @@ namespace Carambolas
             [FieldOffset(8)]
             private ulong d;
 
-            public (uint A, ushort B, ushort C, ulong D)  AsTuple
+            public (uint A, ushort B, ushort C, ulong D) AsTuple
             {
                 get => BitConverter.IsLittleEndian ? (a, b, c, ReverseBytes(d)) : (a, b, c, d);
 

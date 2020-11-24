@@ -65,7 +65,7 @@ namespace Carambolas.UnityEngine
         private static void Warning(string msg)
         {
             if (isServerBuild)
-                Console.WriteLine(msg);
+                System.Console.WriteLine(msg);
             else
                 Debug.LogWarning(msg);
         }
@@ -91,7 +91,7 @@ namespace Carambolas.UnityEngine
                 {
                     if (Enum.TryParse(logLevel, out LogLevel value))
                     {
-                        Console.WriteLine($"Log level set from command-line: '{value}'");
+                        System.Console.WriteLine($"Log level set from command-line: '{value}'");
                         Debug.logLevel = value;
                     }
                     else
@@ -109,7 +109,7 @@ namespace Carambolas.UnityEngine
                     Warning("Ignoring -cli argument. Command line interface can only be used in server builds");
                     
                 }
-                else if (Console.IsOutputRedirected && !string.IsNullOrEmpty(Application.consoleLogPath))
+                else if (System.Console.IsOutputRedirected && !string.IsNullOrEmpty(Application.consoleLogPath))
                 {
                     isInteractiveServerBuild = false;
                     Debug.LogError($"Unity is redirecting standard output to {Application.consoleLogPath} which prevents the command line interface from working properly. Use -logOutput instead of -logFile to redirect only log messages and not the whole standard input/ouput. If you want to redirect standard input/output for the command line interface itself, use proper redirection operators when invoking the application instead of -logFile.");
@@ -117,8 +117,8 @@ namespace Carambolas.UnityEngine
                 else if (!(Debug.unityLogger.logHandler is NullLogHandler))
                 {
                     // Suppress log messages so they don't interfere with the CLI.
-                    Debug.unityLogger.logHandler = new NullLogHandler(); 
-                    Console.WriteLine($"Suppressing log messages from the console so they do not interfere with the command line interface.");
+                    Debug.unityLogger.logHandler = new NullLogHandler();
+                    System.Console.WriteLine($"Suppressing log messages from the console so they do not interfere with the command line interface.");
                 }
             }            
 #endif
@@ -173,11 +173,23 @@ namespace Carambolas.UnityEngine
 
             var build = Debug.isDebugBuild ? "DEBUG" : "RELEASE";
             var server = isServerBuild ? "SERVER" : "";
-            var info = $"{Application.productName} version: {Application.version}:{buildGUID} ({build}) {server}";
-            if (isServerBuild)
-                Console.WriteLine(info);
+            using (var sb = new Carambolas.Text.StringBuilder.Buffer())
+            {
+                sb.Append(Application.productName);
+                sb.Append(" version: ");
+                sb.Append(Application.version);
+                if (Debug.isDebugBuild)
+                    sb.Append(" (DEBUG)");
+                if (isServerBuild)
+                    sb.Append(" SERVER");
+                sb.Append(' ');
+                sb.Append(buildGUID);
 
-            Debug.Log(info);
+                if (isServerBuild)
+                    System.Console.Out.WriteLine(sb);
+
+                Debug.Log(sb.ToString());
+            }
 
 #if UNITY_EDITOR
             global::UnityEditor.EditorApplication.playModeStateChanged += OnPlayModeStateChanged;

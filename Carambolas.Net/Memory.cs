@@ -263,9 +263,10 @@ namespace Carambolas.Net
             get
             {
                 if (index < 0 || index >= Length)
-                    throw new ArgumentOutOfRangeException(nameof(index));
+                    throw new IndexOutOfRangeException(nameof(index));
 
-                return blocks[index / BlockSize][index % BlockSize];
+                var i = MathEx.DivRem(index, BlockSize, out var j);
+                return blocks[i][j];
             }
 
             set
@@ -276,7 +277,8 @@ namespace Carambolas.Net
                 var minlen = index + 1;
                 if (Length < minlen)
                     Length = minlen;
-                blocks[index / BlockSize][index % BlockSize] = value;
+                var i = MathEx.DivRem(index, BlockSize, out var j);
+                blocks[i][j] = value;
             }
         }
 
@@ -294,7 +296,7 @@ namespace Carambolas.Net
             if (destinationIndex < 0)
                 throw new ArgumentOutOfRangeException(nameof(destinationIndex));
 
-            if (sourceIndex < 0)
+            if (sourceIndex < 0 || sourceIndex > sourceArray.Length)
                 throw new ArgumentOutOfRangeException(nameof(sourceIndex));
 
             if (length < 0)
@@ -312,12 +314,12 @@ namespace Carambolas.Net
                 if (Length < minlen)
                     Length = minlen;
 
-                var from = firstIndex / BlockSize;
+                var from = MathEx.DivRem(firstIndex, BlockSize, out var byteIndex);
                 var to = lastIndex / BlockSize;
-                var size = Math.Min(length, BlockSize - firstIndex % BlockSize);
+                var size = Math.Min(length, BlockSize - byteIndex);
                 var block = blocks[from];
 
-                Array.Copy(sourceArray, sourceIndex, block, firstIndex % BlockSize, size);
+                Array.Copy(sourceArray, sourceIndex, block, byteIndex, size);
                 length -= size;
                 sourceIndex += size;
 
@@ -340,10 +342,10 @@ namespace Carambolas.Net
             if (destinationArray == null)
                 throw new ArgumentNullException(nameof(destinationArray));
 
-            if (sourceIndex < 0)
+            if (sourceIndex < 0 || sourceIndex > Length)
                 throw new ArgumentOutOfRangeException(nameof(sourceIndex));
 
-            if (destinationIndex < 0)
+            if (destinationIndex < 0 || destinationIndex > destinationArray.Length)
                 throw new ArgumentOutOfRangeException(nameof(destinationIndex));
 
             if (length < 0)
@@ -354,17 +356,17 @@ namespace Carambolas.Net
                 if (destinationIndex > (destinationArray.Length - length))
                     throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanNumberOfElements), nameof(destinationIndex), nameof(length), nameof(destinationArray)), nameof(destinationArray));
 
-                if (sourceIndex > (Length - length))
+                if (sourceIndex > Length - length)
                     throw new ArgumentException(string.Format(Resources.GetString(Strings.IndexOutOfRangeOrLengthIsGreaterThanBuffer), nameof(sourceIndex), nameof(length)), nameof(length));
 
                 var firstIndex = sourceIndex;
                 var lastIndex = firstIndex + length - 1;
 
-                var from = firstIndex / BlockSize;
+                var from = MathEx.DivRem(firstIndex, BlockSize, out var byteIndex);
                 var to = lastIndex / BlockSize;
-                var size = Math.Min(length, BlockSize - firstIndex % BlockSize);
+                var size = Math.Min(length, BlockSize - byteIndex);
                 var block = blocks[from];
-                Array.Copy(block, firstIndex % BlockSize, destinationArray, destinationIndex, size);
+                Array.Copy(block, byteIndex, destinationArray, destinationIndex, size);
                 length -= size;
                 destinationIndex += size;
 

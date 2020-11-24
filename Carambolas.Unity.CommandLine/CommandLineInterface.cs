@@ -7,53 +7,110 @@ using Carambolas.UI;
 using System.IO;
 using System.Collections.Generic;
 
+using TextWriter = Carambolas.IO.TextWriter;
+
 namespace Carambolas.UnityEngine
 {
-    public sealed class CommandLineInterface: Repl
+    public sealed class CommandLineInterface: Console
     {
-        private class ReplxxWriter: Writer
+        private sealed class ReplxxOutputWriter: TextWriter
         {
             private readonly Replxx replxx;
 
-            public ReplxxWriter(Replxx replxx) => this.replxx = replxx;
+            public ReplxxOutputWriter(Replxx replxx) => this.replxx = replxx;
 
-            public override void Error(char c)
+            public override void Write(char value) => replxx.Write(value);
+            public override void Write(string value) => replxx.Write(value);
+            public override void Write(char[] buffer) => replxx.Write(buffer);
+            public override void Write(char[] buffer, int index, int count) => replxx.Write(buffer, index, count);
+
+            public override void WriteLine() => replxx.Write('\n');
+
+            public override void WriteLine(char value)
             {
-                replxx.Write("\x1b[1;31m");
-                replxx.Write(c);
-                replxx.Write("\x1b[0m");
+                replxx.Write(value);
+                replxx.Write('\n');
             }
 
-            public override void Error(string s)
+            public override void WriteLine(string value)
             {
-                replxx.Write("\x1b[1;31m");
-                replxx.Write(s);
-                replxx.Write("\x1b[0m");
+                replxx.Write(value);
+                replxx.Write('\n');
             }
 
-            public override void ErrorLine(string s)
+            public override void WriteLine(char[] buffer)
             {
-                replxx.Write("\x1b[1;31m");
-                replxx.Write(s);
-                replxx.Write("\x1b[0m\n");
+                replxx.Write(buffer);
+                replxx.Write('\n');
             }
 
-            public override void Write(char c)
+            public override void WriteLine(char[] buffer, int index, int count)
             {
-                replxx.Write(c);
-            }
-
-            public override void Write(string s)
-            {
-                replxx.Write(s);
-            }
-
-            public override void WriteLine(string s)
-            {
-                replxx.Write(s);
+                replxx.Write(buffer, index, count);
                 replxx.Write('\n');
             }
         }
+
+        private sealed class ReplxxErrorWriter: TextWriter
+        {
+            private readonly Replxx replxx;
+
+            public ReplxxErrorWriter(Replxx replxx) => this.replxx = replxx;
+
+            public override void Write(char value)
+            {
+                replxx.Write("\x1b[1;31m");
+                replxx.Write(value);
+                replxx.Write("\x1b[0m");
+            }
+
+            public override void Write(string value)
+            {
+                replxx.Write("\x1b[1;31m");
+                replxx.Write(value);
+                replxx.Write("\x1b[0m");
+            }
+
+            public override void Write(char[] buffer)
+            {
+                replxx.Write("\x1b[1;31m");
+                replxx.Write(buffer);
+                replxx.Write("\x1b[0m");
+            }
+
+            public override void Write(char[] buffer, int index, int count)
+            {
+                replxx.Write("\x1b[1;31m");
+                replxx.Write(buffer, index, count);
+                replxx.Write("\x1b[0m");                
+            }
+
+            public override void WriteLine() => replxx.Write('\n');
+
+            public override void WriteLine(char value)
+            {
+                Write(value);
+                replxx.Write('\n');
+            }
+
+            public override void WriteLine(string value)
+            {
+                Write(value);
+                replxx.Write('\n');
+            }
+
+            public override void WriteLine(char[] buffer)
+            {
+                Write(buffer);
+                replxx.Write('\n');
+            }
+
+            public override void WriteLine(char[] buffer, int index, int count)
+            {
+                Write(buffer, index, count);
+                replxx.Write('\n');
+            }
+        }       
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void OnBeforeSceneLoad()
@@ -64,11 +121,13 @@ namespace Carambolas.UnityEngine
 
         private string prompt;
         private Replxx replxx;
-               
+        private TextWriter error;
+        private TextWriter output;
+
         private volatile bool terminated;
         private volatile string line;
         private AutoResetEvent processed;
-        private Thread thread;
+        private Thread thread;        
 
         #region Replxx thread
 
@@ -89,7 +148,7 @@ namespace Carambolas.UnityEngine
         {
             if (string.IsNullOrEmpty(input))
             {
-                foreach(var info in Commands)
+                foreach(var info in Commands.Values)
                     completions.Add(info.Name);
             }
             else if (contextLength > 0)
@@ -98,7 +157,7 @@ namespace Carambolas.UnityEngine
                 if (char.IsLetter(input[startIndex]))
                 {
                     var prefix = startIndex == 0 ? input : input.Substring(startIndex, contextLength);
-                    FindCommands(prefix, out IReadOnlyList<Shell.CommandInfo> list, out int index, out int count);
+                    FindCommands(prefix, out IReadOnlyList<CommandInfo> list, out int index, out int count);
                     if (count > 0)
                     {
                         var n = index + count;
@@ -115,7 +174,7 @@ namespace Carambolas.UnityEngine
             {
                 var startIndex = input.Length - contextLength;
                 var prefix = startIndex == 0 ? input : input.Substring(startIndex, contextLength);
-                FindCommands(prefix, out IReadOnlyList<Shell.CommandInfo> list, out int index, out int count);
+                FindCommands(prefix, out IReadOnlyList<CommandInfo> list, out int index, out int count);
                 if (count > 0)
                 {
                     var n = index + count;
@@ -129,9 +188,11 @@ namespace Carambolas.UnityEngine
 
         protected override void Clear() => replxx?.Clear();
 
-        protected override Writer GetWriter() => new ReplxxWriter(replxx);
+        protected override TextWriter GetErrorWriter() => error;
 
-        protected override bool TryRead(out string value)
+        protected override TextWriter GetOutputWriter() => output;
+
+        protected override bool TryReadLine(out string value)
         {
             value = line;
             if (string.IsNullOrEmpty(value))
@@ -162,6 +223,9 @@ namespace Carambolas.UnityEngine
             replxx.SetMaxHistorySize(512);
             replxx.CompletionRequested = OnCompletionRequested;
             replxx.HintRequested = OnHintRequested;
+
+            error = new ReplxxErrorWriter(replxx);
+            output = new ReplxxOutputWriter(replxx);
 
             processed = new AutoResetEvent(false);
             thread = new Thread(Reader) { Name = $"CLI", IsBackground = true };
