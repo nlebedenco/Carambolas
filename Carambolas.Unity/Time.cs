@@ -89,6 +89,10 @@ namespace Carambolas.UnityEngine
         /// instead.
         /// </summary>
         public static new double realtimeSinceStartup => (DateTime.UtcNow - startupTime).TotalSeconds;
+      
+        public static int frameRate { get; private set; }
+
+        public static int averageFrameRate { get; private set; }
 
         /// <summary>
         /// UTC date time when the game started. 
@@ -123,27 +127,60 @@ namespace Carambolas.UnityEngine
             time = accumulatedTime;
             unscaledTime = accumulatedUnscaledTime;
             timeSinceLevelLoad = accumulatedTimeSinceLevelLoad;
+
+            frameRate = (int)(1 / unscaledDeltaTime);
+            // TODO: implement a harmonic mean
+            // averageFrameRate = ???
         }
 
         private static class TimeCommands
         {
-            [Command(Name = "time.scale")]
+
+            [Command(Name = "time.timeScale")]
             private static void TimeScale(Carambolas.IO.TextWriter writer) => writer.WriteLine(Time.timeScale.ToString());
 
-            [Command(Name = "time.scaledtime")]
+            [Command(Name = "time.scaledTime")]
             private static void TimeScaled(Carambolas.IO.TextWriter writer) => writer.WriteLine(TimeSpan.FromSeconds(Time.time).ToString());
 
-            [Command(Name = "time.unscaledtime")]
+            [Command(Name = "time.unscaledTime")]
             private static void ScaledTime(Carambolas.IO.TextWriter writer) => writer.WriteLine(TimeSpan.FromSeconds(Time.unscaledTime).ToString());
 
-            [Command(Name = "time.realtime")]
+            [Command(Name = "time.realtimeSinceStartup")]
             private static void RealTimeSinceStartup(Carambolas.IO.TextWriter writer) => writer.WriteLine(TimeSpan.FromSeconds(Time.realtimeSinceStartup).ToString());
 
-            [Command(Name = "time.startup")]
+            [Command(Name = "time.startupTime")]
             private static void StartupTime(Carambolas.IO.TextWriter writer) => writer.WriteLine(Time.startupTime.ToString());
 
-            [Command(Name = "time.leveltime")]
+            [Command(Name = "time.timeSinceLevelLoad")]
             private static void TimSinceLevelLoad(Carambolas.IO.TextWriter writer) => writer.WriteLine(TimeSpan.FromSeconds(Time.timeSinceLevelLoad).ToString());
+
+            [Command(
+                Name = "time.frameCount",
+                Description = "Displays the current frame count.",
+                Help = "Usage: frame\n\nNote that a composite command line may execute across multiple frames so consecutive executions of this command even in the same line may display different values."
+            )]
+            private static void TimeFrameCount(Carambolas.IO.TextWriter writer) => writer.WriteLine(Time.frameCount.ToString());
+
+            [Command(
+                Name = "time.renderedFrameCount",
+                Description = "Displays the current rendered frame count.",
+                Help = "Usage: frame\n\nNote that a composite command line may execute across multiple frames so consecutive executions of this command even in the same line may display different values."
+            )]
+            private static void TimeRenderedFrameCount(Carambolas.IO.TextWriter writer) => writer.WriteLine(Time.renderedFrameCount.ToString());
+
+            [Command(
+                Name = "time.frameRate",
+                Description = "Displays the instant frame rate.",
+                Help = "Usage: frame\n\nNote that a composite command line may execute across multiple frames so consecutive executions of this command even in the same line may display different values."
+            )]
+            private static void TimeFrameRate(Carambolas.IO.TextWriter writer) => writer.WriteLine(Time.frameRate.ToString());
+
+            [Command(
+                Name = "time.averageFrameRate",
+                Description = "Displays the average frame rate.",
+                Help = "Usage: frame\n\nNote that a composite command line may execute across multiple frames so consecutive executions of this command even in the same line may display different values."
+            )]
+            private static void TimeRenderedFrameRate(Carambolas.IO.TextWriter writer) => writer.WriteLine(Time.averageFrameRate.ToString());
         }
     }
 }

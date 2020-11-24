@@ -13,6 +13,8 @@ namespace Carambolas.UnityEngine
 {
     public sealed class CommandLineInterface: Console
     {
+        private const int MaxHintCount = 3;
+
         private sealed class ReplxxOutputWriter: TextWriter
         {
             private readonly Replxx replxx;
@@ -144,14 +146,99 @@ namespace Carambolas.UnityEngine
             }
         }
 
+        /// <summary>
+        /// Returns true if quote (double or single) is left open by either <paramref name="count"/> or the end of the <paramref name="input"/>.
+        /// Escaped quotes or quotes inside another quote type do not count.
+        /// </summary>
+        private static bool IsQuoteLeftOpen(string input, int count)
+        {
+            var open = 0;
+            var n = Math.Min(input.Length, count);
+            for(int i = 0; i  < n; ++i)
+            {
+                var c = input[i];                
+                if (c == '"')
+                {
+                    if (open == 0)
+                        open = 2;
+                    else if (open == 2)
+                        open = 0;
+                }
+                else if (c == '\'')
+                {
+                    if (open == 0)
+                        open = 1;
+                    else if (open == 1)
+                        open = 0;
+                }
+                else if (c == '\\')
+                    ++i;
+            }
+
+            return open > 0;
+        }
+
+        /// <summary>
+        /// Look back at the input string to determine the length of the command context if any.
+        /// Valid command names can only contain alpha numeric characters, '_', '.' and '-'.
+        /// </summary>
+        private static void AdjustCommandContext(string input, ref int contextLength)
+        {
+            var n = input.Length;   
+            var i = n - contextLength;
+
+            if (CommandAttribute.IsValidName(input, i, contextLength))
+            {
+                // Ignore leading whitespace
+                var j = i - 1;
+                while (j >= 0 && char.IsWhiteSpace(input[j]))
+                    --j;
+
+                if (j < 0) // If there are no characters preceeding contextLength or they're all white spaces
+                    return;
+
+                var c = input[j];
+                switch (c)
+                {
+                    case ';':
+                        if (j == 0 || input[j - 1] != '\\')
+                            if (!IsQuoteLeftOpen(input, j))
+                                return;
+                        break;
+                    case '&':
+                        if ((j == 1 && input[j - 1] == '&') || (j > 1 && input[j - 1] == '&' && input[j - 2] != '\\'))
+                            if (!IsQuoteLeftOpen(input, j))
+                                return;
+                        break;
+                    case '|':
+                        if ((j == 1 && input[j - 1] == '|') || (j > 1 && input[j - 1] == '|' && input[j - 2] != '\\'))
+                            if (!IsQuoteLeftOpen(input, j))
+                                return;
+                        break;
+                    case '(':
+                        if (j == 0 || input[j - 1] != '\\')
+                            if (!IsQuoteLeftOpen(input, j))
+                                return;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            contextLength = 0;
+        }
+
         private void OnCompletionRequested(string input, ref int contextLength, in Replxx.Completions completions)
         {
             if (string.IsNullOrEmpty(input))
             {
-                foreach(var info in Commands.Values)
+                foreach (var info in Commands.Values)
                     completions.Add(info.Name);
+
+                return;
             }
-            else if (contextLength > 0)
+
+            AdjustCommandContext(input, ref contextLength);
+            if (contextLength > 0)
             {
                 var startIndex = input.Length - contextLength;
                 if (char.IsLetter(input[startIndex]))
@@ -170,17 +257,17 @@ namespace Carambolas.UnityEngine
 
         private void OnHintRequested(string input, ref int contextLength, in Replxx.Hints hints)
         {
-            if (!string.IsNullOrEmpty(input) && contextLength > 0)
+            if (string.IsNullOrEmpty(input))
+                return;
+
+            AdjustCommandContext(input, ref contextLength);
+            if (contextLength > 0)
             {
                 var startIndex = input.Length - contextLength;
                 var prefix = startIndex == 0 ? input : input.Substring(startIndex, contextLength);
                 FindCommands(prefix, out IReadOnlyList<CommandInfo> list, out int index, out int count);
-                if (count > 0)
-                {
-                    var n = index + count;
-                    for (int i = index; i < n; ++i)
-                        hints.Add(list[i].Name);
-                }
+                if (count == 1)
+                    hints.Add(list[index].Name);
             }
         }
 
@@ -219,7 +306,7 @@ namespace Carambolas.UnityEngine
             }
                 
             replxx = new Replxx();
-            replxx.SetWordBreakCharacters(" \t\v\f\a\b\r\n");
+            replxx.SetWordBreakCharacters(" \t\v\f\a\b\r\n();&|{}\"\'");
             replxx.SetMaxHistorySize(512);
             replxx.CompletionRequested = OnCompletionRequested;
             replxx.HintRequested = OnHintRequested;

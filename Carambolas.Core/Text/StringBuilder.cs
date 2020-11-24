@@ -12,6 +12,8 @@ using Carambolas.Internal;
 
 namespace Carambolas.Text
 {
+    // TODO: replace string operations with Carambolas.Text.StringBuilder operations throughout the code (save for exception messages maybe?)
+
     // TODO: add extensions classes for TextMeshPro in unity (condition TMP is used, is there a define for that?)
     //      public static void SetText(this TextMeshPro self, ArraySegment<char> arraySegment) => self.SetCharArray(arraySegment.Array, arraySegmemnt.Offset, arraySegment.Count);
     //      public static void SetText(this TextMeshPro self, StringBuilder sb) => SetText(self, sb.AsArraySegment());

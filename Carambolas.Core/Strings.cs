@@ -17,6 +17,7 @@ namespace Carambolas.Internal
         public const string EnumeratorNotStartedOrFinished = "Enumeration has either not started or has already finished.";
 
         public const string NotEnoughArguments = "Not enough arguments.";
+        public const string InvalidArguments = "Invalid arguments.";
 
         public const string InvalidFormatSpecifier = "Invalid format specifier: {0}.";
 

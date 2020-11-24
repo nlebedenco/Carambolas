@@ -36,14 +36,6 @@ namespace Carambolas.IO
         public abstract void Write(char[] buffer, int index, int count);
         public abstract void Write(char[] buffer);
 
-        public void Write(ArraySegment<char> value)
-        {
-            var (buffer, index, count) = value;
-            Write(buffer, index, count);
-        }
-
-        public void Write(StringBuilder sb) => Write(sb.AsArraySegment());
-
         public virtual void WriteLine() => Write(Environment.NewLine);
 
         public virtual void WriteLine(char c)
@@ -65,14 +57,6 @@ namespace Carambolas.IO
             Write(buffer, index, count);
             Write(Environment.NewLine);
         }
-
-        public void WriteLine(ArraySegment<char> value)
-        {
-            var (buffer, index, count) = value;
-            WriteLine(buffer, index, count);
-        }
-
-        public void WriteLine(StringBuilder sb) => WriteLine(sb.AsArraySegment());
     }
 
     public sealed class StringWriter: TextWriter

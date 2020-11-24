@@ -5,6 +5,7 @@ namespace Carambolas
 {
     public class MovingAverage
     {
+        // TODO: replace this with a circular buffer
         private Queue<float> samples;
         private int capacity;
 

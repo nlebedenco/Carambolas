@@ -19,6 +19,10 @@ using StringWriter = Carambolas.IO.StringWriter;
 
 // TODO: Change exception string messages for internal resource strings
 // TODO: check that character escaping is performed corrctly even out of literal
+// TODO: check all array boundaries checks for when start = length and count = 0 as this may or may not be an issue
+
+using Resources = Carambolas.Internal.Resources;
+using Strings = Carambolas.Internal.Strings;
 
 namespace Carambolas.UnityEngine
 {
@@ -31,7 +35,34 @@ namespace Carambolas.UnityEngine
         public string Name;
         public string Description;
         public string Help;
-    }    
+
+        private static bool IsValidNameCharacter(char c) => char.IsLetterOrDigit(c) || "_.-".IndexOf(c) >= 0;
+
+        public static bool IsValidName(string name)
+        {
+            foreach (var c in name)
+                if (!IsValidNameCharacter(c))
+                    return false;
+
+            return true;
+        }
+
+        public static bool IsValidName(string name, int start, int count)
+        {
+            if (start < 0
+             || start > name.Length
+             || count <= 0
+             || start > name.Length - count)
+                return false;
+
+            var n = start + count;
+            for (int i = start; i < n; ++i)
+                if (!IsValidNameCharacter(name[i]))
+                    return false;
+
+            return true;
+        }
+    }
 
     public delegate object CommandHandler(TextWriter writer, IReadOnlyList<string> args);
 
@@ -192,18 +223,25 @@ namespace Carambolas.UnityEngine
                                 else
                                 {
                                     var name = attribute.Name ?? method.Name;
-                                    var description = attribute.Description;
-                                    var help = attribute.Help;
-
-                                    if (Commands.ContainsKey(name))
-                                        Debug.LogError($"Error trying to register command '{name}' with handler {method}. This command has already been registered.");
+                                    if (!CommandAttribute.IsValidName(name))
+                                    {
+                                        Debug.LogError($"Error trying to register command '{name}' with handler {method}. Command  name contains invalid characters.");
+                                    }
                                     else
                                     {
-                                        var handler = MakeDelegate(method);
-                                        if (handler == null)
-                                            Debug.LogError($"Method decorated with {typeof(CommandAttribute).Name} is not supported: {method}");
+                                        var description = attribute.Description;
+                                        var help = attribute.Help;
+
+                                        if (Commands.ContainsKey(name))
+                                            Debug.LogError($"Error trying to register command '{name}' with handler {method}. This command has already been registered.");
                                         else
-                                            Commands.Add(name, new CommandInfo(name, description, help, handler));
+                                        {
+                                            var handler = MakeDelegate(method);
+                                            if (handler == null)
+                                                Debug.LogError($"Method decorated with {typeof(CommandAttribute).Name} is not supported: {method}");
+                                            else
+                                                Commands.Add(name, new CommandInfo(name, description, help, handler));
+                                        }
                                     }
                                 }
                             }
@@ -218,10 +256,17 @@ namespace Carambolas.UnityEngine
 
             private static class StandardCommands
             {
-                [Command(Name = "clear")]
+                [Command(
+                    Name = "clear", 
+                    Description = "Clears the screen."
+                )]
                 private static void Clear(TextWriter writer) => Console.Instance.Clear();
 
-                [Command(Name = "date", Help = "Usage: date [OPTION]\n\n  -u\t\tprint date/time in UTC")]
+                [Command(
+                    Name = "date", 
+                    Description = "Displays the system date/time.", 
+                    Help = "Usage: date [OPTION]\n\n  -u\t\tprint date/time in UTC"
+                )]
                 private static void Date(TextWriter writer, IReadOnlyList<string> args)
                 {
                     var n = args.Count;
@@ -240,22 +285,32 @@ namespace Carambolas.UnityEngine
                         }
                     }
 
-                    throw new Exception("Invalid arguments.");
+                    throw new ArgumentException(Resources.GetString(Strings.InvalidArguments));
                 }
 
-                [Command(Name = "frame")]
-                private static void Frame(TextWriter writer) => writer.WriteLine($"{Time.frameCount}");
-
-                [Command(Name = "app.version")]
+                [Command(
+                    Name = "app.version", 
+                    Description = "Displays the application version as defined in the project settings."
+                )]
                 private static void Version(TextWriter writer) => writer.WriteLine(Application.version);
 
-                [Command(Name = "app.name")]
+                [Command(
+                    Name = "app.name", 
+                    Description = "Displays the application name as defined by the product name in the project settings."
+                )]
                 private static void AppName(TextWriter writer) => writer.WriteLine($"{Application.productName}");
 
-                [Command(Name = "app.info")]
+                [Command(
+                    Name = "app.info", 
+                    Description = "Displays the application name as defined by the product name in the project settings."
+                )]
                 private static void AppInfo(TextWriter writer) => writer.WriteLine($"{Application.productName} {Application.version} (unity version {Application.unityVersion})");
 
-                [Command(Name = "echo")]
+                [Command(
+                    Name = "echo",
+                    Description = "Displays a message.",
+                    Help = "Usage: echo [MESSAGE]\n\n  MESSAGE\t\toptional message"
+                )]
                 private static void Echo(TextWriter writer, IReadOnlyList<string> args)
                 {
                     var n = args.Count;
@@ -272,13 +327,43 @@ namespace Carambolas.UnityEngine
                     writer.WriteLine();
                 }
 
-                [Command(Name = "fail")]
+                [Command(
+                    Name = "fail",
+                    Description = "Displays an error message and returns a failure.",
+                    Help = "Usage: fail [MESSAGE]\n\n  MESSAGE\t\toptional error message"
+                )]
                 private static void Fail(TextWriter writer, IReadOnlyList<string> args) => throw new Exception(StringBuilder.Join(' ', args));
 
-                [Command(Name = "exit")]
-                private static void Quit(TextWriter writer) => Application.Quit();
+                [Command(
+                    Name = "exit",
+                    Description = "Quits the application.",
+                    Help = "Usage: exit [CODE]\n\n  CODE\t\toptional exit code"
+                )]
+                private static void Quit(TextWriter writer, IReadOnlyList<string> args)
+                {
+                    var n = args.Count;
+                    if (n == 0)
+                    {
+                        Application.Quit();
+                        return;
+                    }
 
-                [Command(Name = "env")]
+                    if (n == 1)
+                    {
+                        if (int.TryParse(args[0], out var exitcode))
+                        { 
+                            Application.Quit(exitcode);
+                            return;
+                        }
+                    }
+
+                    throw new ArgumentException(Resources.GetString(Strings.InvalidArguments));
+                }
+
+                [Command(
+                    Name = "env",
+                    Description = "Displays environment variables."
+                    )]
                 private static void Env(TextWriter writer)
                 {
                     foreach(var kv in Console.Instance.Variables)
@@ -287,6 +372,79 @@ namespace Carambolas.UnityEngine
                         writer.Write('=');
                         writer.WriteLine(kv.Value);
                     }
+                }
+
+                [Command(
+                    Name = "help",
+                    Description = "Displays help information.",
+                    Help = "Usage: help [COMMAND]\n\n  COMMAND\t\toptional command name or prefix to obtain information."
+                )]
+                private static void Help(TextWriter writer, IReadOnlyList<string> args)
+                {
+                    var n = args.Count;
+                    if (n  == 0)
+                    {
+                        foreach (var info in Shell.Commands.Values)
+                        {
+                            if (string.IsNullOrEmpty(info.Description))
+                                writer.WriteLine(info.Name);
+                            else
+                            {
+                                writer.Write(info.Name);
+                                writer.Write(": ");
+                                writer.WriteLine(info.Description);
+                            }
+                        }
+                        return;
+                    }
+
+                    if (n == 1)
+                    {
+                        var name = args[0];
+                        Shell.FindCommands(name, out var list, out var index, out var count);
+                        if (count == 0)
+                            throw new KeyNotFoundException(string.Format("No command found with prefix '{0}'", name));
+
+                        if (count == 1)
+                        {
+                            var info = list[index];
+                            var description = info.Description;
+                            var help = info.Help;
+
+                            var hasDescription = !string.IsNullOrEmpty(description);
+                            var hasHelp = !string.IsNullOrEmpty(help);
+
+                            if (!hasDescription && !hasHelp)
+                                writer.WriteLine("No help information found.");
+                            else
+                            {
+                                if (hasDescription)
+                                    writer.WriteLine(description);
+                                if (hasHelp)
+                                    writer.WriteLine(help);
+                            }
+                        }
+                        else
+                        {
+                            var m = index + count;
+                            for (int i = index; i < m; ++i)
+                            {
+                                var info = list[i];
+                                if (string.IsNullOrEmpty(info.Description))
+                                    writer.WriteLine(info.Name);
+                                else
+                                {
+                                    writer.Write(info.Name);
+                                    writer.Write(": ");
+                                    writer.WriteLine(info.Description);
+                                }
+                            }
+                        }
+
+                        return;
+                    }
+
+                    throw new ArgumentException(Resources.GetString(Strings.InvalidArguments));
                 }
             }
         }
@@ -731,7 +889,7 @@ namespace Carambolas.UnityEngine
                                 {
                                     var group = level.Token as Token.Branch;
                                     if (group.Items.Count > 0 && !(group.Items.Last() is Token.Delimiter))
-                                        throw new FormatException($"Syntax error near position {index}: delimiter expected");
+                                        throw new FormatException($"Syntax error near position {index}: a delimiter was expected");
 
                                     level = NextLevel(stack, level, State.SeekingEndOfCommandInRoot, clausePool.Take(Token.ClauseType.Command));
                                 }
@@ -784,7 +942,7 @@ namespace Carambolas.UnityEngine
                             case State.SeekingSingleQuote:
                                 if (index == input.Length)
                                 {
-                                    throw new FormatException($"Syntax error at ({index + 1}): {SingleQuoteSymbol} expected");
+                                    throw new FormatException($"Syntax error at ({index + 1}): {SingleQuoteSymbol} was expected");
                                 }
                                 else if (Match(SingleQuoteSymbol, input, index))
                                 {
@@ -801,7 +959,7 @@ namespace Carambolas.UnityEngine
                             case State.SeekingDoubleQuote:
                                 if (index == input.Length)
                                 {
-                                    throw new FormatException($"Syntax error at ({index + 1}): {DoubleQuoteSymbol} expected");
+                                    throw new FormatException($"Syntax error at ({index + 1}): {DoubleQuoteSymbol} was expected");
                                 }
                                 else if (Match(DoubleQuoteSymbol, input, index))
                                 {
@@ -827,7 +985,7 @@ namespace Carambolas.UnityEngine
                             case State.SeekingEndOfCommandSubstitution:
                                 if (index == input.Length)
                                 {
-                                    throw new FormatException($"Syntax error at ({index + 1}): {GroupCloseSymbol} expected");
+                                    throw new FormatException($"Syntax error at ({index + 1}): {GroupCloseSymbol} was expected");
                                 }
                                 else if (char.IsWhiteSpace(input[index]))
                                 {
@@ -878,7 +1036,7 @@ namespace Carambolas.UnityEngine
                                 {
                                     var group = level.Token as Token.Branch;
                                     if (group.Items.Count > 0 && !(group.Items.Last() is Token.Delimiter))
-                                        throw new FormatException($"Syntax error near position {index}: delimiter expected");
+                                        throw new FormatException($"Syntax error near position {index}: a delimiter was expected");
 
                                     level = NextLevel(stack, level, State.SeekingEndOfCommandInGroup, clausePool.Take(Token.ClauseType.Command));
                                 }
@@ -1009,7 +1167,7 @@ namespace Carambolas.UnityEngine
                             case State.SeekingEndOfVariableSubstitution:
                                 if (index == input.Length)
                                 {
-                                    throw new FormatException($"Syntax error at ({index + 1}): {IdentifierCloseSymbol} expected");
+                                    throw new FormatException($"Syntax error at ({index + 1}): {IdentifierCloseSymbol} was expected");
                                 }
                                 else if (Match(IdentifierCloseSymbol, input, index))
                                 {
@@ -1238,7 +1396,10 @@ namespace Carambolas.UnityEngine
                             switch (element.Type)
                             {                                
                                 case Parser.Token.ElementType.Literal:
-                                    writer.Write(element.Value.AsArraySegment());
+                                    {
+                                        var (buffer, index, count) = element.Value.AsArraySegment();
+                                        writer.Write(buffer, index, count);
+                                    }
                                     break;
                                 case Parser.Token.ElementType.VariableSubstitution:
                                     if (Variables.TryGetValue(element.Value.ToString(), out string value))
