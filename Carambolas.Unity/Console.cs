@@ -18,8 +18,7 @@ using TextWriter = Carambolas.IO.TextWriter;
 using StringWriter = Carambolas.IO.StringWriter;
 
 // TODO: Change exception string messages for internal resource strings
-// TODO: check that character escaping is performed corrctly even out of literal
-// TODO: check all array boundaries checks for when start = length and count = 0 as this may or may not be an issue
+// TODO: Check all array boundaries checks for when start = length and count = 0 as this may or may not be an issue
 
 using Resources = Carambolas.Internal.Resources;
 using Strings = Carambolas.Internal.Strings;
@@ -258,14 +257,15 @@ namespace Carambolas.UnityEngine
             {
                 [Command(
                     Name = "clear", 
-                    Description = "Clears the screen."
+                    Description = "Clears the screen.",
+                    Help = "Usage: clear"
                 )]
                 private static void Clear(TextWriter writer) => Console.Instance.Clear();
 
                 [Command(
                     Name = "date", 
                     Description = "Displays the system date/time.", 
-                    Help = "Usage: date [OPTION]\n\n  -u\t\tprint date/time in UTC"
+                    Help = "Usage: date [OPTION]\n\n  -u            print date/time in UTC"
                 )]
                 private static void Date(TextWriter writer, IReadOnlyList<string> args)
                 {
@@ -290,26 +290,45 @@ namespace Carambolas.UnityEngine
 
                 [Command(
                     Name = "app.version", 
-                    Description = "Displays the application version as defined in the project settings."
+                    Description = "Displays the application version as defined in the project settings.",
+                    Help = "Usage: app.version"
                 )]
                 private static void Version(TextWriter writer) => writer.WriteLine(Application.version);
 
                 [Command(
                     Name = "app.name", 
-                    Description = "Displays the application name as defined by the product name in the project settings."
+                    Description = "Displays the application name as defined by the product name in the project settings.",
+                    Help = "Usage: app.name"
                 )]
                 private static void AppName(TextWriter writer) => writer.WriteLine($"{Application.productName}");
 
                 [Command(
                     Name = "app.info", 
-                    Description = "Displays the application name as defined by the product name in the project settings."
+                    Description = "Displays the application name as defined by the product name in the project settings.",
+                    Help = "Usage: app.info"
                 )]
                 private static void AppInfo(TextWriter writer) => writer.WriteLine($"{Application.productName} {Application.version} (unity version {Application.unityVersion})");
 
                 [Command(
+                    Name = "app.targetFrameRate",
+                    Description = "Displays or sets the current target frame rate.",
+                    Help = "Usage: app.targetFrameRate [VALUE]\n\n  VALUE         optional value to assign (must be a valid integer)\n\nNote that several factors may affect the actual application frame rate and some platforms (in particular mobile) may enforce a frame rate cap considerably below the target."
+                )]
+                private static void AppTargetFrameRate(TextWriter writer, IReadOnlyList<string> args)
+                {
+                    var n = args.Count;
+                    if (n == 0)
+                        writer.WriteLine(Application.targetFrameRate.ToString());
+                    else if (n == 1 && int.TryParse(args[0], out var value))
+                        Application.targetFrameRate = value;
+                    else
+                        throw new ArgumentException(Resources.GetString(Strings.InvalidArguments));
+                }
+
+                [Command(
                     Name = "echo",
                     Description = "Displays a message.",
-                    Help = "Usage: echo [MESSAGE]\n\n  MESSAGE\t\toptional message"
+                    Help = "Usage: echo [MESSAGE]\n\n  MESSAGE       optional message"
                 )]
                 private static void Echo(TextWriter writer, IReadOnlyList<string> args)
                 {
@@ -330,14 +349,14 @@ namespace Carambolas.UnityEngine
                 [Command(
                     Name = "fail",
                     Description = "Displays an error message and returns a failure.",
-                    Help = "Usage: fail [MESSAGE]\n\n  MESSAGE\t\toptional error message"
+                    Help = "Usage: fail [MESSAGE]\n\n  MESSAGE       optional error message"
                 )]
                 private static void Fail(TextWriter writer, IReadOnlyList<string> args) => throw new Exception(StringBuilder.Join(' ', args));
 
                 [Command(
                     Name = "exit",
                     Description = "Quits the application.",
-                    Help = "Usage: exit [CODE]\n\n  CODE\t\toptional exit code"
+                    Help = "Usage: exit [CODE]\n\n  CODE          optional exit code"
                 )]
                 private static void Quit(TextWriter writer, IReadOnlyList<string> args)
                 {
@@ -362,7 +381,8 @@ namespace Carambolas.UnityEngine
 
                 [Command(
                     Name = "env",
-                    Description = "Displays environment variables."
+                    Description = "Displays environment variables.",
+                    Help = "Usage: env"
                     )]
                 private static void Env(TextWriter writer)
                 {
@@ -375,9 +395,27 @@ namespace Carambolas.UnityEngine
                 }
 
                 [Command(
+                    Name = "set",
+                    Description = "Sets the value of a variable.",
+                    Help = "Usage: set VARIABLE [VALUE]\n\n  VARIABLE      variable name\n  VALUE         optional value to assign (variable will be cleared if ommited)"
+                )]
+                private static void Set(TextWriter writer, IReadOnlyList<string> args)
+                {
+                    var n = args.Count;
+                    if (n == 0)
+                        throw new ArgumentException(Resources.GetString(Strings.NotEnoughArguments));
+
+                    var name = args[0];
+                    if (n == 1)
+                        Console.Instance.Variables.Remove(name);
+                    else
+                        Console.Instance.Variables[name] = StringBuilder.Join(' ', args.Skip(1));
+                }
+
+                [Command(
                     Name = "help",
                     Description = "Displays help information.",
-                    Help = "Usage: help [COMMAND]\n\n  COMMAND\t\toptional command name or prefix to obtain information."
+                    Help = "Usage: help [COMMAND]\n\n  COMMAND       optional command name or prefix to obtain information about."
                 )]
                 private static void Help(TextWriter writer, IReadOnlyList<string> args)
                 {

@@ -125,7 +125,7 @@ namespace Carambolas.Text
                     throw new ObjectDisposedException(GetType().FullName);
 
                 var current = buffer ?? Array.Empty<char>();
-                if (current.Length < value)
+                if (value > current.Length)
                 {
                     var rented = ArrayPool<char>.Shared.Rent(value);
                     Array.Copy(current, rented, position);

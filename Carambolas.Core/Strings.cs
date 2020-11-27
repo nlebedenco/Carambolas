@@ -40,6 +40,8 @@ namespace Carambolas.Internal
 
         public const string UnableToReadBeyondEndOfStream = "Unable to read beyond the end of the stream.";
 
+        public const string CollectionIsEmpty = "Collection is empty";
+
         public static class Singleton
         {
             public const string InstanceAlreadyExists = "{0} cannot be instantiated. An instance already exists.";

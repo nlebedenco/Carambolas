@@ -137,16 +137,7 @@ namespace Carambolas.UI
 
         public void EmulateKeyPress(uint keycode) => Native.EmulateKeyPress(replxx, keycode);
 
-        public void Clear()
-        {
-            // Replxx clear screen is currently broken on windows. 
-            // Using System.Console.Clear on windows until the issue is resolved.
-            // Check https://github.com/AmokHuginnsson/replxx/issues/89.
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                System.Console.Clear();
-            else
-                Native.ClearScreen(replxx);
-        }
+        public void Clear() => System.Console.Clear(); // Native.ClearScreen(replxx);
 
         #region Settings
 

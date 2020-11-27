@@ -79,6 +79,50 @@ namespace Carambolas.UnityEngine
             Carambolas.Internal.Log.Handler = new RedirectCarambolasInternalLogToUnityDebugLog();
 
 #if !UNITY_EDITOR
+            // It's just a waste of CPU to update too often. Anything above 1000fps is probably too much. 
+            // As the update frequency approaches 1KHz, delta time becomes too small and ordinary code meant 
+            // to just check state throughout the application becomes more and more expensive compared to the 
+            // actual changes produced. As the frame rate moves beyond 1Khz we may reach a point where most CPU
+            // time is wasted doing nothing or producing numerical anomalies due to an excessively small deltaTime.
+            // Application.targetFrameRate should come to help, specially in the case of headless servers, but in
+            // fact, as explained in https://forum.unity.com/threads/application-targetframerat-it-doesnt-work-in-version-2020-2-0b5-3233.982353/#post-6446847
+            // it becomes increasingly unreliable for targets above 30fps. It also does not account for the
+            // time taken by other threads. The result is that Application.targetFrameRate servers as an upper limit 
+            // beyond which the frame rate will never pass but at the cost of an actual frame rate that is always 
+            // lower than the target (for values > 30fps) even in situations when the target would be perfectly 
+            // achievable.
+            //
+            // According to https://docs.unity3d.com/ScriptReference/Application-targetFrameRate.html:
+            //
+            // The default targetFrameRate is a special value of -1, which indicates that the game should render at 
+            // the platform's default frame rate. This default rate depends on the platform:
+            //
+            // - On standalone platforms the default frame rate is the maximum achievable frame rate.
+            // 
+            // - On mobile platforms the default frame rate is less than the maximum achievable frame rate due to 
+            // the need to conserve battery power. Typically on mobile platforms the default frame rate is 30 frames 
+            // per second.
+            // 
+            // - All mobile platforms have a fix cap for their maximum achievable frame rate, that is equal to the 
+            // refresh rate of the screen (60 Hz = 60 fps, 40 Hz = 40 fps, ...). Screen.currentResolution contains the
+            // screen's refresh rate.
+            // 
+            // - Additionally, all mobile platforms can only display frames on a VBlank. Therefore, you should set the 
+            // targetFrameRate to either -1, or a value equal to the screen's refresh rate, or the refresh rate divided by an integer. Otherwise, the resulting frame rate is always lower than targetFrameRate. Note: If you set the targetFrameRate to the refresh rate divided by an integer, the integer division leads to the same effective fps as setting QualitySettings.vSyncCount to the same value as that integer.
+            // 
+            // - iOS ignores the QualitySettings.vSyncCount setting. Instead, the device displays frames on the first
+            // possible VBlank after the frame is ready and your application achieves the targetFrameRate.
+            // 
+            // - On WebGL the default value lets the browser choose the frame rate to match its render loop timing which
+            // generally produces the smoothest results. Non-default values are only recommended if you want to throttle 
+            // CPU usage on WebGL.
+            // 
+            // - When using VR Unity will use the target frame rate specified by the SDK and ignores values specified by the game.
+            
+            // This keeps FPS in a safe zone on platforms that are not automatically capped unless the user sets it explicitly (see comments above)
+            if (!isConsolePlatform && !isMobilePlatform && targetFrameRate < 0)
+                targetFrameRate = 1000;
+
             if (commandLineArguments.Contains("nolog")) // unity seems to ignore -nolog on server builds, so force it here
             {
                 Debug.unityLogger.logEnabled = false;
