@@ -194,7 +194,7 @@ namespace Carambolas.UnityEngine
 
             private static void Inspect(Assembly assembly)
             {
-                Debug.Log($"Inspecting assembly {assembly} for commands.");
+                Debug.Log($"Inspecting {assembly} for console commands.");
 
                 Type[] types;
                 try
@@ -206,6 +206,7 @@ namespace Carambolas.UnityEngine
                     types = ex.Types;
                 }
 
+                var found = 0;
                 foreach (var type in types)
                 {
                     foreach (var method in type.GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
@@ -239,7 +240,10 @@ namespace Carambolas.UnityEngine
                                             if (handler == null)
                                                 Debug.LogError($"Method decorated with {typeof(CommandAttribute).Name} is not supported: {method}");
                                             else
+                                            {
                                                 Commands.Add(name, new CommandInfo(name, description, help, handler));
+                                                found++;
+                                            }
                                         }
                                     }
                                 }
@@ -251,6 +255,11 @@ namespace Carambolas.UnityEngine
                         }
                     }
                 }
+
+                if (found > 0)
+                    Debug.Log($"Found {found} console commands");
+                else
+                    Debug.Log($"No console commands found.");
             }
 
             private static class StandardCommands
@@ -289,28 +298,35 @@ namespace Carambolas.UnityEngine
                 }
 
                 [Command(
-                    Name = "app.version", 
+                    Name = "application.version", 
                     Description = "Displays the application version as defined in the project settings.",
-                    Help = "Usage: app.version"
+                    Help = "Usage: application.version"
                 )]
                 private static void Version(TextWriter writer) => writer.WriteLine(Application.version);
 
                 [Command(
-                    Name = "app.name", 
+                    Name = "application.productName", 
                     Description = "Displays the application name as defined by the product name in the project settings.",
-                    Help = "Usage: app.name"
+                    Help = "Usage: application.productName"
                 )]
-                private static void AppName(TextWriter writer) => writer.WriteLine($"{Application.productName}");
+                private static void AppName(TextWriter writer) => writer.WriteLine(Application.productName);
 
                 [Command(
-                    Name = "app.info", 
-                    Description = "Displays the application name as defined by the product name in the project settings.",
-                    Help = "Usage: app.info"
+                    Name = "application.unityVersion",
+                    Description = "Displays the unity version used to build the application.",
+                    Help = "Usage: application.unityVersion"
                 )]
-                private static void AppInfo(TextWriter writer) => writer.WriteLine($"{Application.productName} {Application.version} (unity version {Application.unityVersion})");
+                private static void AppInfo(TextWriter writer) => writer.WriteLine(Application.unityVersion);
 
                 [Command(
-                    Name = "app.targetFrameRate",
+                    Name = "application.buildGuid",
+                    Description = "Displays a unique id assigned when the application was built.",
+                    Help = "Usage: application.buildGuid"
+                )]
+                private static void AppBuildGuid(TextWriter writer) => writer.WriteLine(Application.buildGUID);
+
+                [Command(
+                    Name = "application.targetFrameRate",
                     Description = "Displays or sets the current target frame rate.",
                     Help = "Usage: app.targetFrameRate [VALUE]\n\n  VALUE         optional value to assign (must be a valid integer)\n\nNote that several factors may affect the actual application frame rate and some platforms (in particular mobile) may enforce a frame rate cap considerably below the target."
                 )]
@@ -328,7 +344,7 @@ namespace Carambolas.UnityEngine
                 [Command(
                     Name = "echo",
                     Description = "Displays a message.",
-                    Help = "Usage: echo [MESSAGE]\n\n  MESSAGE       optional message"
+                    Help = "Usage: echo [MESSAGE]\n\n  MESSAGE       optional message."
                 )]
                 private static void Echo(TextWriter writer, IReadOnlyList<string> args)
                 {
@@ -381,7 +397,7 @@ namespace Carambolas.UnityEngine
 
                 [Command(
                     Name = "env",
-                    Description = "Displays environment variables.",
+                    Description = "Displays console variables.",
                     Help = "Usage: env"
                     )]
                 private static void Env(TextWriter writer)
@@ -396,7 +412,7 @@ namespace Carambolas.UnityEngine
 
                 [Command(
                     Name = "set",
-                    Description = "Sets the value of a variable.",
+                    Description = "Sets or clears the value of a console variable.",
                     Help = "Usage: set VARIABLE [VALUE]\n\n  VARIABLE      variable name\n  VALUE         optional value to assign (variable will be cleared if ommited)"
                 )]
                 private static void Set(TextWriter writer, IReadOnlyList<string> args)
@@ -1311,11 +1327,16 @@ namespace Carambolas.UnityEngine
         }
 
         private TextWriter errorWriter;
-        private TextWriter outputWriter;
-        private Parser parser;
+        public TextWriter Error => errorWriter;
 
-        private void Error(string s) => errorWriter.WriteLine(s);
-        private void Error(Exception e) => errorWriter.WriteLine(e.Message);
+        private TextWriter outputWriter;
+        public TextWriter Out => outputWriter;
+
+        private Parser parser;       
+
+        private void ErrorLine(string s) => errorWriter.WriteLine(s);
+        private void ErrorLine(Exception e) => errorWriter.WriteLine(e.Message);
+
         private void Critical(Exception e)
         {
             Debug.LogException(e);
@@ -1341,7 +1362,7 @@ namespace Carambolas.UnityEngine
                 if (TryReadLine(out string value) && !string.IsNullOrEmpty(value))
                 {
                     OnProcessing();
-                    yield return Process(value, outputWriter).Catch(Error);
+                    yield return Process(value, outputWriter).Catch(ErrorLine);
                     OnProcessed();
                 }
 
@@ -1353,7 +1374,7 @@ namespace Carambolas.UnityEngine
         {
             using (var token = parser.Parse(input))
                 if (token is Parser.Token.Sentence sentence)
-                    yield return Process(sentence, writer).Catch(Error);
+                    yield return Process(sentence, writer).Catch(ErrorLine);
         }
 
         private enum ProcessCondition
@@ -1451,7 +1472,7 @@ namespace Carambolas.UnityEngine
                             switch (sentence.Type)
                             {                                
                                 case Parser.Token.SentenceType.CommandSubstitution:
-                                    yield return Process(sentence, writer).Catch(Error);
+                                    yield return Process(sentence, writer).Catch(ErrorLine);
                                     break;
                                 default:
                                     break;
@@ -1528,7 +1549,7 @@ namespace Carambolas.UnityEngine
                                     case Parser.Token.SentenceType.CommandSubstitution:
                                         using (var sb = new StringBuilder())
                                         {
-                                            yield return Process(sentence, new StringWriter(sb)).Catch(Error);
+                                            yield return Process(sentence, new StringWriter(sb)).Catch(ErrorLine);
 
                                             using (var enumerator = Parser.Split(sb))
                                             {

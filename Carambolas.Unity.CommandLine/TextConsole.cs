@@ -11,7 +11,7 @@ using TextWriter = Carambolas.IO.TextWriter;
 
 namespace Carambolas.UnityEngine
 {
-    public sealed class CommandLineInterface: Console
+    public sealed class TextConsole: Console
     {
         private const int MaxHintCount = 3;
 
@@ -118,7 +118,7 @@ namespace Carambolas.UnityEngine
         private static void OnBeforeSceneLoad()
         {
             if (Application.isInteractiveServerBuild)
-                ComponentUtility.Create<CommandLineInterface>();
+                ComponentUtility.Create<TextConsole>();
         }
 
         private string prompt;

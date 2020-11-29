@@ -18,7 +18,7 @@ if %errorlevel% neq 0 goto error
 xcopy "%BUILD_DIR_x86%\..\bin\cnsock.dll" "%~dp0\..\Carambolas.Net\Native\win-x86\" /Y /I /F
 if %errorlevel% neq 0 goto error 
 
-echo 
+echo.
 
 mkdir "%BUILD_DIR_x64%"
 pushd "%BUILD_DIR_x64%"

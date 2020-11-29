@@ -10,6 +10,52 @@ namespace Carambolas.UnityEngine
 {
     public class GUIConsole: Console
     {
+        private sealed class GUIErrorWriter: TextWriter
+        {
+            public override void Write(char value)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void Write(string s)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void Write(char[] buffer, int index, int count)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void Write(char[] buffer)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        private sealed class GUIOutputWriter: TextWriter
+        {
+            public override void Write(char value)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void Write(string s)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void Write(char[] buffer, int index, int count)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void Write(char[] buffer)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
         protected override void Clear() => throw new NotImplementedException();
 
         protected override TextWriter GetErrorWriter() => throw new NotImplementedException();

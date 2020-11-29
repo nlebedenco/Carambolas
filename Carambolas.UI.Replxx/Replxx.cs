@@ -137,7 +137,7 @@ namespace Carambolas.UI
 
         public void EmulateKeyPress(uint keycode) => Native.EmulateKeyPress(replxx, keycode);
 
-        public void Clear() => System.Console.Clear(); // Native.ClearScreen(replxx);
+        public void Clear() => Native.ClearScreen(replxx);
 
         #region Settings
 
