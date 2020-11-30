@@ -1,0 +1,68 @@
+﻿<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/../Build/$(MSBuildProjectName)/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)/../Build/Unity/</BaseOutputPath>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <Import Project="../Version.props" />
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <OutputPath>$(BaseOutputPath)$(Configuration)/dev.nlebedenco.carambolas.net</OutputPath>
+    <NoWarn>CS2008</NoWarn>
+  </PropertyGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+  <ItemGroup>
+    <None Update="CHANGELOG.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="LICENSE.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="package.json.meta" CopyToOutputDirectory="Always" />
+    <None Update="README.md.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.Net.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.Net.pdb.meta" CopyToOutputDirectory="Always" />
+    <None Update="Runtime/Carambolas.Net.xml.meta" CopyToOutputDirectory="Always" />
+    <None Update="Plugins.meta" CopyToOutputDirectory="Always" />
+    <None Update="Plugins/x86.meta" CopyToOutputDirectory="Always" />
+    <None Update="Plugins/x86/cnsock.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="Plugins/x86_64.meta" CopyToOutputDirectory="Always" />
+    <None Update="Plugins/x86_64/libcnsock.dylib.meta" CopyToOutputDirectory="Always" />
+    <None Update="Plugins/x86_64/libcnsock.so.meta" CopyToOutputDirectory="Always" />
+    <None Update="Plugins/x86_64/cnsock.dll.meta" CopyToOutputDirectory="Always" />
+    <None Update="unity.package.json" Link="package.json" CopyToOutputDirectory="Always" />
+    <None Include="../UnityPackage.Carambolas.Core/README.md" Link="README.md" CopyToOutputDirectory="Always" />    
+    <None Include="../Carambolas.Net/@Documentation/README.md" Link="Documentation~/index.md" CopyToOutputDirectory="Always" />
+    <None Include="../Carambolas.Net/@Documentation/*.jpg" Link="Documentation~/%(Filename)%(Extension)" CopyToOutputDirectory="Always" />
+    <None Include="../Carambolas.Net/@Documentation/CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="Always" />
+    <None Include="../LICENSE" Link="LICENSE.md" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Carambolas.Net/Carambolas.Net.csproj" DestinationSubDirectory="Runtime/" />
+    <ProjectReference Include="../Carambolas.Core/Carambolas.Core.csproj" Private="False" />
+  </ItemGroup>
+
+  <Target Name="AfterBuild">    
+    <ItemGroup>
+      <AssemblyFiles Include="$(OutputPath)$(AssemblyName).*" />
+    </ItemGroup>
+    <Delete Files="@(AssemblyFiles)" />
+    <Move SourceFiles="$(OutputPath)Native/osx-x64/libcnsock.dylib" DestinationFolder="$(OutputPath)Plugins/x86_64/" />
+    <Move SourceFiles="$(OutputPath)Native/linux-x64/libcnsock.so" DestinationFolder="$(OutputPath)Plugins/x86_64/" />
+    <Move SourceFiles="$(OutputPath)Native/win-x64/cnsock.dll" DestinationFolder="$(OutputPath)Plugins/x86_64/" />
+    <Move SourceFiles="$(OutputPath)Native/win-x86/cnsock.dll" DestinationFolder="$(OutputPath)Plugins/x86/" />
+    <RemoveDir Directories="$(OutputPath)Native" />
+  </Target>
+
+  <Target Name="AfterClean">
+    <RemoveDir Directories="$(OutputPath)Runtime;$(OutputPath)Editor;$(OutputPath)Documentation~" />
+  </Target>
+
+</Project>

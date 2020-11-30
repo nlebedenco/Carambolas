@@ -1,0 +1,18 @@
+{
+    "name": "Carambolas.Unity.Replication.Editor",
+    "references": [
+        "GUID:e6c94fa9a6a11b34a828b94f8f307b24",
+        "GUID:ed13b39c1d19ba6498a32fb61b61ce25"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

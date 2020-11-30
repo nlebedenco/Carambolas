@@ -36,6 +36,5 @@ if %errorlevel% neq 0 goto error
 echo Done.
 goto :EOF
 
-rem Error happened. Wait for a keypress before quitting.
 :error
 exit /b %errorlevel%

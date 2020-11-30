@@ -1,0 +1,17 @@
+{
+    "name": "Carambolas.Unity.Editor",
+    "references": [
+        "GUID:9444ad05148a0114a85b5c34c6a8c10b"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

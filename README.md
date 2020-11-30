@@ -116,13 +116,13 @@ understand the way it worked and why.
 
 ### Modules
 
-- **[Carambolas.Core](Doc/README-Carambolas.Core.md)**    
-- **[Carambolas.Net](Doc/README-Carambolas.Net.md)**
-- **[Carambolas.UI.Replxx](Doc/README-Carambolas.UI.Replxx.md)**
-- **[Carambolas.Runtime.InteropServices](Doc/README-Carambolas.Runtime.InteropServices.md)**
-- **[Carambolas.Unity](Doc/README-Carambolas.Unity.md)**
-- **[Carambolas.Unity.CommandLine](Doc/README-Carambolas.Unity.CommandLine.md)**
-- **[Carambolas.Unity.Replication](Doc/README-Carambolas.Unity.Replication.md)**
+- **[Carambolas.Core](Carambolas.Core/@Documentation/README.md)**    
+- **[Carambolas.Net](Carambolas.Net/@Documentation/README.md)**
+- **[Carambolas.UI.Replxx](Carambolas.UI.Replxx//@Documentation/README.md)**
+- **[Carambolas.Runtime.InteropServices](Carambolas.Runtime.InteropServices/@Documentation/README.md)**
+- **[Carambolas.Unity](Unity/dev.nlebedenco.carambolas.unity/README.md)**
+- **[Carambolas.Unity.Cli](Unity/dev.nlebedenco.carambolas.unity.cli/README.md)**
+- **[Carambolas.Unity.Replication](Unity/dev.nlebedenco.carambolas.unity.replication/README.md)**
 
 
 ## Building from source
@@ -189,6 +189,7 @@ UnityVersion=2019
 
 And that's it. No one ever needs to touch those variables again.
 
+
 ### Windows 
  
 A visual studio solution is included for convenience, so no additional build steps should be required for Windows. 
@@ -237,26 +238,40 @@ Use [nugetpack.sh](nugetpack.sh) to compile the native library and portable asse
 
 Use [build.sh](build.sh) to build all projects for release without using Visual Studio.
 
+
 ## Unity "Gotchas"
 
-**Use of compiler directives**
+**Compiler directives and behaviour script references**
 
 Unity defines a whole set of useful [compiler directives](https://docs.unity3d.com/Manual/PlatformDependentCompilation.html).
-One of the most well known is `UNITY_EDITOR`. It's useful because many classes are only available in the Editor as well as certain assemblies. So it's not 
+One of the most well known being `UNITY_EDITOR`. It's useful because many classes are only available in the Editor as well as certain assemblies. So it's not 
 uncommon to see `#if UNITY_EDITOR` in scripts everywhere and Carambolas.Unity is not different. The problem with pre-compiled assemblies, however is that 
-compiler directives must be provided ahead of time and there's now way to know which ones are actually going to be used in a Unity project. Therefore all 
-Carambolas projects that depend on the Unity Engine also have a second corresponding project that includes all the original source code as links plus any 
-editor only classes and is be compiled with the UNITY_EDITOR directive. For example, Carambolas.Unity produces Carambolas.Unity.dll and has a corresponding 
-Carambolas.Unity-Editor project that is compiled with `UNITY_EDITOR` defined and produces Carambolas.Unity-Editor.dll. The former assembly is configured in 
-Unity (in the meta file) for all platforms except Editor so it's included in builds but never while playing in the Editor. The latter is configured to the
-opposite, available only in Editor and not for any other platform. This way carambolas classes that are meant to be included for both the Unity Player and the
-Unity Editor may still use the idiomatic #if UNITY_EDITOR to adapt compilation for each case.
+compiler directives must be provided ahead of time and there's no way to know which ones are actually going to be required in a Unity project. 
 
-Note that all this refers to carambolas sources only and does interfere with user code or any third-party code in a Unity project.
+Previously, all Carambolas projects that depended on the Unity Engine were precompiled and had a second corresponding project that included all the original 
+source code (as links) plus any editor-only classes. This twin project was also compiled with the UNITY_EDITOR directive. So, for example, Carambolas.Unity
+produces Carambolas.Unity.dll and had a corresponding Carambolas.Unity-Editor project that was compiled with `UNITY_EDITOR` defined and produced 
+Carambolas.Unity-Editor.dll. The former assembly was configured in Unity (in the meta file) for all platforms except Editor so it's included in builds but
+never while playing in the Editor. The latter was configured to the opposite, available only in Editor and not for any other platform. This way Carambolas
+classes that were meant to be included for both the Unity Player and the Unity Editor would still support the idiomatic #if UNITY_EDITOR to adapt compilation
+for each case.
 
-For predefined compiler directives other than `UNITY_EDITOR` the issue is more complicated. We can't have an assembly version for each directive and even if
-we had those there's no way to condition the use of an assembly to a compiler directive. The case for `UNITY_EDITOR` is very specific because it happens to be 
-related to a platform. So it's not possible to refer to any other unity compiler directive in Carambolas source code (that is precompiled).
+This seemed like a good idea until I realized that while a behaviour script could be added to a game object and worked fine in a built application in runtime 
+Unity was unable to find the same script if added to a game object that was loaded by the scene. The reason was that Carambolas behaviour script references were 
+all saved using the GUID generated for the "-Editor" assembly which was never meant to be included in the build. We happen to know that in the build there will 
+be another assembly defining the very same behaviour script but Unity cannot make that connection. Since there may not be two assemblies sharing the same GUID 
+this scheme of having precompiled code shared between assemblies (one for the build another for the editor) does not work. Therefore, Carambolas is now packaged
+for Unity with full source.
+
+**Limitations of the ConditionalAttribute**
+
+*Note: although the limitations surrounding ConditionalAttribute remain relevant, Carambolas packages for Unity are now generated with full source code and as 
+such are compiled (by Unity) with the same definitions and compiler directives of user code.*
+
+Using compiler directives other than `UNITY_EDITOR` in pre-compiled assemblies is considerably more complicated. We can't have an assembly version for each 
+directive and even if we had those there's no way to condition the use of an assembly to a compiler directive. The case for `UNITY_EDITOR` is very specific
+because it happens to be related to a platform. So it's not possible to refer to any other unity compiler directive in Carambolas source code (that is 
+precompiled).
 
 This is an issue in certain cases where the Unity API does not provide a static property but only a compiler directive to identify certain system properties.
 Consider the Server Build option, for example. Different than a Development Build that can be identified in runtime by checking Debug.IsDebugBuild, there is 
@@ -308,10 +323,11 @@ If instead of calling SomeClass.SomeMethod() directly we decided to call SomeCla
 caller's assembly being compiled with `UNITY_SERVER` or not. The reason is that the call to SomeMethod() is now originating from within the precompiled 
 assembly itself (not the user's assembly) and it has not been compiled with `UINTY_SERVER` defined (obviously) thus the condition always fails. 
 
-This situation with conditional methods may look really puzzling sometimes so the solution employed by Carambolas to capture information of the build context 
+~~This situation with conditional methods may look really puzzling sometimes so the solution employed by Carambolas to capture information of the build context 
 in Unity (such as isServerBuild, for example) is to leave an assembly to be compiled by Unity itself, namely Carambolas.Unity.Deferred. As the name implies, 
 this assembly contains only code that depends on the build context of a Unity project and cannot be pre-compiled - hence the "deferred" qualifier. Assembly 
-definition and source files are packed by [UnityPackageManager.Carambolas.Unity](UnityPackageManager.Carambolas.Unity/UnityPackageManager.Carambolas.Unity.csproj).
+definition and source files are packed by 
+[UnityPackageManager.Carambolas.Unity](UnityPackageManager.Carambolas.Unity/UnityPackageManager.Carambolas.Unity.csproj).~~
 
 
 **Console input/output**
@@ -644,13 +660,10 @@ under an [MIT license](LICENSE-NaCl.Core).
 *Carambolas.Runtime.InteropServices* contains classes based on source code from [LibGit2Sharp](https://github.com/libgit2/libgit2sharp) published under 
 the [MIT license](LICENSE-LibGit2Sharp).
 
-*Carambolas.Unity* depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
+*Carambolas.Text.StringBuilder* was based on [ZString 2.2.0 (98379750ad4aae4c75b2ea1559d47b6931d866dc) by Cysharp, Inc.](https://github.com/Cysharp/ZString) 
+published under the [MIT license](LICENSE-ZString).
 
-*Carambolas.Unity-Editor* depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
-
-*Carambolas.Unity.Replication* depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
-
-*Carambolas.Unity.Replication-Editor* depends on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
+*All Unity packages* depend on the [Unity Engine](http://unity.com) thus being subject to the [Unity Companion License](LICENSE-Unity)
 
 *Resource icons* exported for use in the unity editor were provided by [Material Design Icons](http://materialdesignicons.com) under the [Pictogrammers Free License](LICENSE-MaterialDesignIcons)
 
