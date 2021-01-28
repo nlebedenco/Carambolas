@@ -108,11 +108,6 @@ namespace Carambolas.Net
         private Channel[] channels;
         private Channel.Outbound.Mediator mediator;
 
-        private void SetChannels(int length)
-        {
-
-        }
-
         private byte maxChannel;
         public byte MaxChannel => maxChannel;
 

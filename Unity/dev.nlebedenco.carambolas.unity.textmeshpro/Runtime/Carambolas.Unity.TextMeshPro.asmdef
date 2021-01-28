@@ -1,0 +1,16 @@
+{
+    "name": "Carambolas.Unity.TextMeshPro",
+    "references": [
+        "GUID:9444ad05148a0114a85b5c34c6a8c10b",
+        "GUID:6055be8ebefd69e48b49212b09b47b2f"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -91,6 +91,10 @@ namespace Carambolas.UnityEngine
         protected virtual void OnValidate() { }
 #endif
 
+        /// <summary>
+        /// This method is not virtual to ensure proper functionality and made protected to avoid accidental overriding by derived classes.
+        /// Derived classes may override <see cref="OnSingletonAwaking"/> or  <see cref="OnSingletonAwake"/> instead.
+        /// </summary>
         protected void Awake()
         {
             try
@@ -144,6 +148,10 @@ namespace Carambolas.UnityEngine
 
         private static readonly List<Component> componentsOnDestroy = new List<Component>();
 
+        /// <summary>
+        /// This method is not virtual to ensure proper functionality and made protected to avoid accidental overriding by derived classes.
+        /// Derived classes may override <see cref="OnSingletonDestroy"/> instead.
+        /// </summary>
         protected void OnDestroy()
         {
             if (ReferenceEquals(Instance, this))

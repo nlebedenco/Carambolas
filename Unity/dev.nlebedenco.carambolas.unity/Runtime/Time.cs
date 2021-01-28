@@ -97,11 +97,12 @@ namespace Carambolas.UnityEngine
       
         public static int frameRate { get; private set; }
 
-        private static float smoothFrameRateElapsedTime;
-        private static int smoothFrameRateInitialFrame;
+        private static float frameRateVariance;
+        private static float frameRateEstimate;
+        private static float frameRateElapsed;
 
         public static int smoothFrameRate { get; private set; }
-
+        
         /// <summary>
         /// UTC date time when the game started. 
         /// </summary>
@@ -137,21 +138,23 @@ namespace Carambolas.UnityEngine
             timeSinceLevelLoad = accumulatedTimeSinceLevelLoad;
 
             var sample = 1.0f / unscaledDeltaTime;
+            var delta = sample - frameRateEstimate;
+            if (delta < 0)
+                delta = -delta;
+
             frameRate = (int)(sample + 0.5f);
+            frameRateVariance = Math.Max(0.001f, (3f * frameRateVariance + delta) * 0.25f);
+            frameRateEstimate = Math.Max(0.001f, (7f * frameRateEstimate + sample) * 0.125f);
 
-            smoothFrameRateElapsedTime += unscaledDeltaTime;
-            if (smoothFrameRateElapsedTime >= SmoothFrameRateUpdateInterval)
+            // Once per SmoothFrameRateUpdateInterval if the delta from frameRateEstimate to smoothFrameRate 
+            // is greater than the frameRateVariance update smoothFrameRate.
+            frameRateElapsed += unscaledDeltaTime;
+            if (frameRateElapsed >= SmoothFrameRateUpdateInterval)
             {
-                var a = smoothFrameRateInitialFrame;
-                var b = frameCount;
+                if (Math.Abs(frameRateEstimate - smoothFrameRate) > frameRateVariance)
+                    smoothFrameRate = (int)(frameRateEstimate + 0.5f);
 
-                // It's more efficient to calculate count only once per time interval than to increment it on every update
-                // despite the need for the modulus operator.
-                var n = (int)(((uint)(b - a) + 2147483648) % 2147483648); 
-                var rate = n / smoothFrameRateElapsedTime;
-                smoothFrameRate = (int)(rate + 0.5f);
-                smoothFrameRateElapsedTime = 0f;
-                smoothFrameRateInitialFrame = frameCount;
+                frameRateElapsed = 0f;
             }
         }
 

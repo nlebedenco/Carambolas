@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "displayName": "Carambolas.Replxx",
   "description": "Carambolas is a custom multi-channel reliable UDP protocol implementation for low latency/low bandwidth-delay network applications with soft real-time constraints featured in a collection of .NET Standard 2.0 support assemblies.\n\nThis package contains a wrapper for replxx native libraries on windows, linux and macOS.\n\nSystem.Memory.dll (>= 4.5.3) is required but was intentionally not included to prevent conflicts with other third-party packages. If you don't have a System.Memory.dll in your project you may install the dotnet.system.memory package.",
-  "unity": "2018.3",
+  "unity": "2019.1",
   "license": "MIT",
   "repository": {
     "type": "git",

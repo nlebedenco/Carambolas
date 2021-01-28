@@ -23,6 +23,8 @@ using StringWriter = Carambolas.IO.StringWriter;
 using Resources = Carambolas.Internal.Resources;
 using Strings = Carambolas.Internal.Strings;
 
+// TODO: Replace '== null' with 'is null' or '.IsNullOrDestroyed()' in all unity projects to make the comparison explicit and produce optimal code at the same time
+
 namespace Carambolas.UnityEngine
 {
     using System.Diagnostics;
@@ -1274,7 +1276,7 @@ namespace Carambolas.UnityEngine
             }
         }
                
-        private Coroutine reader;
+        private IEnumerator reader;
 
         protected override bool Transient => true;
 
@@ -1308,7 +1310,13 @@ namespace Carambolas.UnityEngine
             base.OnSingletonDestroy();
         }
 
+        protected virtual void OnEnabled() { }
+
+        protected virtual void OnDisabled() { }
+
         protected virtual void OnStarted() { }
+
+        protected virtual void OnStopped() { }
 
         protected virtual void OnProcessing() { }
 
@@ -1321,10 +1329,25 @@ namespace Carambolas.UnityEngine
 
         protected abstract void Clear();
 
-        protected virtual void Start()
+        /// <summary>
+        /// This method is not virtual to ensure proper functionality and made protected to avoid accidental overriding by derived classes.
+        /// Derived classes may override <see cref="OnEnabled"/> instead.
+        /// </summary>
+        protected void OnEnable()
         {
-            reader = StartCoroutine(Read().Catch(Critical));
+            errorWriter = GetErrorWriter();
+            outputWriter = GetOutputWriter();
+
+            OnEnabled();
+            if (reader is null)
+                StartCoroutine(reader = Read().Catch(Critical));
         }
+
+        /// <summary>
+        /// This method is not virtual to ensure proper functionality and made protected to avoid accidental overriding by derived classes.
+        /// Derived classes may override <see cref="OnDisabled"/> instead.
+        /// </summary>
+        protected void OnDisable() => OnDisabled();
 
         private TextWriter errorWriter;
         public TextWriter Error => errorWriter;
@@ -1353,11 +1376,8 @@ namespace Carambolas.UnityEngine
 
         private IEnumerator Read()
         {
-            errorWriter = GetErrorWriter();
-            outputWriter = GetOutputWriter();
-
             OnStarted();
-            while (true)
+            while (isActiveAndEnabled)
             {                
                 if (TryReadLine(out string value) && !string.IsNullOrEmpty(value))
                 {
@@ -1368,6 +1388,9 @@ namespace Carambolas.UnityEngine
 
                 yield return null;
             }
+
+            reader = null;
+            OnStopped();
         }
 
         private IEnumerator Process(string input, TextWriter writer)

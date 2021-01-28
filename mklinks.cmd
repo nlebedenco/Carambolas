@@ -22,6 +22,7 @@ for %%P in (
 
 for %%P in (
 "dev.nlebedenco.carambolas.unity"
+"dev.nlebedenco.carambolas.unity.textmeshpro"
 "dev.nlebedenco.carambolas.unity.cli"
 "dev.nlebedenco.carambolas.unity.replication"
 ) do (

@@ -14,15 +14,6 @@ namespace Carambolas.Text
 {
     // TODO: replace string operations with Carambolas.Text.StringBuilder operations throughout the code (save for exception messages maybe?)
 
-    // TODO: add extensions classes for TextMeshPro in unity (condition TMP is used, is there a define for that?)
-    //      public static void SetText(this TextMeshPro self, ArraySegment<char> arraySegment) => self.SetCharArray(arraySegment.Array, arraySegmemnt.Offset, arraySegment.Count);
-    //      public static void SetText(this TextMeshPro self, StringBuilder sb) => SetText(self, sb.AsArraySegment());
-    //      public static void SetText(this TextMeshPro self, StringBuilderStruct sb) => SetText(self, sb.AsArraySegment());
-    //
-    //      A package that depends on both Carambolas.Unity and TextMeshPro will have to be created (Carambolas.Unity.TextMeshPro) for code like this 
-    //      to avoid having the whole Carambolas.Unity depending on TextMeshPro
-    //
-
     public interface IFormattableToStringBuilder
     {
         void FormatInto(ref StringBuilder.Buffer destination, IFormatProvider formatProvider, ReadOnlySpan<char> format, int alignment);
@@ -356,16 +347,28 @@ namespace Carambolas.Text
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal void AppendFormat<T>(IFormatProvider formatProvider, string format, T[] args) => AppendFormat(formatProvider, format ?? throw new ArgumentNullException(nameof(format)), new ArgumentList<T>((IList<T>)args));
+            public void AppendFormat<T>(string format, T[] args) => AppendFormat(CultureInfo.CurrentCulture, format, args);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal void AppendFormat<T>(IFormatProvider formatProvider, string format, IList<T> args) => AppendFormat(formatProvider, format ?? throw new ArgumentNullException(nameof(format)), new ArgumentList<T>(args));
+            public void AppendFormat<T>(IFormatProvider formatProvider, string format, T[] args) => AppendFormat(formatProvider, format ?? throw new ArgumentNullException(nameof(format)), new ArgumentList<T>((IList<T>)args));
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal void AppendFormat<T>(IFormatProvider formatProvider, string format, IReadOnlyList<T> args) => AppendFormat(formatProvider, format ?? throw new ArgumentNullException(nameof(format)), new ArgumentList<T>(args));
+            public void AppendFormat<T>(string format, IList<T> args) => AppendFormat(CultureInfo.CurrentCulture, format, args);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal void AppendFormat<T>(IFormatProvider formatProvider, string format, ReadOnlySpan<T> args) => AppendFormat(formatProvider, format ?? throw new ArgumentNullException(nameof(format)), new ArgumentList<T>(args));
+            public void AppendFormat<T>(IFormatProvider formatProvider, string format, IList<T> args) => AppendFormat(formatProvider, format ?? throw new ArgumentNullException(nameof(format)), new ArgumentList<T>(args));
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void AppendFormat<T>(string format, IReadOnlyList<T> args) => AppendFormat(CultureInfo.CurrentCulture, format, args);
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void AppendFormat<T>(IFormatProvider formatProvider, string format, IReadOnlyList<T> args) => AppendFormat(formatProvider, format ?? throw new ArgumentNullException(nameof(format)), new ArgumentList<T>(args));
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void AppendFormat<T>(string format, ReadOnlySpan<T> args) => AppendFormat(CultureInfo.CurrentCulture, format, args);
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void AppendFormat<T>(IFormatProvider formatProvider, string format, ReadOnlySpan<T> args) => AppendFormat(formatProvider, format ?? throw new ArgumentNullException(nameof(format)), new ArgumentList<T>(args));
 
             private void AppendFormat<T>(IFormatProvider formatProvider, string format, in ArgumentList<T> args)
             {
@@ -439,7 +442,7 @@ namespace Carambolas.Text
                 }             
             }
 
-            internal void AppendFormat<T1>(IFormatProvider formatProvider, string format, T1 arg1)
+            public void AppendFormat<T0>(IFormatProvider formatProvider, string format, T0 arg0)
             {
                 if (format == null)
                     throw new ArgumentNullException(nameof(format));
@@ -483,6 +486,86 @@ namespace Carambolas.Text
                                     switch (parsed.Index)
                                     {
                                         case 0:
+                                            temporary.Append(arg0, formatProvider, parsed.FormatString, parsed.Alignment);
+                                            break;
+                                        default:
+                                            throw new FormatException(Resources.GetString(Strings.NotEnoughArguments));
+                                    }
+                                    k = i + 1;
+                                    continue;
+                                }
+
+                                if (i < n - 1 && format[i + 1] == '}') // escaped
+                                {
+                                    temporary.Append(format.AsSpan(k, i - k));
+                                    temporary.Append('}');
+                                    i++;
+                                    k = i + 1;
+                                    continue;
+                                }
+
+                                throw new FormatException();
+                            default:
+                                break;
+                        }
+                    }
+
+                    if (open)
+                        throw new FormatException();
+
+                    Append(temporary);
+                    if (k < i)
+                        Append(format.AsSpan(k, i - k));
+                }
+            }
+
+            public void AppendFormat<T0, T1>(IFormatProvider formatProvider, string format, T0 arg0, T1 arg1)
+            {
+                if (format == null)
+                    throw new ArgumentNullException(nameof(format));
+
+                // Use a temporary to avoid damaging this instance in case either format string or args are invalid.
+                using (var temporary = new Buffer(format.Length))
+                {
+                    var n = format.Length;
+                    var open = false;
+                    var k = 0; // start of ordinary chars to copy
+                    var p = 0; // start of format string macro                    
+                    var i = 0;
+
+                    for (i = 0; i < n; ++i)
+                    {
+                        var c = format[i];
+                        switch (c)
+                        {
+                            case '{':
+                                if (open)
+                                    throw new FormatException();
+
+                                if (i < n - 1 && format[i + 1] == '{') // escaped
+                                {
+                                    temporary.Append(format.AsSpan(k, i - k));
+                                    temporary.Append('{');
+                                    i++;
+                                    k = i + 1;
+                                    continue;
+                                }
+
+                                temporary.Append(format.AsSpan(k, i - k));
+                                open = true;
+                                p = i + 1;
+                                break;
+                            case '}':
+                                if (open)
+                                {
+                                    open = false;
+                                    var parsed = FormatParser.Parse(format.AsSpan(p, i - p));
+                                    switch (parsed.Index)
+                                    {
+                                        case 0:
+                                            temporary.Append(arg0, formatProvider, parsed.FormatString, parsed.Alignment);
+                                            break;
+                                        case 1:
                                             temporary.Append(arg1, formatProvider, parsed.FormatString, parsed.Alignment);
                                             break;
                                         default:
@@ -516,7 +599,7 @@ namespace Carambolas.Text
                 }
             }
 
-            internal void AppendFormat<T1, T2>(IFormatProvider formatProvider, string format, T1 arg1, T2 arg2)
+            public void AppendFormat<T0, T1, T2>(IFormatProvider formatProvider, string format, T0 arg0, T1 arg1, T2 arg2)
             {
                 if (format == null)
                     throw new ArgumentNullException(nameof(format));
@@ -560,93 +643,13 @@ namespace Carambolas.Text
                                     switch (parsed.Index)
                                     {
                                         case 0:
-                                            temporary.Append(arg1, formatProvider, parsed.FormatString, parsed.Alignment);
+                                            temporary.Append(arg0, formatProvider, parsed.FormatString, parsed.Alignment);
                                             break;
                                         case 1:
-                                            temporary.Append(arg2, formatProvider, parsed.FormatString, parsed.Alignment);
-                                            break;
-                                        default:
-                                            throw new FormatException(Resources.GetString(Strings.NotEnoughArguments));
-                                    }
-                                    k = i + 1;
-                                    continue;
-                                }
-
-                                if (i < n - 1 && format[i + 1] == '}') // escaped
-                                {
-                                    temporary.Append(format.AsSpan(k, i - k));
-                                    temporary.Append('}');
-                                    i++;
-                                    k = i + 1;
-                                    continue;
-                                }
-
-                                throw new FormatException();
-                            default:
-                                break;
-                        }
-                    }
-
-                    if (open)
-                        throw new FormatException();
-
-                    Append(temporary);
-                    if (k < i)
-                        Append(format.AsSpan(k, i - k));
-                }
-            }
-
-            internal void AppendFormat<T1, T2, T3>(IFormatProvider formatProvider, string format, T1 arg1, T2 arg2, T3 arg3)
-            {
-                if (format == null)
-                    throw new ArgumentNullException(nameof(format));
-
-                // Use a temporary to avoid damaging this instance in case either format string or args are invalid.
-                using (var temporary = new Buffer(format.Length))
-                {
-                    var n = format.Length;
-                    var open = false;
-                    var k = 0; // start of ordinary chars to copy
-                    var p = 0; // start of format string macro                    
-                    var i = 0;
-
-                    for (i = 0; i < n; ++i)
-                    {
-                        var c = format[i];
-                        switch (c)
-                        {
-                            case '{':
-                                if (open)
-                                    throw new FormatException();
-
-                                if (i < n - 1 && format[i + 1] == '{') // escaped
-                                {
-                                    temporary.Append(format.AsSpan(k, i - k));
-                                    temporary.Append('{');
-                                    i++;
-                                    k = i + 1;
-                                    continue;
-                                }
-
-                                temporary.Append(format.AsSpan(k, i - k));
-                                open = true;
-                                p = i + 1;
-                                break;
-                            case '}':
-                                if (open)
-                                {
-                                    open = false;
-                                    var parsed = FormatParser.Parse(format.AsSpan(p, i - p));
-                                    switch (parsed.Index)
-                                    {
-                                        case 0:
                                             temporary.Append(arg1, formatProvider, parsed.FormatString, parsed.Alignment);
-                                            break;
-                                        case 1:
-                                            temporary.Append(arg2, formatProvider, parsed.FormatString, parsed.Alignment);
                                             break;
                                         case 2:
-                                            temporary.Append(arg3, formatProvider, parsed.FormatString, parsed.Alignment);
+                                            temporary.Append(arg2, formatProvider, parsed.FormatString, parsed.Alignment);
                                             break;
                                         default:
                                             throw new FormatException(Resources.GetString(Strings.NotEnoughArguments));
@@ -679,7 +682,7 @@ namespace Carambolas.Text
                 }
             }
 
-            internal void AppendFormat<T1, T2, T3, T4>(IFormatProvider formatProvider, string format, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
+            public void AppendFormat<T0, T1, T2, T3>(IFormatProvider formatProvider, string format, T0 arg0, T1 arg1, T2 arg2, T3 arg3)
             {
                 if (format == null)
                     throw new ArgumentNullException(nameof(format));
@@ -723,16 +726,16 @@ namespace Carambolas.Text
                                     switch (parsed.Index)
                                     {
                                         case 0:
-                                            temporary.Append(arg1, formatProvider, parsed.FormatString, parsed.Alignment);
+                                            temporary.Append(arg0, formatProvider, parsed.FormatString, parsed.Alignment);
                                             break;
                                         case 1:
-                                            temporary.Append(arg2, formatProvider, parsed.FormatString, parsed.Alignment);
+                                            temporary.Append(arg1, formatProvider, parsed.FormatString, parsed.Alignment);
                                             break;
                                         case 2:
-                                            temporary.Append(arg3, formatProvider, parsed.FormatString, parsed.Alignment);
+                                            temporary.Append(arg2, formatProvider, parsed.FormatString, parsed.Alignment);
                                             break;
                                         case 3:
-                                            temporary.Append(arg4, formatProvider, parsed.FormatString, parsed.Alignment);
+                                            temporary.Append(arg3, formatProvider, parsed.FormatString, parsed.Alignment);
                                             break;
                                         default:
                                             throw new FormatException(Resources.GetString(Strings.NotEnoughArguments));
@@ -1729,58 +1732,58 @@ namespace Carambolas.Text
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public StringBuilder AppendFormat<T1>(string format, T1 arg1)
+        public StringBuilder AppendFormat<T0>(string format, T0 arg0)
         {
-            buffer.AppendFormat(CultureInfo.CurrentCulture, format, arg1);
+            buffer.AppendFormat(CultureInfo.CurrentCulture, format, arg0);
             return this;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public StringBuilder AppendFormat<T1>(IFormatProvider formatProvider, string format, T1 arg1)
+        public StringBuilder AppendFormat<T0>(IFormatProvider formatProvider, string format, T0 arg0)
         {
-            buffer.AppendFormat(formatProvider, format, arg1);
+            buffer.AppendFormat(formatProvider, format, arg0);
             return this;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public StringBuilder AppendFormat<T1, T2>(string format, T1 arg1, T2 arg2)
+        public StringBuilder AppendFormat<T0, T1>(string format, T0 arg0, T1 arg1)
         {
-            buffer.AppendFormat(CultureInfo.CurrentCulture, format, arg1, arg2);
+            buffer.AppendFormat(CultureInfo.CurrentCulture, format, arg0, arg1);
             return this;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public StringBuilder AppendFormat<T1, T2>(IFormatProvider formatProvider, string format, T1 arg1, T2 arg2)
+        public StringBuilder AppendFormat<T0, T1>(IFormatProvider formatProvider, string format, T0 arg0, T1 arg1)
         {
-            buffer.AppendFormat(formatProvider, format, arg1, arg2);
+            buffer.AppendFormat(formatProvider, format, arg0, arg1);
             return this;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public StringBuilder AppendFormat<T1, T2, T3>(string format, T1 arg1, T2 arg2, T3 arg3)
+        public StringBuilder AppendFormat<T0, T1, T2>(string format, T0 arg0, T1 arg1, T2 arg2)
         {
-            buffer.AppendFormat(CultureInfo.CurrentCulture, format, arg1, arg2, arg3);
+            buffer.AppendFormat(CultureInfo.CurrentCulture, format, arg0, arg1, arg2);
             return this;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public StringBuilder AppendFormat<T1, T2, T3>(IFormatProvider formatProvider, string format, T1 arg1, T2 arg2, T3 arg3)
+        public StringBuilder AppendFormat<T0, T1, T2>(IFormatProvider formatProvider, string format, T0 arg0, T1 arg1, T2 arg2)
         {
-            buffer.AppendFormat(formatProvider, format, arg1, arg2, arg3);
+            buffer.AppendFormat(formatProvider, format, arg0, arg1, arg2);
             return this;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public StringBuilder AppendFormat<T1, T2, T3, T4>(string format, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
+        public StringBuilder AppendFormat<T0, T1, T2, T3>(string format, T0 arg0, T1 arg1, T2 arg2, T3 arg3)
         {
-            buffer.AppendFormat(CultureInfo.CurrentCulture, format, arg1, arg2, arg3, arg4);
+            buffer.AppendFormat(CultureInfo.CurrentCulture, format, arg0, arg1, arg2, arg3);
             return this;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public StringBuilder AppendFormat<T1, T2, T3, T4>(IFormatProvider formatProvider, string format, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
+        public StringBuilder AppendFormat<T0, T1, T2, T3>(IFormatProvider formatProvider, string format, T0 arg0, T1 arg1, T2 arg2, T3 arg3)
         {
-            buffer.AppendFormat(formatProvider, format, arg1, arg2, arg3, arg4);
+            buffer.AppendFormat(formatProvider, format, arg0, arg1, arg2, arg3);
             return this;
         }
 
@@ -2457,10 +2460,23 @@ namespace Carambolas.Text
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string Concat<T1, T2>(T1 arg1, T2 arg2)
+        public static string Concat<T0, T1>(T0 arg0, T1 arg1)
         {
             using (var sb = new Buffer())
             {
+                sb.Append(arg0);
+                sb.Append(arg1);
+
+                return sb.ToString();
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static string Concat<T0, T1, T2>(T0 arg0, T1 arg1, T2 arg2)
+        {
+            using (var sb = new Buffer())
+            {
+                sb.Append(arg0);
                 sb.Append(arg1);
                 sb.Append(arg2);
 
@@ -2469,27 +2485,14 @@ namespace Carambolas.Text
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string Concat<T1, T2, T3>(T1 arg1, T2 arg2, T3 arg3)
+        public static string Concat<T0, T1, T2, T3>(T0 arg0, T1 arg1, T2 arg2, T3 arg3)
         {
             using (var sb = new Buffer())
             {
+                sb.Append(arg0);
                 sb.Append(arg1);
                 sb.Append(arg2);
                 sb.Append(arg3);
-
-                return sb.ToString();
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string Concat<T1, T2, T3, T4>(T1 arg1, T2 arg2, T3 arg3, T4 arg4)
-        {
-            using (var sb = new Buffer())
-            {
-                sb.Append(arg1);
-                sb.Append(arg2);
-                sb.Append(arg3);
-                sb.Append(arg4);
 
                 return sb.ToString();
             }
@@ -2570,82 +2573,82 @@ namespace Carambolas.Text
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string Format<T1>(string format, T1 arg1)
+        public static string Format<T0>(string format, T0 arg0)
         {
             using (var sb = new Buffer())
             {
-                sb.AppendFormat(CultureInfo.CurrentCulture, format, arg1);
+                sb.AppendFormat(CultureInfo.CurrentCulture, format, arg0);
                 return sb.ToString();
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string Format<T1>(IFormatProvider formatProvider, string format, T1 arg1)
+        public static string Format<T0>(IFormatProvider formatProvider, string format, T0 arg0)
         {
             using (var sb = new Buffer())
             {
-                sb.AppendFormat(formatProvider, format, arg1);
+                sb.AppendFormat(formatProvider, format, arg0);
                 return sb.ToString();
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string Format<T1, T2>(string format, T1 arg1, T2 arg2)
+        public static string Format<T0, T1>(string format, T0 arg0, T1 arg1)
         {
             using (var sb = new Buffer())
             {
-                sb.AppendFormat(CultureInfo.CurrentCulture, format, arg1, arg2);
+                sb.AppendFormat(CultureInfo.CurrentCulture, format, arg0, arg1);
                 return sb.ToString();
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string Format<T1, T2>(IFormatProvider formatProvider, string format, T1 arg1, T2 arg2)
+        public static string Format<T0, T1>(IFormatProvider formatProvider, string format, T0 arg0, T1 arg1)
         {
             using (var sb = new Buffer())
             {
-                sb.AppendFormat(formatProvider, format, arg1, arg2);
+                sb.AppendFormat(formatProvider, format, arg0, arg1);
                 return sb.ToString();
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string Format<T1, T2, T3>(string format, T1 arg1, T2 arg2, T3 arg3)
+        public static string Format<T0, T1, T2>(string format, T0 arg0, T1 arg1, T2 arg2)
         {
             using (var sb = new Buffer())
             {
-                sb.AppendFormat(CultureInfo.CurrentCulture, format, arg1, arg2, arg3);
+                sb.AppendFormat(CultureInfo.CurrentCulture, format, arg0, arg1, arg2);
                 return sb.ToString();
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string Format<T1, T2, T3>(IFormatProvider formatProvider, string format, T1 arg1, T2 arg2, T3 arg3)
+        public static string Format<T0, T1, T2>(IFormatProvider formatProvider, string format, T0 arg0, T1 arg1, T2 arg2)
         {
             using (var sb = new Buffer())
             {
-                sb.AppendFormat(formatProvider, format, arg1, arg2, arg3);
+                sb.AppendFormat(formatProvider, format, arg0, arg1, arg2);
                 return sb.ToString();
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string Format<T1, T2, T3, T4>(string format, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
+        public static string Format<T0, T1, T2, T3>(string format, T0 arg0, T1 arg1, T2 arg2, T3 arg3)
         {
             using (var sb = new Buffer())
             {
-                sb.AppendFormat(CultureInfo.CurrentCulture, format, arg1, arg2, arg3, arg4);
+                sb.AppendFormat(CultureInfo.CurrentCulture, format, arg0, arg1, arg2, arg3);
                 return sb.ToString();
             }
         }
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static string Format<T1, T2, T3, T4>(IFormatProvider formatProvider, string format, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
+        public static string Format<T0, T1, T2, T3>(IFormatProvider formatProvider, string format, T0 arg0, T1 arg1, T2 arg2, T3 arg3)
         {
             using (var sb = new Buffer())
             {
-                sb.AppendFormat(formatProvider, format, arg1, arg2, arg3, arg4);
+                sb.AppendFormat(formatProvider, format, arg0, arg1, arg2, arg3);
                 return sb.ToString();
             }
         }

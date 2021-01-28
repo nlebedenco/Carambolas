@@ -1,4 +1,4 @@
-Carambolas.Unity.Cli        
+Carambolas.Unity.TextMeshPro        
 
 Copyright (c) 2020 Nicolas Carneiro Lebedenco <nicolas@lebedenco.net>
 

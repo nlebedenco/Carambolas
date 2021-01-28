@@ -3,7 +3,7 @@
   "version": "4.5.3",
   "displayName": "System.Memory",
   "description": "This is a repackaging of System.Memory 4.5.3 from Nuget.org (https://www.nuget.org/packages/System.Memory/4.5.3) including all dependencies.\n\nThis package contains:\n\n- System.Memory.dll\n- System.Buffers.dll\n- System.Numerics.Vector.dll\n- System.Runtime.CompilerServices.Unsafe.dll",
-  "unity": "2018.3",
+  "unity": "2019.1",
   "license": "MIT",
   "repository": {
     "type": "git",
